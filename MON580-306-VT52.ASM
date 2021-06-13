@@ -2,29 +2,25 @@
 ;  МОНИТОР РК86 для КР580 совместимый с Z80, VT-52 и симулятором CP/M
 ;  ══════════════════════════════════════════════════════════════════
 ;
-; Last modify: 09.05.2021
+; Last modify: 13.06.2021
 ;
 ;
-; IDEAS
-; -----
-;
-; 1. Проверить, упакуются ли все Esc-коды, возможно и Ctrl-коды в
-;    диапазон Fx00-FxFF. Тогда заюзать однобайтовы массив для переходов
-; 2. То же для директив
-; Это два пункта сохранять байты на анализ
+; IDEAS/QUESTIONS
+; ---------------
 ;
 ; Звук только на INTE
 ; В CCP принудительно включается ЛАТ-регистр.
 ; Удалена директива X. Директива G теперь не имеет второго параметра -
 ; стоп точки. Зато теперь введён возврат из запуска по G по RET. И можно
 ; передавать два параметра (второй и третий, они передаются в DE и BC).
+;
+; Это, если будет место, но мало смысла...
 ; При запуске директивой G100 включается режим симулятора CP/M.
 ; При этом формируется нулевая страница. BDOS размещается в адресах
 ; RAMTOP-100H и занимает 3 байта. BIOS размещается в адресах 
 ; RAMTOP-100H и занимает 15 байт. Нулевая точка входа в BIOS 
 ; используется для эмуляции BDOS, т.к. она в никогда не вызывается
 ; из прикладных программ (как минимум, мне об этом неизвестно)
-;
 ;
 ; ВВОД ДИРЕКТИВ И АНАЛИЗ РЕЗУЛЬТАТОВ
 ; ──────────────────────────────────
@@ -88,16 +84,15 @@
 ; I <СМЕЩЕНИЕ >/,/< СКОРОСТЬ>/
 ; ДОПОЛНИТЕЛЬНЫЕ ДИРЕКТИВЫ
 ; R <НАЧАЛЬНЫИ АДРЕС ПЗУ>, <КОНЕЧНЫИ АДРЕС ПЗУ>, <АДРЕС ЗАГРУЗКИ>
-; U
 ; (НАКЛОННЫМИ ЧЕРТАМИ ВЫДЕЛЕНЫ НЕОБЯЗАТЕЛЬНЫЕ ПАРАМЕТРЫ)
 ; Если во все ячейки области памяти необходимо записать одинаковые коды,
-; удобно воспользоваться директивой Р.
+; удобно воспользоваться директивой F.
 ; 
-; Директива Т предназначена для копирования (пересылки) содержимого одной
+; Директива T предназначена для копирования (пересылки) содержимого одной
 ; области памяти в другую. Копирование осуществляется побайтно, начиная с
 ; младшего адреса.
 ; 
-; Для сравнения двух областей памяти необходимо пользоваться директивой С.
+; Для сравнения двух областей памяти необходимо пользоваться директивой C.
 ; Если содержимое соответствующих ячеек памяти не совпадает, на экран
 ; выводится адрес ячейки из первой области, ее содержимое и содержимое
 ; соответствующей ячейки из второй области. МОНИТОР предоставляет
@@ -105,25 +100,10 @@
 ; (директива S). При обнаружении искомого кода на экране появляются
 ; адреса ячеек, в которых он был обнаружен.
 ; 
-; ДИРЕКТИВЫ ЗАПУСКА И ОТЛАДКИ ПРОГРАММ
-; ────────────────────────────────────
+; ДИРЕКТИВЫ ЗАПУСКА
+; ─────────────────
 ;
-; Для запуска программы служит директива G. Второй параметр этой
-; директивы, задающий адрес останова, используется только при отладке
-; программ и может быть опущен. Кроме того, пользователь может сам
-; назначать в своей программе контрольные адреса останова, записав
-; по этим адресам код команды RST6 (0F7Н). Если при выполнении программы
-; встретится эта команда, управление будет передано МОНИТОРу, который
-; сообщит адрес, в котором было прервано выполнение программы, после
-; чего пользователь может воспользоваться любыми директивами МОНИТОРА
-; для контроля результатов работы и модификации программы.
-; 
-; Просмотреть и изменить содержимое внутренних регистров микропроцессора
-; поможет директива Х (не имеющая параметров). В результате ее выполнения
-; на экран выводятся символические имена и содержимое регистров, которое
-; можно изменять так же, как и содержимое ячеек памяти по директиве М.
-; Регистр признаков результата операции обозначен латинской буквой Р,
-; обозначение других внутренних регистров микропроцессоре стандартно.
+; Для запуска программы служит директива G.
 ; 
 ; ДИРЕКТИВЫ ВВОДА-ВЫВОДА
 ; ──────────────────────
@@ -176,8 +156,7 @@
 ; информации из ПЗУ, подключаемого к ППА D14, и U - предназначенной
 ; для дальнейшего расширения МОНИТОРа. О них будет рассказано в одном
 ; из следующих номеров журнала.
-; 
-; 
+;
 ; УПРАВЛЯЮЩИЕ КОДЫ ДИСПЛЕЯ
 ; ────────────────────────
 ;
@@ -203,7 +182,7 @@
 ; курсора на одну строку вверх или вниз соответственно. Если при этом
 ; курсор находился в самой нижней строке экрана, то при выполнении
 ; функции <Курсор вниз> он, в отличие от оригинального МОНИТОРа,
-; останется на той же строе. Аналогично и с функцией <Курсор вверх>.
+; останется на той же строке. Аналогично и с функцией <Курсор вверх>.
 ; 
 ; Функция <ВК> - <Возврат каретки> (не путать с клавишей) переведет курсор
 ; в первую позицию той же строки экрана, в которой он и находился. Если
@@ -228,7 +207,7 @@
 ; Функция "BEL" выдаст звуковой сигнал продолжительностью примерно 0,25 с.
 ;
 ; Функция "TAB" размещает курсор в ближайшей следующей позиции "табулятора".
-; Т.е. в позициях 8, 16, 24,32,40,48, 56. Отсчет ведется от 0.
+; Т.е. в позициях 8, 16, 24, 32, 40, 48, 56. Отсчет ведется от 0.
 ;
 ; Функция "ESC" переводит в режим обработки Escape-кодов.
 ;
@@ -274,33 +253,37 @@
 ;
 ; Код ">" - не используется, Exit alternate keypad
 ;
-; Код "<" - не используется, включить/выключить поддержку кодов ANSI
+; Код "<" - не используется, включить/выключить поддержку кодов ANSI (VT100)
 ;
-; b# - не используется, Foreground color (расширение GDOS/TOS)
+; Код "a" - не используется Скрыть курсор (расширение M/80K)
 ;
-; c# - не используется,	Background color (расширение GDOS/TOS)
+; Код "b" - не используется Показать курсор (расширение M/80K)
 ;
-; d	Clear to start of screen	Clear screen from the cursor up to the home position. (расширение GDOS/TOS)
+; Код "b#" - не используется, Foreground color (расширение GDOS/TOS)
 ;
-; Код "e" - Enable cursor (расширение GDOS/TOS)
+; Код "c#" - не используется,	Background color (расширение GDOS/TOS)
 ;
-; Код "f" - Disable cursor (расширение GDOS/TOS)
+; Код "d" - Очистить экран до левого верхнуго угла экрана (расширение GDOS/TOS)
 ;
-; Код "j" - Saves the current position of the cursor in memory. (расширение GDOS/TOS)
+; Код "e" - Показать курсор (расширение GDOS/TOS)
 ;
-; Код "k" - Return the cursor to the settings previously saved with j. (расширение GDOS/TOS)
+; Код "f" - Скрыть курсор (расширение GDOS/TOS)
 ;
-; l	Clear line	Erase the entire line and positions the cursor on the left. (расширение GDOS/TOS)
+; Код "j" - Запомнить текущую позицию курсора (расширение GDOS/TOS)
 ;
-; o	Clear to start of line	Clear current line from the start to the left side to the cursor. (расширение GDOS/TOS)
+; Код "k" - Восстановить запомненную позицию курсора (расширение GDOS/TOS)
+;
+; Код "l" - Очистить текущую строку и установить указатель курсора в начало строки (расширение GDOS/TOS)
+;
+; Код "o" - Очистить строку от начала строки до текущего положения курсора (расширение GDOS/TOS)
 ;
 ; Код "p" - Не используется, Reverse video (расширение GDOS/TOS)
 ;
 ; Код "q" - Не используется, Normal video (расширение GDOS/TOS)
 ;
-; Код "v" - Wrap on (расширение GDOS/TOS)
+; Код "v" - Включить автоперенос строки (расширение GDOS/TOS)
 ;
-; Код "w" - Wrap off (расширение GDOS/TOS)
+; Код "w" - Выключить автоперенос строки (расширение GDOS/TOS)
 ;
 	CPU	8080
 	Z80SYNTAX	EXCLUSIVE
@@ -308,12 +291,12 @@
 ; ──────────────────────────────────────────────
 RABADR	EQU	0F800H
 DOPPPA	EQU	0A000H
-K_ORIG	EQU	0		; если 1, то измененный курсор
+K_ORIG	EQU	0		; если 0, то измененный курсор
 ; ──────────────────────────────────────────────
 
 CHK	MACRO	adr, msg
 		IF	adr-$
-;			ERROR	msg
+			ERROR	msg
 		ENDIF
 	ENDM
 
@@ -341,18 +324,22 @@ R_BC	EQU	BASE+18H
 CURST	EQU	R_BC		; Отображать/прятать курсор
 WRPFLG	EQU	R_BC+1		; Автоперенос строк
 R_SP	EQU	BASE+1CH
-R_AF	EQU	BASE+1EH	; ниже откладываются AF,HL,DE,BC
+RAMTOP	EQU	R_SP		;
+R_AF	EQU	BASE+1EH	; ниже откладываются AF,HL,DE,BC (в этой версии не используется)
 STOP_A  EQU	BASE+23H
 TMP_COD EQU	BASE+25H
 P_JMP	EQU	BASE+26H	; для байта C3H (JMP)
+KNS_WR	EQU	P_JMP
 PAR_HL  EQU	BASE+27H
 PAR_DE  EQU	BASE+29H
 PAR_BC  EQU	BASE+2BH
 FLG_P2	EQU	BASE+2DH	; флаг, что есть параметры 2 или 2,3
 INV_MG	EQU	BASE+2EH
 KNS_RD	EQU	BASE+2FH
-KNS_WR	EQU	BASE+30H
-RAMTOP	EQU	BASE+31H
+;KNS_WR	EQU	BASE+30H
+;RAMTOP	EQU	BASE+31H
+BUFSIZ	EQU	BASE+30H
+BUFCNT	EQU	BASE+31H
 COMBUF	EQU	BASE+33H	; буфер ввода директивы
 STACK	EQU	BASE+0D0H	; стек монитора
 
@@ -388,7 +375,7 @@ LOOP	MACRO	ADDR
 
 ; ──────────────────────────────────────────────
 
-	JP	XF800		; +0
+	JP	ColdBoot		; +0
 	JP	CONIN 		; +3
 	JP	LDBYTE		; +6
 	JP	COUT_C		; +9
@@ -397,7 +384,7 @@ LOOP	MACRO	ADDR
 	JP	STATUS		; +12
 	JP	HEX_A 		; +15
 	JP	MSGH  		; +18
-	JP	XF81B 		; +1B
+	JP	ReadKeyCode 	; +1B
 	JP	ASKCUR		; +1E
 	JP	RD_SCR		; +21
 	JP	RD_BLK		; +24
@@ -410,14 +397,17 @@ SETTOP:	LD	(RAMTOP),HL	; +33
 
 ; ──────────────────────────────────────────────
 
-AFB86:	LD	C,(HL)			; 10 bytes
-	CALL	WRBYTE
-	CALL	AF999
-	JP	AFB86
+RD_SCR: PUSH	HL			; 7 bytes
+	LD	HL,(EK_ADR)
+	LD	A,(HL)
+	POP	HL
+	RET
 
 ; ──────────────────────────────────────────────
 
-XF800:	LD	HL,BASE-1
+
+ColdBoot:
+	LD	HL,BASE-1
 	LD	(RAMTOP),HL
 	LD	SP,HL
 
@@ -437,25 +427,25 @@ XF800:	LD	HL,BASE-1
 	CALL	PUSK_VG
 
 	CALL	RST_18
-TITR:	DB	1FH,'radio-86r','k' + 80H
+	DB	1FH,"86r",'k' + 80H
 
 	LD	HL,1D2AH
 	LD	(KNS_RD),HL
 
-	CHK	0f86ch, "* Standard subroutine WARMST shifted ! *"
+	CHK	0f86ch, "* Standard subroutine WarmBoot shifted ! *"
 
-WARMST:				; Warm_BOOT
+WarmBoot:
 	LD	SP,STACK
 
 	LD	A,90H
 	LD	(PDU),A
 
 	CALL	RST_18
-PROMPT:	DB	13,10,'-','-','>'+128
+	DB	13,10,'>'+128
 
 	CALL	GETLIN
 
-	LD	HL,WARMST
+	LD	HL,WarmBoot
 	PUSH	HL
 
 
@@ -467,68 +457,106 @@ PROMPT:	DB	13,10,'-','-','>'+128
 	LD	B,H
 	LD	HL,(PAR_DE)		; Z80: LD DE,(PAR_DE)
 	EX	DE,HL
+
+	LD	HL, DIRTABLE-1
+DIRLOOP:
+	INC	HL
+	CP	(HL)
+	PUSH	AF
+	XOR	A
+	CP	(HL)
+	JP	Z,SyntaxError
+	POP	AF
+	JP	NZ, DIRLOOP
+	INC	HL
+	LD	L, (HL)
+	PUSH	HL
 	LD	HL,(PAR_HL)
-
-	SUB	'C'			;CP	'C'
-	JP	Z,DIR_C
-	DEC	A			;CP	'D'
-	JP	Z,DIR_D
-	SUB	2			;CP	'F'
-	JP	Z,DIR_F
-	DEC	A			;CP	'G'
-	JP	Z,DIR_G
-	SUB	2			;CP	'I'
-	JP	Z,DIR_I
-	SUB	3			;CP	'L'
-	JP	Z,DIR_L
-	DEC	A			;CP	'M'
-	JP	Z,DIR_M
-	SUB	2			;CP	'O'
-	JP	Z,DIR_O
-	SUB	3			;CP	'R'
-	JP	Z,DIR_R
-	DEC	A			;CP	'S'
-	JP	Z,DIR_S
-	DEC	A			;CP	'T'
-	JP	NZ,ERROR
+	RET
 
 ; ──────────────────────────────────────────────
 
-DIR_T:	LD	A,(HL)			; 9 bytes
-	LD	(BC),A
-	INC	BC
-	CALL	AF999
-	JP	DIR_T
+AFE97:	PUSH	HL			; 27 bytes
+	LD	HL,7 << 8 + 1
+AFE9C:	LD	A,L
+	RRCA
+	LD	L,A
+	CPL
+	LD	(PA),A
+	LD	A,(PB)
+	CPL
+	OR	A
+	JP	NZ,AFEB3
+	DEC	H
+	JP	P,AFE9C
+AFEAF:	LD	A,0FFH
+	POP	HL
+	RET
 
 ; ──────────────────────────────────────────────
-; Заполняет область памяти с HL по DE байтом C
+; Возврат каретки
 ; ВХОД:
-;	HL	- начальный адрес
-;	DE	- конечный адрес
-;	C	- байт для записи
+;	E=POSX, D=POSY
+;	HL=экранный адрес
 ; ВЫХОД:
-
+;	E=POSX, D=POSY
+;	HL=экранный адрес
 ; ИЗМЕНЯЕТ:
-;	AF, HL
+; 	HL, BC, AF
+; ОПИСАНИЕ:
+;	Курсор перемещается в начало текущей строки.
 ; ──────────────────────────────────────────────
 
-DIR_F:
-	LD	(HL),C
-	CALL	AF999
-	JP	DIR_F
+COD_0D:	LD	A,L		; 13 bytes
+	SUB	E
+	JP	NC,AFDF9
+	DEC	H
+AFDF9:	LD	L,A
+	LD	BC,8
+	LD	E,C
+	ADD	HL,BC
+	RET
 
 ; ──────────────────────────────────────────────
-; Возвращает в HL координаты курсора
+; Загрузка BC с поиском синхробайта
 ; ВХОД:
 ;	Нет
 ; ВЫХОД:
-;	H - Y
-;	L - X
+;	BC	- загруженные байта
 ; ИЗМЕНЯЕТ:
-;	HL
+;	AF, BC
 ; ──────────────────────────────────────────────
 
-ASKCUR:	LD	HL,(POSX)		; 4 bytes
+LDBCSS: LD	A, 0FFH			; 14 bytes
+	DB	1			; LD BC, ..
+
+; ──────────────────────────────────────────────
+; Загрузка BC без поиска синхробайта
+; ВХОД:
+;	Нет
+; ВЫХОД:
+;	BC	- загруженные байта
+; ИЗМЕНЯЕТ:
+;	AF, BC
+; ──────────────────────────────────────────────
+
+LDBCBS:	LD	A, 8
+
+; ──────────────────────────────────────────────
+; Загрузка BC
+; ВХОД:
+;	A=008H	- без поиска синхробайта
+;	A=0FFH	- с поиском синхробайта
+; ВЫХОД:
+;	BC	- загруженные байта
+; ИЗМЕНЯЕТ:
+;	AF, BC
+; ──────────────────────────────────────────────
+
+_LD_BC:	CALL	LDBYTE
+	LD	B, A
+	CALL	LDBS
+	LD	C, A
 	RET
 
 ; ──────────────────────────────────────────────
@@ -548,7 +576,9 @@ MSGH:	LD	B, 0			; 13 bytes
 ; ──────────────────────────────────────────────
 	CHK	0F8EEH, "* Internal subroutine GETLIN shifted ! *"
 
-GETLIN:	LD	HL,COMBUF
+GETLIN:	LD	DE,COMBUF
+GETLIN2:
+	EX	DE, HL
 	LD	D,H
 	LD	E,L
 AF8F1:
@@ -563,41 +593,17 @@ AF8F3:	CALL	CONIN		; используется в DIR_M
 	CP	13
 	JP	Z,AF91A
 	CP	'.'
-	JP	Z,WARMST
+	JP	Z,WarmBoot
 	LD	B,E			; B=76H --> бит D7=0
 	LD	A, (COMBUF & 00FFh)+31
 	CP	L
-	JP	Z,ERROR
+	JP	Z,SyntaxError
 	INC	HL
+	LD	(BUFCNT), HL
 	JP	AF8F3
 
 
-; ──────────────────────────────────────────────
-; Ввод символа без ожидания с проверкой нажатия Ctrl-C. 
-; При нажатии Ctrl-C выход в МОНИТОР с переинцициализацией ВГ.
-; ВХОД:
-;	Нет
-; ВЫХОД:
-;	A=0FFH - не нажата
-;	A=0FEH - РУС/ЛАТ
-;	A - код клавиши
-; ИЗМЕНЯЕТ:
-;	AF		 TODO: проверить, что изменяет XF81B и PUSK_VG
-; ──────────────────────────────────────────────
-
-CHK_F4:	CALL	XF81B			; 12 bytes
-	CP	3
-	RET	NZ
-	CALL	PUSK_VG
-	JP	ERROR
-
-; ──────────────────────────────────────────────
-
-AF91A:	SUB	B			; 2 bytes
-	RET
-
-; ──────────────────────────────────────────────
-
+	ORG	0f92ch
 	CHK	0F92cH, "* Internal subroutine GETPRM shifted ! *"
 
 ; ──────────────────────────────────────────────
@@ -637,86 +643,46 @@ GETPRM:	LD	HL,PAR_HL	; Обнуляем параметры
 	CALL	GET_HL
 	LD	(PAR_BC),HL
 	RET	C
-	JP	ERROR
+	JP	SyntaxError
+
+; ──────────────────────────────────────────────
+DIR_F:					; 7 bytes
+	LD	(HL),C
+	CALL	AF999
+	JP	DIR_F
 
 ; ──────────────────────────────────────────────
 
-AFE97:	PUSH	HL			; 27 bytes
-	LD	HL,7 << 8 + 1
-AFE9C:	LD	A,L
-	RRCA
-	LD	L,A
-	CPL
-	LD	(PA),A
-	LD	A,(PB)
-	CPL
-	OR	A
-	JP	NZ,AFEB3
-	DEC	H
-	JP	P,AFE9C
-AFEAF:	LD	A,0FFH
-	POP	HL
-	RET
+DIR_G:
+	IF	(DIR_G & 0FF00H) <> (DIR_F & 0FF00H)
+		ERROR	"DIR_G and DIR_F must be in same page"
+	ENDIF
+;	PUSH	DE
+;	LD	DE, 0100H
+;	CALL	CMPDH
+;	CALL	Z, INIT
+;	POP	DE
+	JP	(HL)			; 1 bytes
 
 ; ──────────────────────────────────────────────
 
-XF81B:	LD	A,(PC)		; 30 bytes
-	RLA
-	LD	A,0FEH
-	RET	NC
-AFE7D:
-	XOR	A
-	LD	(PA),A
-	LD	A,(RUSLAT)
-	AND	00000001B
-	OR	00000110B	; зажигаем/гасим светодиод
-	LD	(PU),A
-	LD	A,(PB)
-	INC	A
-	JP	NZ,AFE97
-	DEC	A
-	RET
+DIR_T:
+	IF	(DIR_G & 0FF00H) <> (DIR_T & 0FF00H)
+		ERROR	"DIR_G and DIR_T must be in same page"
+	ENDIF
+	LD	A,(HL)			; 9 bytes
+	LD	(BC),A
+	INC	BC
+	CALL	AF999
+	JP	DIR_T
 
 ; ──────────────────────────────────────────────
 
-	CHK	0F990H, "* Internal subroutine CMPDH shifted ! *"
-
-CMPDH:	LD	A,H
-	CP	D
-	RET	NZ
-	LD	A,L
-	CP	E
-	RET
-
-; ──────────────────────────────────────────────
-
-BAKSTP:	LD	A,E			; 15 bytes
-	CP	L			; начало буфера ввода ?
-	JP	Z,AF8F1
-	CALL	RST_18
-TZABOJ:	DB	8,' ',8+128
-	DEC	HL
-	JP	AF8F3
-
-; ──────────────────────────────────────────────
-
-DIR_S:	LD	A,C			; 11 bytes
-	CP	(HL)
-	CALL	Z,CHXHL_
-	CALL	AF996
-	JP	DIR_S
-
-; ──────────────────────────────────────────────
-
-	CHK	0F9B0H, "* Internal subroutine CR shifted ! *"
-
-CR:	CALL	RST_18
-	DB	13,10 + 80H
-	RET
-
-; ──────────────────────────────────────────────
-
-DIR_I:	LD	A,(FLG_P2)		; 46 bytes
+DIR_I:
+	IF	(DIR_I & 0FF00H) <> (DIR_T & 0FF00H)
+		ERROR	"DIR_I and DIR_T must be in same page"
+	ENDIF
+	LD	A,(FLG_P2)		; 46 bytes
 	OR	A
 	JP	Z,AFA91
 	LD	A,E
@@ -734,13 +700,145 @@ AFA91:	CALL	RD_BLK
 	CALL	CMPDH
 	RET	Z
 	CALL	CHXDE_
-ERROR:	CALL	RST_18
+SyntaxError:
+	CALL	RST_18
 	DB	'?'+80H
-	JP	WARMST
+	JP	WarmBoot
+; ──────────────────────────────────────────────
+
+	CHK	0F990H, "* Internal subroutine CMPDH shifted ! *"
+
+CMPDH:	LD	A,H
+	CP	D
+	RET	NZ
+	LD	A,L
+	CP	E
+	RET
 
 ; ──────────────────────────────────────────────
 
-DIR_L:	CALL	CHXHL_			; 30 bytes
+DIR_R:					; 19 bytes
+	IF	(DIR_I & 0FF00H) <> (DIR_R & 0FF00H)
+		ERROR	"DIR_I and DIR_R must be in same page"
+	ENDIF
+	LD	(PDB),HL
+	LD	A,(PDA)
+	LD	(BC),A
+	INC	BC
+	CALL	AF999
+	JP	DIR_R
+; ──────────────────────────────────────────────
+
+DIR_S:
+	IF	(DIR_S & 0FF00H) <> (DIR_R & 0FF00H)
+		ERROR	"DIR_R and DIR_S must be in same page"
+	ENDIF
+	LD	A,C			; 11 bytes
+	CP	(HL)
+	CALL	Z,CHXHL_
+	CALL	AF996
+	JP	DIR_S
+
+	NOP
+; ──────────────────────────────────────────────
+
+	CHK	0F9B0H, "* Internal subroutine CR shifted ! *"
+
+CR:	CALL	RST_18
+	DB	13,10 + 80H
+	RET
+
+
+; ──────────────────────────────────────────────
+
+DIR_D:
+	IF	(DIR_S & 0FF00H) <> (DIR_D & 0FF00H)
+		ERROR	"DIR_D and DIR_S must be in same page"
+	ENDIF
+	CALL	CHXHL_			; 18 bytes
+AF9C8:	CALL	LDXHX_
+	CALL	AF996
+	LD	A,L
+	AND	0FH
+	JP	Z,DIR_D
+	JP	AF9C8
+
+
+; ──────────────────────────────────────────────
+DIRTABLE:				; 23 bytes
+	IF	(DIRTABLE & 0FF00H) <> (DIR_D & 0FF00H)
+		ERROR	"DIR_D and DIRTABLE must be in same page"
+	ENDIF
+
+	DB	'C', DIR_C & 0FFH
+	DB	'D', DIR_D & 0FFH
+	DB	'F', DIR_F & 0FFH
+	DB	'G', DIR_G & 0FFH
+	DB	'I', DIR_I & 0FFH
+	DB	'L', DIR_L & 0FFH
+	DB	'M', DIR_M & 0FFH
+	DB	'O', DIR_O & 0FFH
+	DB	'R', DIR_R & 0FFH
+	DB	'S', DIR_S & 0FFH
+	DB	'T', DIR_T & 0FFH
+	DB	0
+
+; ──────────────────────────────────────────────
+; Заполняет область памяти с HL по DE байтом C
+; ВХОД:
+;	HL	- начальный адрес
+;	DE	- конечный адрес
+;	C	- байт для записи
+; ВЫХОД:
+
+; ИЗМЕНЯЕТ:
+;	AF, HL
+; ──────────────────────────────────────────────
+
+DIR_M:
+
+	IF	(DIRTABLE & 0FF00H) <> (DIR_M & 0FF00H)
+		ERROR	"DIR_M and DIRTABLE must be in same page"
+	ENDIF
+
+	CALL	JJJ_02			; 22 bytes
+	PUSH	HL
+	CALL	GETLIN
+	POP	HL
+	JP	NC,AFA3B
+	PUSH	HL
+	CALL	GET_HL
+	LD	A,L
+	POP	HL
+	LD	(HL),A
+AFA3B:	INC	HL
+	JP	DIR_M
+
+; ──────────────────────────────────────────────
+
+DIR_O:
+
+	IF	(DIRTABLE & 0FF00H) <> (DIR_O & 0FF00H)
+		ERROR	"DIR_O and DIRTABLE must be in same page"
+	ENDIF
+
+	JP	DIR_O_2
+
+DIR_C:
+	IF	(DIR_C & 0FF00H) <> (DIR_F & 0FF00H)
+		ERROR	"DIR_C and DIR_F must be in same page"
+	ENDIF
+
+	JP	DIR_C_2
+; ──────────────────────────────────────────────
+
+DIR_L:
+
+	IF	(DIRTABLE & 0FF00H) <> (DIR_L & 0FF00H)
+		ERROR	"DIR_L and DIRTABLE must be in same page"
+	ENDIF
+
+	CALL	CHXHL_			; 30 bytes
 AFA0B:	LD	A,(HL)
 	OR	A
 	JP	M,AFA15
@@ -756,175 +854,8 @@ AFA17:	CALL	SCOUTA
 
 ; ──────────────────────────────────────────────
 
-AFF3B:	LD	A,L			; 23 bytes
-	AND	2FH
-	LD	L,A
-AFF3F:	LD	A,L
-	CP	40H
-	POP	HL
-	RET	P
-	PUSH	HL
-	LD	L,A
-	AND	00FH
-	CP	00CH
-	LD	A,L
-	JP	M,AFF50
-	XOR	10H
-AFF50:	POP	HL
-	RET
-
-; ──────────────────────────────────────────────
-
-CHSUMM:	LD	BC,0			; 23 bytes
-AFB19:	LD	A,(HL)
-	ADD	A,C
-	LD	C,A
-	PUSH	AF
-	CALL	CMPDH
-	JP	Z,POPAF
-	POP	AF
-	LD	A,B
-	ADC	A,(HL)
-	LD	B,A
-	CALL	AF999
-	JP	AFB19
-
-; ──────────────────────────────────────────────
-
-DIR_M:	CALL	JJJ_02			; 22 bytes
-	PUSH	HL
-	CALL	GETLIN
-	POP	HL
-	JP	NC,AFA3B
-	PUSH	HL
-	CALL	GET_HL
-	LD	A,L
-	POP	HL
-	LD	(HL),A
-AFA3B:	INC	HL
-	JP	DIR_M
-
-; ──────────────────────────────────────────────
-
-DIR_R:
-AFA6D:	LD	(PDB),HL
-	LD	A,(PDA)
-	LD	(BC),A
-	INC	BC			; 19 bytes
-	CALL	AF999
-	JP	AFA6D
-
-; ──────────────────────────────────────────────
-
-DIR_D:	CALL	CHXHL_			; 18 bytes
-AF9C8:	CALL	LDXHX_
-	CALL	AF996
-	LD	A,L
-	AND	0FH
-	JP	Z,DIR_D
-	JP	AF9C8
-
-; ──────────────────────────────────────────────
-
-KEY_FE:	LD	A,(PC)			; 17 bytes
-	RLA
-	JP	NC,KEY_FE		; ждём отпускания РУС/ЛАТ
-	LD	A,(RUSLAT)
-	CPL
-	CALL	SET_RL
-	JP	AFE1A
-
-; ──────────────────────────────────────────────
-
-BYTE3:	LD	A,C			; 18 bytes
-	SUB	20H
-	LD	C,A
-AFD77:	DEC	C
-	LD	A,3
-	JP	M,SETESC
-	PUSH	BC
-	CALL	DOWN
-	POP	BC
-	JP	AFD77
-
-; ──────────────────────────────────────────────
-
-RD_SCR: PUSH	HL			; 7 bytes
-	LD	HL,(EK_ADR)
-	LD	A,(HL)
-	POP	HL
-	RET
-
-
-; ──────────────────────────────────────────────
-
-RST_18:	EX	(SP),HL			; 6 bytes
-	CALL	MSGH
-	EX	(SP),HL
-	RET
-
-; ──────────────────────────────────────────────
-
-RD_BLK:	CALL	LDBCSS
-	PUSH	HL
-	ADD	HL,BC
-	EX	DE,HL
-	CALL	LDBCBS
-	POP	HL
-	ADD	HL,BC
-	EX	DE,HL
-	PUSH	HL
-	CALL	LD_BLK
-	CALL	LDBCSS		; с поиском СБ
-	POP	HL
-	DB	06h		; LD B, ..
-
-SET_RL:	LD	(RUSLAT),A		; Т.к. адрес RUSLAT xx06h, то предыдущий трюк с LD B, .. повторится..
-
-; ──────────────────────────────────────────────
-
-	CHK	0FACEH, "* Internal subroutine PUSK_VG shifted ! *"
-PUSK_VG:			; 1001.0011
-				; 1100.0011
-
-	PUSH	HL
-	LD	HL,VG_75+1
-	LD	(HL),0   	; reset commando
-	DEC	HL       	; адрес VG_75
-	LD	(HL),04DH	; 0.1001101  77+1 знакомест
-	LD	(HL),01DH	; 00.011101  29+1 строк
-
-	LD	A, (CURST)	; 99H - включен A9H выключен
-        LD	(HL),A		; 1001.1001  9 +1 линия подчерк.
-        			; 9+1 линий в знакоместе
-	if	K_ORIG
-	LD	(HL),93H
-	else
-	LD	(HL),0C3H
-	endif
-
-	INC	HL		; адрес VG_75+1
-	LD	(HL),27H	; start display commando
-	LD	A,(HL)		; read status
-AFAE1:	LD	A,(HL)		; read status
-	AND	20H		; mask 'Interrupt request flag'
-	JP	Z,AFAE1         ; ждем конца строки
-	LD	HL,VT_57+8
-	LD	(HL),80H
-	LD	L,4             ; VT_57+04
-	LD	(HL),SA & 00FFh 	; 0D0H
-	LD	(HL),SA>>8	; 076H
-	INC	L               ; адрес VT_57+5
-	LD	(HL),23H
-	LD	(HL),49H
-	LD	L,8             ; VT_57+8
-	LD	(HL),0A4H
-	POP	HL
-	RET
-
-; ──────────────────────────────────────────────
-
-DIR_O:	LD	A,C
+DIR_O_2:
+	LD	A,C
 	OR	A
 	JP	Z,AFB35
 	LD	(KNS_WR),A
@@ -969,6 +900,133 @@ AFB4D:	CALL	WRBYTE
 
 	JP	PUSK_VG
 
+; ──────────────────────────────────────────────
+
+AFF3B:	LD	A,L			; 23 bytes
+	AND	2FH
+	LD	L,A
+AFF3F:	LD	A,L
+	CP	40H
+	POP	HL
+	RET	P
+	PUSH	HL
+	LD	L,A
+	AND	00FH
+	CP	00CH
+	LD	A,L
+	JP	M,AFF50
+	XOR	10H
+AFF50:	POP	HL
+	RET
+
+; ──────────────────────────────────────────────
+
+CHSUMM:	LD	BC,0			; 23 bytes
+AFB19:	LD	A,(HL)
+	ADD	A,C
+	LD	C,A
+	PUSH	AF
+	CALL	CMPDH
+	JP	Z,POPAF
+	POP	AF
+	LD	A,B
+	ADC	A,(HL)
+	LD	B,A
+	CALL	AF999
+	JP	AFB19
+
+; ──────────────────────────────────────────────
+
+KEY_FE:	LD	A,(PC)			; 17 bytes
+	RLA
+	JP	NC,KEY_FE		; ждём отпускания РУС/ЛАТ
+	LD	A,(RUSLAT)
+	CPL
+	CALL	SET_RL
+	JP	AFE1A
+
+; ──────────────────────────────────────────────
+
+BYTE3:	LD	A,C			; 18 bytes
+	SUB	20H
+	LD	C,A
+AFD77:	DEC	C
+	LD	A,3
+	JP	M,SETESC
+	PUSH	BC
+	CALL	CursorDown
+	POP	BC
+	JP	AFD77
+
+; ──────────────────────────────────────────────
+
+RST_18:	EX	(SP),HL			; 6 bytes
+	CALL	MSGH
+	EX	(SP),HL
+	RET
+
+	NOP
+; ──────────────────────────────────────────────
+
+RD_BLK:	CALL	LDBCSS
+	PUSH	HL
+	ADD	HL,BC
+	EX	DE,HL
+	CALL	LDBCBS
+	POP	HL
+	ADD	HL,BC
+	EX	DE,HL
+	PUSH	HL
+	CALL	LD_BLK
+	CALL	LDBCSS		; с поиском СБ
+	POP	HL
+	DB	06h		; LD B, ..
+
+	IF	(RUSLAT & 0FFH) <> 6
+		ERROR	"RUSLAT low byte must be 06h"
+	ENDIF
+SET_RL:	LD	(RUSLAT),A		; Т.к. адрес RUSLAT xx06h, то предыдущий трюк с LD B, .. повторится..
+
+; ──────────────────────────────────────────────
+
+	CHK	0FACEH, "* Internal subroutine PUSK_VG shifted ! *"
+PUSK_VG:			; 1001.0011
+				; 1100.0011
+
+	PUSH	HL
+	LD	HL,VG_75+1
+	LD	(HL),0   	; reset commando
+	DEC	HL       	; адрес VG_75
+	LD	(HL),04DH	; 0.1001101  77+1 знакомест
+	LD	(HL),01DH	; 00.011101  29+1 строк
+
+	LD	A, (CURST)	; 99H - включен A9H выключен
+	LD	(HL),A		; 1001.1001  9 +1 линия подчерк.
+				; 9+1 линий в знакоместе
+	if	K_ORIG
+	LD	(HL),93H
+	else
+	LD	(HL),0C3H
+	endif
+
+	INC	HL		; адрес VG_75+1
+	LD	(HL),27H	; start display commando
+	LD	A,(HL)		; read status
+AFAE1:	LD	A,(HL)		; read status
+	AND	20H		; mask 'Interrupt request flag'
+	JP	Z,AFAE1		; ждем конца строки
+	LD	HL,VT_57+8
+	LD	(HL),80H
+	LD	L,4		; VT_57+04
+	LD	(HL),SA & 00FFh 	; 0D0H
+	LD	(HL),SA>>8	; 076H
+	INC	L		; адрес VT_57+5
+	LD	(HL),23H
+	LD	(HL),49H
+	LD	L,8		; VT_57+8
+	LD	(HL),0A4H
+	POP	HL
+	RET
 
 ; ──────────────────────────────────────────────
 
@@ -985,20 +1043,20 @@ AF95D:	LD	A,(DE)		; Выход: CY=1 если разделитель <ВК>
 	CP	20H
 	JP	Z,AF95D
 
-	LD	BC,ERROR
+	LD	BC,SyntaxError
 	PUSH	BC
 
 	SUB	'0'
-	RET	C		; JP C,ERROR
+	RET	C		; JP C,SyntaxError
 
 	CP	9+1
 	JP	C,AF982
 
 	CP	'A'-'0'
-	RET	C		; JP C,ERROR
+	RET	C		; JP C,SyntaxError
 
 	CP	'F'-'0'+1
-	RET	NC		; JP NC,ERROR
+	RET	NC		; JP NC,SyntaxError
 
 	SUB	'A'-('9'+1)
 AF982:
@@ -1006,7 +1064,7 @@ AF982:
 	ADD	HL,HL
 	ADD	HL,HL
 	ADD	HL,HL
-	RET	C		; JP C,ERROR
+	RET	C		; JP C,SyntaxError
 
 	OR	L
 	LD	L,A
@@ -1016,11 +1074,49 @@ AF982:
 
 ; ──────────────────────────────────────────────
 
+NO_ESC:	LD	A,C
+	AND	7FH
+	LD	C,A
+	SUB	1FH		;CP	1FH
+	JP	Z, CLS
+	ADD	A, 4		;CP	1BH
+	JP	Z,EscapeHandlerStart
+	INC	A		;CP	1AH
+	JP	Z,CursorDown
+	INC	A		;CP	19H
+	JP	Z,CursorUp
+	INC	A		;CP	18H
+	JP	Z,CursorRight
+	ADD	A, 18H-0DH	;CP	0DH
+	JP	Z,COD_0D
+	INC	A		;CP	0CH
+	JP	Z,CursorHome
+	ADD	A, 0CH-0AH	;CP	0AH
+	JP	Z,LF
+	INC	A		;CP	09H
+	JP	NZ,skip_TAB
+
+; ──────────────────────────────────────────────
+TAB:	LD	D, 0
+	CALL	SUBHLDE
+	ADD	A, E
+	ADD	A, 8
+	AND	11111000b
+	LD	D, 0
+	LD	E, A
+	ADD	HL, DE
+	RET
+
+; ──────────────────────────────────────────────
+
+TABK2:	DB	09,0AH,0DH,7FH,08H,19H,18H,1AH	; 8 bytes
+
 ; ──────────────────────────────────────────────
 ; Печать перевода строки, числа из HL в 16-ричном формате, пробела,
 ; перевода строки, числа из BC в 16-ричном формате, пробела
 ; ВХОД:
-;	A	- число для печати
+;	HL	- число для печати
+;	BC	- число для печати
 ; ВЫХОД:
 ;	Нет
 ; ИЗМЕНЯЕТ:
@@ -1032,7 +1128,7 @@ JJJ2:	CALL	CHXHL_
 ; ──────────────────────────────────────────────
 ; Печать перевода строки, числа из BC в 16-ричном формате и пробела
 ; ВХОД:
-;	A	- число для печати
+;	BC	- число для печати
 ; ВЫХОД:
 ;	Нет
 ; ИЗМЕНЯЕТ:
@@ -1045,7 +1141,7 @@ DIRK1:	LD	D,B
 ; ──────────────────────────────────────────────
 ; Печать перевода строки, числа из DE в 16-ричном формате и пробела
 ; ВХОД:
-;	A	- число для печати
+;	DE	- число для печати
 ; ВЫХОД:
 ;	Нет
 ; ИЗМЕНЯЕТ:
@@ -1059,7 +1155,7 @@ CHXDE_:	EX	DE,HL
 ; ──────────────────────────────────────────────
 ; Печать перевода строки, числа из HL в 16-ричном формате и пробела
 ; ВХОД:
-;	A	- число для печати
+;	HL	- число для печати
 ; ВЫХОД:
 ;	Нет
 ; ИЗМЕНЯЕТ:
@@ -1071,7 +1167,7 @@ CHXHL_: CALL	CR
 ; ──────────────────────────────────────────────
 ; Печать числа из HL в 16-ричном формате и пробела
 ; ВХОД:
-;	A	- число для печати
+;	HL	- число для печати
 ; ВЫХОД:
 ;	Нет
 ; ИЗМЕНЯЕТ:
@@ -1085,7 +1181,27 @@ HEXHL_:	LD	A,H
 
 ; ──────────────────────────────────────────────
 
-DIR_C:	LD	A,(BC)			; 19 bytes
+AFEF3:	LD	A,H			; 7 bytes
+	LD	HL,TABK1
+	JP	AFEFE
+
+; ──────────────────────────────────────────────
+; Возвращает в HL координаты курсора
+; ВХОД:
+;	Нет
+; ВЫХОД:
+;	H - Y
+;	L - X
+; ИЗМЕНЯЕТ:
+;	HL
+; ──────────────────────────────────────────────
+
+ASKCUR:	LD	HL,(POSX)		; 4 bytes
+	RET
+
+; ──────────────────────────────────────────────
+
+DIR_C_2:	LD	A,(BC)			; 19 bytes
 	CP	(HL)
 	JP	Z,AF9E6
 	CALL	JJJ_02
@@ -1093,13 +1209,8 @@ DIR_C:	LD	A,(BC)			; 19 bytes
 	CALL	HEXABL
 AF9E6:	INC	BC
 	CALL	AF996
-	JP	DIR_C
+	JP	DIR_C_2
 
-; ──────────────────────────────────────────────
-
-AFEF3:	LD	A,H			; 7 bytes
-	LD	HL,TABK1
-	JP	AFEFE
 
 ; ──────────────────────────────────────────────
 ; Загрузка A без поиска синхробайта
@@ -1346,9 +1457,8 @@ COUT_C2:
 	EX	DE,HL
 	LD	HL,(EK_ADR)
 	LD	A,(ESC_FL)
-	OR	A
-	JP	Z,NO_ESC	; BUG Для VT-52 факт обработки ESC-последовательности не значит, что он игнорирует контрольные коды
 	DEC	A
+	JP	M,NO_ESC	; BUG Для VT-52 факт обработки ESC-последовательности не значит, что он игнорирует контрольные коды
 	JP	Z,EscapeHandler	; если второй байт ('Y')
 	DEC	A
 	JP	Z,BYTE3		; если третий байт
@@ -1358,48 +1468,13 @@ COUT_C2:
 AFCDD:	DEC	C
 	JP	M,EscapeHandlerEnd         ; СБРОС ESC_FL И ВЫХОД
 	PUSH	BC
-	CALL	RIGHT
+	CALL	CursorRight
 	POP	BC
 	JP	AFCDD
 
-; ──────────────────────────────────────────────
-
-NO_ESC:	LD	A,C
-	AND	7FH
-	LD	C,A
-	SUB	1FH		;CP	1FH
-	JP	Z, CLS
-	ADD	A, 4		;CP	1BH
-	JP	Z,EscapeHandlerStart
-	INC	A		;CP	1AH
-	JP	Z,DOWN
-	INC	A		;CP	19H
-	JP	Z,UP
-	INC	A		;CP	18H
-	JP	Z,RIGHT
-	ADD	A, 18H-0DH	;CP	0DH
-	JP	Z,COD_0D
-	INC	A		;CP	0CH
-	JP	Z,HOME
-	ADD	A, 2		;CP	0AH
-	JP	Z,LF
-	INC	A		;CP	09H
-	JP	NZ,skip_TAB
-
-; ──────────────────────────────────────────────
-TAB:	LD	D, 0
-	CALL	SUBHLDE
-	ADD	A, E
-	ADD	A, 8
-	AND	11111000b
-	LD	D, 0
-	LD	E, A
-	ADD	HL, DE
-	RET
-
 skip_TAB:
 	INC	A		;CP	08H
-	JP	Z,LEFT
+	JP	Z,CursorLeft
 	INC	A
 	JP	NZ,skip_BEEP
 
@@ -1430,10 +1505,9 @@ BPLOO2:	DI
 skip_BEEP:
 
 	LD	(HL),C		; Видимый на экране символ
-	JP	RIGHT
 
 ; ──────────────────────────────────────────────
-; Возврат каретки
+; Перемещение курсора вправо
 ; ВХОД:
 ;	E=POSX, D=POSY
 ;	HL=экранный адрес
@@ -1441,20 +1515,31 @@ skip_BEEP:
 ;	E=POSX, D=POSY
 ;	HL=экранный адрес
 ; ИЗМЕНЯЕТ:
-; 	HL, BC, AF
+;	DE, HL, AF, BC
 ; ОПИСАНИЕ:
-;	Курсор перемещается в начало текущей строки.
+;	Курсор перемещается на одну позицию вправо. Если курсор был в конце
+;	строки, то, в зависимости от флага переноса WRPFLG, он остается на
+;	месте или перемещается на новую строку в первую позицию. Символы
+;	на экране при перемещении курсора не стираются.
 ; ──────────────────────────────────────────────
 
-COD_0D:	LD	A,L		; 13 bytes
-	SUB	E
-	JP	NC,AFDF9
-	DEC	H
-AFDF9:	LD	L,A
-	LD	BC,8
-	LD	E,C
-	ADD	HL,BC
+CursorRight:
+	LD	A, (WRPFLG)	;
+	INC	A
+	JP	Z, WRP
+	LD	A,E		; POSX
+	CP	MARGIN_LEFT+64	; последняя колонка ?
+	RET	Z
+WRP:	INC	HL		; следующий экранный адрес
+	INC	E		; POSX ++
+	LD	A,E		; POSX
+	CP	MARGIN_LEFT+64	; последняя колонка ?
+	RET	NZ
+	LD	E,MARGIN_LEFT	; нач.позиция по X на новой строке
+	LD	BC,-64
+	ADD	HL,BC		; Вычесть 64 = экр.поз в начало строки
 	RET
+
 
 ; ──────────────────────────────────────────────
 ; Перевод строки
@@ -1476,7 +1561,7 @@ AFDF9:	LD	L,A
 
 LF:	LD	A,D
 	CP	MARGIN_TOP+24	; мы на последней строке ?
-	JP	NZ,DOWN		; если не на последней строке
+	JP	NZ,CursorDown		; если не на последней строке
 
 	PUSH	HL		; РОЛИК ЭКРАНА
 	PUSH	DE
@@ -1547,7 +1632,7 @@ AFE4C:	LD	A,0FFH
 
 ; ──────────────────────────────────────────────
 
-; После 15 вызовов STATUS при нажатой клавише выставляется флаг KBDFLG
+; После 15H вызовов STATUS при нажатой клавише выставляется флаг KBDFLG
 
 STATUS:	LD	A,(PC)		; 38 bytes
 	RLA
@@ -1557,7 +1642,7 @@ STATUS:	LD	A,(PC)		; 38 bytes
 	RET	NZ		; если в SYMBUF уже есть символ
 AFE0E:	PUSH	HL
 	LD	HL,(LAST_K)
-	CALL	XF81B
+	CALL	ReadKeyCode
 	CP	L
 	LD	L,A
 	JP	Z,AFE2A
@@ -1621,11 +1706,9 @@ AFC34:	LD	HL,(TMPSTK)		; 18 bytes
 	CALL	PUSK_VG
 	LD	A,D
 	OR	A
-	JP	P,ERROR
+	JP	P,SyntaxError
 	CALL	CHK_F4
 	JP	AFB9C
-
-
 
 ; ──────────────────────────────────────────────
 
@@ -1669,48 +1752,6 @@ SPACE:	LD	A,20H
 	JP	SCOUTA
 
 ; ──────────────────────────────────────────────
-; Загрузка BC с поиском синхробайта
-; ВХОД:
-;	Нет
-; ВЫХОД:
-;	BC	- загруженные байта
-; ИЗМЕНЯЕТ:
-;	AF, BC
-; ──────────────────────────────────────────────
-
-LDBCSS: LD	A, 0FFH			; 14 bytes
-	DB	1			; LD BC, ..
-
-; ──────────────────────────────────────────────
-; Загрузка BC без поиска синхробайта
-; ВХОД:
-;	Нет
-; ВЫХОД:
-;	BC	- загруженные байта
-; ИЗМЕНЯЕТ:
-;	AF, BC
-; ──────────────────────────────────────────────
-
-LDBCBS:	LD	A, 8
-
-; ──────────────────────────────────────────────
-; Загрузка BC
-; ВХОД:
-;	A=008H	- без поиска синхробайта
-;	A=0FFH	- с поиском синхробайта
-; ВЫХОД:
-;	BC	- загруженные байта
-; ИЗМЕНЯЕТ:
-;	AF, BC
-; ──────────────────────────────────────────────
-
-_LD_BC:	CALL	LDBYTE
-	LD	B, A
-	CALL	LDBS
-	LD	C, A
-	RET
-
-; ──────────────────────────────────────────────
 
 AF996:	CALL	CHK_F4			; 11 bytes
 AF999:	CALL	CMPDH
@@ -1726,13 +1767,18 @@ POPAF:	POP	AF
 ;Entered with C=6, E=code. Returned values (in A) vary.
 ;
 ;E=0FFh
-;Return a character without echoing if one is waiting; zero if none is available. In MP/M 1, this works like E=0FDh below and waits for a character.
-;Values of E not supported on a particular system will output the character. Under CP/M 2 and lower, direct console functions may interact undesirably with non-direct ones, since certain buffers may be bypassed. Do not mix them.
+;Return a character without echoing if one is waiting;
+; zero if none is available. In MP/M 1, this works like
+; E=0FDh below and waits for a character.
+;Values of E not supported on a particular system will
+; output the character. Under CP/M 2 and lower, direct 
+;console functions may interact undesirably with non-direct
+; ones, since certain buffers may be bypassed. Do not mix them.
 ; ──────────────────────────────────────────────
 
 FUNC06:	INC	E		; Test for 0FFH
-	JP	NZ,0F809H
-	CALL	0F812H
+	JP	NZ,COUT_C
+	CALL	STATUS
 	RET	Z
 
 ; ──────────────────────────────────────────────
@@ -1773,16 +1819,6 @@ TOBACK: LD	(EK_ADR),HL		; 23 bytes
 
 ; ──────────────────────────────────────────────
 
-DIR_G:
-;	PUSH	DE
-;	LD	DE, 0100H
-;	CALL	CMPDH
-;	CALL	Z, INIT
-;	POP	DE
-	JP	(HL)			; 1 bytes
-
-; ──────────────────────────────────────────────
-
 LD_BLK:	CALL	LDBS			; 10 bytes
 	LD	(HL),A
 	CALL	AF999
@@ -1803,8 +1839,6 @@ LD_BLK:	CALL	LDBS			; 10 bytes
 ;		ESC C	- Cursor Right
 ;		ESC D	- Cursor Left
 ;		ESC E	- Clear screen (GEMDOS/TOS extension)
-;		ESC F	- Alternate charset not implemented
-;		ESC G	- Standard charset not implemented
 ;		ESC H	- Cursor Home
 ;		ESC I	- Reverse Line Feed
 ;		ESC J	- Erase to End Of Screen
@@ -1812,17 +1846,12 @@ LD_BLK:	CALL	LDBS			; 10 bytes
 ;		ESC L	- Insert line (not VT52)
 ;		ESC M	- Delete line (not VT52)
 ;		ESC Y	- Direct Cursor Addressing
-;		ESC Z	- Identify Terminal Type
-;		ESC [	- Enter Hold Screen Mode
-;		ESC \	- Exit Hold Screen Mode
 ;		ESC e	- Enable cursor (GEMDOS/TOS extension)
 ;		ESC f	- Disable cursor(GEMDOS/TOS extension)
 ;		ESC j	- Save cursor (GEMDOS/TOS extension)
 ;		ESC k	- Restore cursor(GEMDOS/TOS extension)
-;		ESC p	- Inverse video (GEMDOS/TOS extension) not implemented
-;		ESC q	- Normal video(GEMDOS/TOS extension) not implemented
-;		ESC w	- Wrap on (GEMDOS/TOS extension)
 ;		ESC v	- Wrap off (GEMDOS/TOS extension)
+;		ESC w	- Wrap on (GEMDOS/TOS extension)
 ;	Здесь используется немного нестандартная схема выбора обработчика.
 ;	Обработчики не вызываются для каждого символа отдельно, а встроены
 ;	непосредственно в логику ветвления. Для этого символ в A
@@ -1833,8 +1862,9 @@ LD_BLK:	CALL	LDBS			; 10 bytes
 ;	был меньше, чем 0A0H. Тогда не будет фальш-сработок. При вызове обработчика
 ;	будет осущетсвляться перебор и обход кода всех обработчисков и в конце будет
 ;	возврат через EscapeHandlerEnd. Такой метод позволит сэкономить на команде
-;	RET для каждого обработчика. Суммарно это около 20 байт экономии. Чем
-;	больше обработчиков, тем больше экономия от такого подхода.
+;	RET для каждого обработчика. Если использовать таблицы, то каждый вызов
+;	потребует 3 байта в таблице+RET+код обработки таблицы. Здесь же каждый
+;	обработчик потребует 4 байта. Т.е. экономия на размер обработчика таблицы
 ; ──────────────────────────────────────────────
 
 EscapeHandler:
@@ -1845,16 +1875,39 @@ EscapeHandler:
 	SUB	'w'		;CP	'w'
 	JP	NZ, skip_ESC_w
 
-	;esc_w
-ESC_w:	XOR	A
+; ──────────────────────────────────────────────
+; Включить автоперенос строки
+; ВХОД:
+;	E=POSX, D=POSY
+;	HL=экранный адрес
+; ВЫХОД:
+;	E=POSX, D=POSY
+;	HL=экранный адрес
+; ИЗМЕНЯЕТ:
+;	HL, DE, AF, BC
+; ОПИСАНИЕ:
+; ──────────────────────────────────────────────
+WrapOn:	XOR	A
 	LD	(WRPFLG), A
 
 skip_ESC_w:
 	INC	A		;CP	'v'
 	JP	NZ, skip_ESC_v
 
-	;esc_v
-ESC_v:	LD	A, 0FFh
+; ──────────────────────────────────────────────
+; Выключить автоперенос строки
+; ВХОД:
+;	E=POSX, D=POSY
+;	HL=экранный адрес
+; ВЫХОД:
+;	E=POSX, D=POSY
+;	HL=экранный адрес
+; ИЗМЕНЯЕТ:
+;	HL, DE, AF, BC
+; ОПИСАНИЕ:
+; ──────────────────────────────────────────────
+WrapOff:
+	LD	A, 0FFh
 	LD	(WRPFLG), A
 
 skip_ESC_v:
@@ -1874,7 +1927,6 @@ skip_ESC_v:
 ; ИЗМЕНЯЕТ:
 ;	HL, DE
 ; ──────────────────────────────────────────────
-
 CursorRestore:
 	LD	HL, (XYSTOR)
 	EX	DE, HL
@@ -1898,7 +1950,6 @@ skip_ESC_k:
 ; ИЗМЕНЯЕТ:
 ;	Нет
 ; ──────────────────────────────────────────────
-
 CursorSave:
 	LD	(SASTOR), HL
 	EX	DE, HL
@@ -1909,7 +1960,19 @@ skip_ESC_j:
 	ADD	A, 'j'-'f'	;CP	'f'
 	JP	NZ, skip_ESC_f
 
-	;esc_f
+; ──────────────────────────────────────────────
+; Скрыть курсор
+; ВХОД:
+;	E - X координата курсора
+;	D - Y координата курсора
+;	HL - экранный адрес
+; ВЫХОД:
+;	E - X координата курсора
+;	D - Y координата курсора
+;	HL - экранный адрес
+; ИЗМЕНЯЕТ:
+;	Нет
+; ──────────────────────────────────────────────
 ESC_f:	LD	A, 0A9H
 	LD	(CURST), A
 
@@ -1918,20 +1981,29 @@ skip_ESC_f:
 	JP	NZ, skip_ESC_e
 
 	;esc_e
-ESC_e:	LD	A, 099H
+ESC_e:
+; ──────────────────────────────────────────────
+; Отобразить курсор
+; ВХОД:
+;	E - X координата курсора
+;	D - Y координата курсора
+;	HL - экранный адрес
+; ВЫХОД:
+;	E - X координата курсора
+;	D - Y координата курсора
+;	HL - экранный адрес
+; ИЗМЕНЯЕТ:
+;	Нет
+; ──────────────────────────────────────────────
+ESC_b:	LD	A, 099H
 	LD	(CURST), A
 
 skip_ESC_e:
-	ADD	A, 'e'-'Z'	;CP	'Z'
-	JP	NZ, skip_ESC_Z
-	;esc_Z
-
-skip_ESC_Z:
-	INC	A		;CP	'Y'
+	ADD	A, 'e'-'Y'	;CP	'Y'
 	JP	NZ, skip_ESC_Y
 	;esc_Y
 
-	CALL	HOME
+	CALL	CursorHome
 	INC	A		;LD	A,2; ПРИНЯТО 2 БАЙТА ESC,'Y'
 
 ; ──────────────────────────────────────────────
@@ -1981,24 +2053,61 @@ SETESC:	LD	(ESC_FL),A
 skip_ESC_Y:
 	ADD	A, 'Z'-'M'	;CP	'M'
 	JP	NZ, skip_ESC_M
-	;esc_M
+
+; ──────────────────────────────────────────────
+; Удалить строку
+; ВХОД:
+;	E=POSX, D=POSY
+;	HL=экранный адрес
+; ВЫХОД:
+;	E=POSX, D=POSY
+;	HL=экранный адрес
+; ИЗМЕНЯЕТ:
+;	HL, DE, AF, BC
+; ОПИСАНИЕ:
+; ──────────────────────────────────────────────
+DeleteLine:
 
 skip_ESC_M:
 	INC	A		;CP	'L'
 	JP	NZ, skip_ESC_L
-	;esc_L
+
+; ──────────────────────────────────────────────
+; Вставить строку
+; ВХОД:
+;	E=POSX, D=POSY
+;	HL=экранный адрес
+; ВЫХОД:
+;	E=POSX, D=POSY
+;	HL=экранный адрес
+; ИЗМЕНЯЕТ:
+;	HL, DE, AF, BC
+; ОПИСАНИЕ:
+; ──────────────────────────────────────────────
+InsertLine:
 
 skip_ESC_L:
 	INC	A		;CP	'K'
 	JP	NZ, skip_ESC_K
 
-	;esc_K
-
-ESC_K:	PUSH	HL
+; ──────────────────────────────────────────────
+; Очистка от курсора до конца строки
+; ВХОД:
+;	E=POSX, D=POSY
+;	HL=экранный адрес
+; ВЫХОД:
+;	E=POSX, D=POSY
+;	HL=экранный адрес
+; ИЗМЕНЯЕТ:
+;	AF, BC
+; ОПИСАНИЕ:
+; ──────────────────────────────────────────────
+ClearEOL:
+	PUSH	HL
 	PUSH	DE
 KLOOP:	CALL	SPACE
 	LD	A, E
-	CP	8+63		; последняя колонка
+	CP	MARGIN_LEFT+63		; последняя колонка
 	JP	NZ, KLOOP
 	POP	DE
 	POP	HL
@@ -2007,8 +2116,20 @@ skip_ESC_K:
 	INC	A		;CP	'J'
 	JP	NZ, skip_ESC_J
 
-	;esc_J
-ESC_J:	PUSH	HL
+; ──────────────────────────────────────────────
+; Очистка до конца экрана
+; ВХОД:
+;	E=POSX, D=POSY
+;	HL=экранный адрес
+; ВЫХОД:
+;	E=POSX, D=POSY
+;	HL=экранный адрес
+; ИЗМЕНЯЕТ:
+;	AF, BC
+; ОПИСАНИЕ:
+; ──────────────────────────────────────────────
+ClearEOS:
+	PUSH	HL
 	PUSH	DE
 	LD	D, 0
 	CALL	SUBHLDE
@@ -2040,7 +2161,7 @@ skip_ESC_J:
 
 RLF:	LD	A,D
 	CP	3		; это первая строка ?
-	JP	NZ,UP		; если не на первой строке
+	JP	NZ,CursorUp	; если не на первой строке
 
 	PUSH	HL		; РОЛИК ЭКРАНА
 	PUSH	DE
@@ -2057,19 +2178,20 @@ MOVLO:	LD	A,(HL)		; пересылка блока размером [BC]
 
 skip_ESC_I:
 	INC	A		;CP	'H'
-	JP	Z, HOME
+	JP	Z, CursorHome
 	ADD	A, 'H'-'E'	;CP	'E'
 	JP	NZ, skip_ESC_E
 
 ; ──────────────────────────────────────────────
 
-CLS:	LD	HL,76D0H	; 17 bytes
+CLS:	LD	HL,SA		; 17 bytes
 CLSLOO:	XOR	A
 	LD	(HL),A
 	INC	HL
 	OR	H
 	JP	P,CLSLOO
-HOME:	LD	DE, MARGIN_TOP << 8 +MARGIN_LEFT
+CursorHome:
+	LD	DE, MARGIN_TOP << 8 +MARGIN_LEFT
 	LD	HL, SCBASE
 
 skip_ESC_E:
@@ -2091,7 +2213,7 @@ skip_ESC_E:
 ;	он не перемещается. Символ на экране не стирается.
 ; ──────────────────────────────────────────────
 
-LEFT:
+CursorLeft:
 	LD	A,E		; 7 bytes
 	CP	MARGIN_LEFT
 	JP	Z, skip_ESC_D
@@ -2100,41 +2222,8 @@ LEFT:
 
 skip_ESC_D:
 	INC	A		;CP	'C'
-	JP	NZ, skip_ESC_C
+	JP	Z, CursorRight
 
-; ──────────────────────────────────────────────
-; Перемещение курсора вправо
-; ВХОД:
-;	E=POSX, D=POSY
-;	HL=экранный адрес
-; ВЫХОД:
-;	E=POSX, D=POSY
-;	HL=экранный адрес
-; ИЗМЕНЯЕТ:
-;	DE, HL, AF, BC
-; ОПИСАНИЕ:
-;	Курсор перемещается на одну позицию вправо. Если курсор был в конце
-;	строки, то, в зависимости от флага переноса WRPFLG, он остается на
-;	месте или перемещается на новую строку в первую позицию. Символы
-;	на экране при перемещении курсора не стираются.
-; ──────────────────────────────────────────────
-
-RIGHT:	LD	A, (WRPFLG)	;
-	INC	A
-	JP	Z, WRP
-	LD	A,E		; POSX
-	CP	MARGIN_LEFT+64	; последняя колонка ?
-	RET	Z
-WRP:	INC	HL		; следующий экранный адрес
-	INC	E		; POSX ++
-	LD	A,E		; POSX
-	CP	MARGIN_LEFT+64	; последняя колонка ?
-	RET	NZ
-	LD	E,MARGIN_LEFT	; нач.позиция по X на новой строке
-	LD	BC,-64
-	ADD	HL,BC		; Вычесть 64 = экр.поз в начало строки
-
-skip_ESC_C:
 	INC	A		;CP	'B'
 	JP	NZ, skip_ESC_B
 
@@ -2155,7 +2244,8 @@ skip_ESC_C:
 ;	не осуществляется.
 ; ──────────────────────────────────────────────
 
-DOWN:	LD	A,D
+CursorDown:
+	LD	A,D
 	CP	MARGIN_TOP+24	; последняя строка ?
 	RET	Z
 	LD	BC,78
@@ -2181,15 +2271,13 @@ skip_ESC_B:
 ;	находится в самом верху, то он не перемещается.
 ; ──────────────────────────────────────────────
 
-UP:	LD	A,D		; 10 bytes
+CursorUp:
+	LD	A,D		; 10 bytes
 	CP	MARGIN_TOP	; это первая строка ?
 	RET	Z
 	LD	BC,-78
 	DEC	D
 	ADD	HL,BC		; Вычесть 78
-; ──────────────────────────────────────────────
-
-skip_ESC_A:
 	RET
 
 ; ──────────────────────────────────────────────
@@ -2204,18 +2292,17 @@ SUBHLDE:
 	ADD	HL, DE
 	RET
 
-	IF	0
-
+	IF	1
 ; ──────────────────────────────────────────────
 ; Блок эмуляции точек входа BIOS и BDOS
 ; ──────────────────────────────────────────────
 
 BIOSENTRY:
 	JP	BDOS		; CBOOT Холодный старт
-	JP	WARMST		; WBOOT Теплый старт
-	JP	0F812H		; CONST Статус консоли
-	JP	0F803H		; CONIN Консольный ввод
-	JP	0F809H		; CONOUT Консольный вывод	
+	JP	WarmBoot	; WBOOT Теплый старт
+	JP	STATUS		; CONST Статус консоли
+	JP	CONIN		; CONIN Консольный ввод
+	JP	COUT_C		; CONOUT Консольный вывод
 BIOSENTRYEND:
 
 
@@ -2228,29 +2315,29 @@ BDOS:	LD	HL, 0000H	; Сохраняем стек
 	LD	(TMPSTK), HL
 	LD	SP, STACK
 	DEC	C
-	JP	M, 0F800H	; Функция 0 P_TERMCPM
+	JP	M, ColdBoot	; Функция 0 P_TERMCPM
 	LD	HL, BDOSRET
 	PUSH	HL
 	LD	A, C
 	LD	C, E
 	JP	Z, FUNC01	; Функция 1 C_READ
 	DEC	A
-	JP	Z, 0F809H	; Функция 2 C_WRITE
+	JP	Z, COUT_C	; Функция 2 C_WRITE
 	SUB	4
 	JP	Z, FUNC06	; Функция 6 C_RAWIO
 	SUB	3
 	JP	Z, MSGCPM	; Функция 9 C_WRITESTR
 	DEC	A
-	JP	Z, FUNC0A	; Функция 10 C_READSTR
+	JP	Z, GETLIN2	; Функция 10 C_READSTR
 	DEC	A
-	JP	Z, 0F812H	; Функция 11 C_STAT
+	JP	Z, STATUS	; Функция 11 C_STAT
 	DEC	A
-	JP	NZ, 0F800H	; Функции 13 и выше
+	JP	NZ, ColdBoot	; Функции 13 и выше
 	LD	A, 20H		; Функция 12
 	LD	B, 00H
 	RET
 
-FUNC01:	CALL	0F803H
+FUNC01:	CALL	CONIN
 	JP	SCOUTA
 
 ;
@@ -2258,22 +2345,29 @@ FUNC01:	CALL	0F803H
 ;Supported by: All versions, with variations
 ;Entered with C=0Ah, DE=address or zero.
 ;
-;This function reads characters from the keyboard into a memory buffer until RETURN is pressed. The Delete key is handled correctly. In later versions, more features can be used at this point; ZPM3 includes a full line editor with recall of previous lines typed.
+;This function reads characters from the keyboard into a memory buffer
+; until RETURN is pressed. The Delete key is handled correctly. In later
+; versions, more features can be used at this point; ZPM3 includes a
+; full line editor with recall of previous lines typed.
 ;
-;On entry, DE is the address of a buffer. If DE=0 (in CP/M-86 versions DX=0FFFFh), the DMA address is used (CP/M 3 and later) and the buffer already contains data:
+;On entry, DE is the address of a buffer. If DE=0, the DMA address
+; is used (CP/M 3 and later)
+; and the buffer already contains data:
 ;
 ;DE=address:                 DE=0 / DX=0FFFFh:
 ;buffer: DEFB    size        buffer: DEFB    size
         ;DEFB    ?                   DEFB    len
         ;DEFB    bytes               DEFB    bytes
-;;The value at buffer+0 is the amount of bytes available in the buffer. Once the limit has been reached, no more can be added, although the line editor can still be used.
-;If DE=0 (in 16-bit versions, DX=0FFFFh) the next byte contains the number of bytes already in the buffer; otherwise this is ignored. On return from the function, it contains the number of bytes present in the buffer.
+;;The value at buffer+0 is the amount of bytes available in the
+; buffer. Once the limit has been reached, no more can be added,
+; although the line editor can still be used.
+;If DE=0 (in 16-bit versions, DX=0FFFFh) the next byte contains 
+;the number of bytes already in the buffer; otherwise this is 
+;ignored. On return from the function, it contains the number 
+;of bytes present in the buffer.
 ;
 ;The bytes typed then follow. There is no end marker.
 ;
-
-FUNC0A:	CALL	GETLIN
-	RET
 
 	if 0
 	EX	DE, HL
@@ -2319,7 +2413,7 @@ BDOSRET:
 	LD	L, A
 	LD	H, B
 	RET
-
+	ENDIF
 ; ──────────────────────────────────────────────
 ; Инициализация симулятора CP/M
 ; ВХОД:
@@ -2348,13 +2442,67 @@ INIT:
 	LD	BC, BIOSENTRYEND-BIOSENTRY
 	JP	MOVLOO
 
-	ENDIF
+; ──────────────────────────────────────────────
+
+AFB86:	LD	C,(HL)			; 10 bytes
+	CALL	WRBYTE
+	CALL	AF999
+	JP	AFB86
+
+; ──────────────────────────────────────────────
+; Ввод символа без ожидания с проверкой нажатия Ctrl-C. 
+; При нажатии Ctrl-C выход в МОНИТОР с переинцициализацией ВГ.
+; ВХОД:
+;	Нет
+; ВЫХОД:
+;	A=0FFH - не нажата
+;	A=0FEH - РУС/ЛАТ
+;	A - код клавиши
+; ИЗМЕНЯЕТ:
+;	AF		 TODO: проверить, что изменяет ReadKeyCode и PUSK_VG
+; ──────────────────────────────────────────────
+
+CHK_F4:	CALL	ReadKeyCode			; 12 bytes
+	CP	3
+	RET	NZ
+	CALL	PUSK_VG
+	JP	SyntaxError
 
 ; ──────────────────────────────────────────────
 
-TABK2:	DB	09,0AH,0DH,7FH,08H,19H,18H,1AH	; 8 bytes
+AF91A:	SUB	B			; 2 bytes
+	RET
 
 ; ──────────────────────────────────────────────
+
+ReadKeyCode:
+	LD	A,(PC)		; 30 bytes
+	RLA
+	LD	A,0FEH
+	RET	NC
+AFE7D:
+	XOR	A
+	LD	(PA),A
+	LD	A,(RUSLAT)
+	AND	00000001B
+	OR	00000110B	; зажигаем/гасим светодиод
+	LD	(PU),A
+	LD	A,(PB)
+	INC	A
+	JP	NZ,AFE97
+	DEC	A
+	RET
+
+; ──────────────────────────────────────────────
+
+BAKSTP:	LD	A,E			; 15 bytes
+	CP	L			; начало буфера ввода ?
+	JP	Z,AF8F1
+	CALL	RST_18
+TZABOJ:	DB	8,' ',8+128
+	DEC	HL
+	JP	AF8F3
+
 
 	END
 
