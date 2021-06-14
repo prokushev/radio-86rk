@@ -291,7 +291,7 @@
 ; ──────────────────────────────────────────────
 RABADR	EQU	0F800H
 DOPPPA	EQU	0A000H
-K_ORIG	EQU	0		; если 0, то измененный курсор
+K_ORIG	EQU	1		; если 0, то измененный курсор
 ; ──────────────────────────────────────────────
 
 CHK	MACRO	adr, msg
@@ -405,7 +405,6 @@ RD_SCR: PUSH	HL			; 7 bytes
 
 ; ──────────────────────────────────────────────
 
-
 ColdBoot:
 	LD	HL,BASE-1
 	LD	(RAMTOP),HL
@@ -422,12 +421,12 @@ ColdBoot:
 	XOR	A
 	LD	(WRPFLG), A
 
-	LD	A, 99H
+	LD	A, 0A9H
 	LD	(CURST), A
 	CALL	PUSK_VG
 
 	CALL	RST_18
-	DB	1FH,"86r",'k' + 80H
+	DB	1Fh,"rk8",'6' + 80H
 
 	LD	HL,1D2AH
 	LD	(KNS_RD),HL
@@ -585,7 +584,8 @@ AF8F1:
 	XOR	A
 	LD	B,A		; чтобы на выходе получить флаг пустой строки
 	CALL	SET_RL
-AF8F3:	CALL	CONIN		; используется в DIR_M
+AF8F3:	
+	CALL	CONIN		; используется в DIR_M
 	CP	7FH
 	JP	Z,BAKSTP
 	LD	(HL),A
@@ -602,6 +602,12 @@ AF8F3:	CALL	CONIN		; используется в DIR_M
 	LD	(BUFCNT), HL
 	JP	AF8F3
 
+; ──────────────────────────────────────────────
+
+AF91A:	SUB	B			; 2 bytes
+	RET
+
+; ──────────────────────────────────────────────
 
 	ORG	0f92ch
 	CHK	0F92cH, "* Internal subroutine GETPRM shifted ! *"
@@ -879,8 +885,8 @@ AFB4D:	CALL	WRBYTE
 	DEC	B
 	JP	NZ,AFB4D
 
-	LD	C,0E6H  	; выводим синхробайт E6
-	CALL	WRBYTE
+;	LD	C,0E6H  	; выводим синхробайт E6
+	CALL	WR0E6H
 
 	CALL	WR_HL		; выводим НА
 	EX	DE,HL
@@ -892,8 +898,8 @@ AFB4D:	CALL	WRBYTE
 	LD	HL,0
 	CALL	WR_HL		; выводим 2 байта 00
 
-	LD	C,0E6H  	; снова выводим с/байт E6
-	CALL	WRBYTE
+;	LD	C,0E6H  	; снова выводим с/байт E6
+	CALL	WR0E6H
 
 	POP	HL
 	CALL	WR_HL		; выводим КС
@@ -966,6 +972,11 @@ RST_18:	EX	(SP),HL			; 6 bytes
 	RET
 
 	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	
 ; ──────────────────────────────────────────────
 
 RD_BLK:	CALL	LDBCSS
@@ -993,6 +1004,8 @@ SET_RL:	LD	(RUSLAT),A		; Т.к. адрес RUSLAT xx06h, то предыдущий трюк с LD B, .. 
 PUSK_VG:			; 1001.0011
 				; 1100.0011
 
+	LD	A, (CURST)	; 99H - включен A9H выключен
+
 	PUSH	HL
 	LD	HL,VG_75+1
 	LD	(HL),0   	; reset commando
@@ -1000,7 +1013,6 @@ PUSK_VG:			; 1001.0011
 	LD	(HL),04DH	; 0.1001101  77+1 знакомест
 	LD	(HL),01DH	; 00.011101  29+1 строк
 
-	LD	A, (CURST)	; 99H - включен A9H выключен
 	LD	(HL),A		; 1001.1001  9 +1 линия подчерк.
 				; 9+1 линий в знакоместе
 	if	K_ORIG
@@ -1078,7 +1090,7 @@ NO_ESC:	LD	A,C
 	AND	7FH
 	LD	C,A
 	SUB	1FH		;CP	1FH
-	JP	Z, CLS
+	JP	Z, ClearScreen
 	ADD	A, 4		;CP	1BH
 	JP	Z,EscapeHandlerStart
 	INC	A		;CP	1AH
@@ -1336,10 +1348,11 @@ AFC0B:	DEC	D
 WR_HL:	LD	C,H
 	CALL	WRBYTE
 	LD	C,L
-
-WRBYTE: PUSH	HL
+	DB	06H		; LD B,..
+WR0E6H:	LD	C, 0E6H
+WRBYTE: PUSH	BC
 	PUSH	DE
-	PUSH	BC
+	PUSH	HL
 	PUSH	AF
 	LD	A,80H
 	LD	(VT_57+8),A
@@ -1393,7 +1406,7 @@ POPREGA:
 POPREG: POP	HL
 	POP	DE
 	POP	BC
-LD_BAK:	RET
+	RET
 
 ; ──────────────────────────────────────────────
 ; Печать числа из A в 16-ричном формате
@@ -1973,15 +1986,15 @@ skip_ESC_j:
 ; ИЗМЕНЯЕТ:
 ;	Нет
 ; ──────────────────────────────────────────────
-ESC_f:	LD	A, 0A9H
+CursorDisable:
+	LD	A, 0A9H
 	LD	(CURST), A
 
 skip_ESC_f:
 	INC	A		;CP	'e'
 	JP	NZ, skip_ESC_e
 
-	;esc_e
-ESC_e:
+CursorEnable:
 ; ──────────────────────────────────────────────
 ; Отобразить курсор
 ; ВХОД:
@@ -1995,7 +2008,7 @@ ESC_e:
 ; ИЗМЕНЯЕТ:
 ;	Нет
 ; ──────────────────────────────────────────────
-ESC_b:	LD	A, 099H
+	LD	A, 099H
 	LD	(CURST), A
 
 skip_ESC_e:
@@ -2051,7 +2064,7 @@ SETESC:	LD	(ESC_FL),A
 	RET
 
 skip_ESC_Y:
-	ADD	A, 'Z'-'M'	;CP	'M'
+	ADD	A, 'Y'-'M'	;CP	'M'
 	JP	NZ, skip_ESC_M
 
 ; ──────────────────────────────────────────────
@@ -2184,7 +2197,8 @@ skip_ESC_I:
 
 ; ──────────────────────────────────────────────
 
-CLS:	LD	HL,SA		; 17 bytes
+ClearScreen:
+	LD	HL,SA		; 17 bytes
 CLSLOO:	XOR	A
 	LD	(HL),A
 	INC	HL
@@ -2292,7 +2306,7 @@ SUBHLDE:
 	ADD	HL, DE
 	RET
 
-	IF	1
+	IF	0
 ; ──────────────────────────────────────────────
 ; Блок эмуляции точек входа BIOS и BDOS
 ; ──────────────────────────────────────────────
@@ -2413,7 +2427,7 @@ BDOSRET:
 	LD	L, A
 	LD	H, B
 	RET
-	ENDIF
+
 ; ──────────────────────────────────────────────
 ; Инициализация симулятора CP/M
 ; ВХОД:
@@ -2442,6 +2456,7 @@ INIT:
 	LD	BC, BIOSENTRYEND-BIOSENTRY
 	JP	MOVLOO
 
+	ENDIF
 ; ──────────────────────────────────────────────
 
 AFB86:	LD	C,(HL)			; 10 bytes
@@ -2470,11 +2485,6 @@ CHK_F4:	CALL	ReadKeyCode			; 12 bytes
 
 ; ──────────────────────────────────────────────
 
-AF91A:	SUB	B			; 2 bytes
-	RET
-
-; ──────────────────────────────────────────────
-
 ReadKeyCode:
 	LD	A,(PC)		; 30 bytes
 	RLA
@@ -2499,7 +2509,7 @@ BAKSTP:	LD	A,E			; 15 bytes
 	CP	L			; начало буфера ввода ?
 	JP	Z,AF8F1
 	CALL	RST_18
-TZABOJ:	DB	8,' ',8+128
+	DB	8,' ',8+128
 	DEC	HL
 	JP	AF8F3
 
