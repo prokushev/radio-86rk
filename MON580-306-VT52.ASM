@@ -374,34 +374,32 @@ LOOP	MACRO	ADDR
 	ENDM
 
 ; ──────────────────────────────────────────────
-
-	JP	ColdBoot		; +0
-	JP	CONIN 		; +3
-	JP	LDBYTE		; +6
-	JP	COUT_C		; +9
-	JP	WRBYTE		; +C
-	JP	COUT_C		; +F   это д.быть PRINT
-	JP	STATUS		; +12
-	JP	HEX_A 		; +15
-	JP	MSGH  		; +18
-	JP	ReadKeyCode 	; +1B
-	JP	ASKCUR		; +1E
-	JP	RD_SCR		; +21
-	JP	RD_BLK		; +24
-	JP	WR_BLK		; +27
-	JP	CHSUMM		; +2A
-	JP	PUSK_VG		; +2D
-ASKTOP: LD	HL,(RAMTOP)	; +30
-SETTOP:	LD	(RAMTOP),HL	; +33
-	RET
-
+; Блок векторов МОНИТОРа
 ; ──────────────────────────────────────────────
 
-RD_SCR: PUSH	HL			; 7 bytes
-	LD	HL,(EK_ADR)
-	LD	A,(HL)
-	POP	HL
-	RET
+	JP	ColdBoot		; +0
+	JP	InputSymbol 		; +3
+	JP	TapeReadByte		; +6
+	JP	PrintCharFromC		; +9
+	JP	TapeWriteByte		; +C
+	JP	PrintCharFromC		; +F   это д.быть PRINT
+	JP	GetKeyboardStatus	; +12
+	JP	PrintHexByte 		; +15
+	JP	MSGH  			; +18
+	JP	ReadKeyCode 		; +1B
+	JP	GetCursorPos		; +1E
+	JP	ReadVideoRAM		; +21
+	JP	RD_BLK			; +24
+	JP	WR_BLK			; +27
+	JP	CHSUMM			; +2A
+	JP	PUSK_VG			; +2D
+	JP	ASKTOP			; +30
+	JP	SETTOP			; +33
+	JP	REATARAM		; +36
+	JP	WRITEARAM		; +39
+	JP	SETCUR			; +3C
+	RET				; +3F
+
 
 ; ──────────────────────────────────────────────
 
@@ -426,7 +424,7 @@ ColdBoot:
 	CALL	PUSK_VG
 
 	CALL	RST_18
-	DB	1Fh,"rk8",'6' + 80H
+	DB	1Fh,"8",'6' + 80H
 
 	LD	HL,1D2AH
 	LD	(KNS_RD),HL
@@ -552,7 +550,7 @@ LDBCBS:	LD	A, 8
 ;	AF, BC
 ; ──────────────────────────────────────────────
 
-_LD_BC:	CALL	LDBYTE
+_LD_BC:	CALL	TapeReadByte
 	LD	B, A
 	CALL	LDBS
 	LD	C, A
@@ -585,7 +583,7 @@ AF8F1:
 	LD	B,A		; чтобы на выходе получить флаг пустой строки
 	CALL	SET_RL
 AF8F3:	
-	CALL	CONIN		; используется в DIR_M
+	CALL	InputSymbol		; используется в DIR_M
 	CP	7FH
 	JP	Z,BAKSTP
 	LD	(HL),A
@@ -879,7 +877,7 @@ WR_BLK:
 	PUSH	BC		; КС
 
 	LD	BC,0		; выводим 256 байтов 00 (пилотон)
-AFB4D:	CALL	WRBYTE
+AFB4D:	CALL	TapeWriteByte
 	EX	(SP),HL 	; это задержка 38 тактов
 	EX	(SP),HL
 	DEC	B
@@ -1187,7 +1185,7 @@ CHXHL_: CALL	CR
 ; ──────────────────────────────────────────────
 
 HEXHL_:	LD	A,H
-	CALL	HEX_A
+	CALL	PrintHexByte
 	LD	A,L
 	JP	HEXABL
 
@@ -1208,7 +1206,8 @@ AFEF3:	LD	A,H			; 7 bytes
 ;	HL
 ; ──────────────────────────────────────────────
 
-ASKCUR:	LD	HL,(POSX)		; 4 bytes
+GetCursorPos:
+	LD	HL,(POSX)		; 4 bytes
 	RET
 
 ; ──────────────────────────────────────────────
@@ -1247,7 +1246,8 @@ LDBS:	LD	A,8
 ;	AF
 ; ──────────────────────────────────────────────
 
-LDBYTE: PUSH	BC
+TapeReadByte:
+	PUSH	BC
 	PUSH	DE
 	PUSH	HL
 	LD	D,A
@@ -1346,11 +1346,12 @@ AFC0B:	DEC	D
 
 
 WR_HL:	LD	C,H
-	CALL	WRBYTE
+	CALL	TapeWriteByte
 	LD	C,L
 	DB	06H		; LD B,..
 WR0E6H:	LD	C, 0E6H
-WRBYTE: PUSH	BC
+TapeWriteByte:
+	PUSH	BC
 	PUSH	DE
 	PUSH	HL
 	PUSH	AF
@@ -1418,7 +1419,8 @@ POPREG: POP	HL
 ;	AF
 ; ──────────────────────────────────────────────
 
-HEX_A:	PUSH	AF			; 23 bytes
+PrintHexByte:
+	PUSH	AF			; 23 bytes
 	RRCA
 	RRCA
 	RRCA
@@ -1457,13 +1459,14 @@ SCOUTA:
 
 ;BUG Для эмуляции VT-52 необходимо игнорировать код NUL (00H) и DEL (7FH). С последним проблеммы, т.к. в РК86 это квадрат.
 
-COUT_C:	PUSH	BC
+PrintCharFromC:
+	PUSH	BC
 COUT_C2:
 	PUSH	DE
 	PUSH	HL
 	PUSH	AF
 
-	CALL	STATUS
+	CALL	GetKeyboardStatus
 	LD	HL,TOBACK
 	PUSH	HL
 	LD	HL,(POSX)
@@ -1645,9 +1648,10 @@ AFE4C:	LD	A,0FFH
 
 ; ──────────────────────────────────────────────
 
-; После 15H вызовов STATUS при нажатой клавише выставляется флаг KBDFLG
+; После 15H вызовов GetKeyboardStatus при нажатой клавише выставляется флаг KBDFLG
 
-STATUS:	LD	A,(PC)		; 38 bytes
+GetKeyboardStatus:
+	LD	A,(PC)		; 38 bytes
 	RLA
 	JP	NC,AFE0E	; если нажат RUS/LAT
 	LD	A,(KBDFLG)
@@ -1749,7 +1753,7 @@ LDXHX_:	LD	A,(HL)
 ;	AF
 ; ──────────────────────────────────────────────
 
-HEXABL:	CALL	HEX_A
+HEXABL:	CALL	PrintHexByte
 
 ; ──────────────────────────────────────────────
 ; Печать пробела
@@ -1790,8 +1794,8 @@ POPAF:	POP	AF
 ; ──────────────────────────────────────────────
 
 FUNC06:	INC	E		; Test for 0FFH
-	JP	NZ,COUT_C
-	CALL	STATUS
+	JP	NZ,PrintCharFromC
+	CALL	GetKeyboardStatus
 	RET	Z
 
 ; ──────────────────────────────────────────────
@@ -1801,12 +1805,12 @@ FUNC06:	INC	E		; Test for 0FFH
 ; ВЫХОД:
 ;	A - введенный символ
 ; ИЗМЕНЯЕТ:
-;	AF		 TODO: проверить, что изменяет STATUS
+;	AF		 TODO: проверить, что изменяет GetKeyboardStatus
 ; ──────────────────────────────────────────────
 
-CONIN:	CALL	STATUS
+InputSymbol:	CALL	GetKeyboardStatus
 	OR	A
-	JP	Z,CONIN
+	JP	Z,InputSymbol
 	XOR	A
 	LD	(KBDFLG),A
 	LD	A,(LAST_K)
@@ -2314,9 +2318,9 @@ SUBHLDE:
 BIOSENTRY:
 	JP	BDOS		; CBOOT Холодный старт
 	JP	WarmBoot	; WBOOT Теплый старт
-	JP	STATUS		; CONST Статус консоли
-	JP	CONIN		; CONIN Консольный ввод
-	JP	COUT_C		; CONOUT Консольный вывод
+	JP	GetKeyboardStatus		; CONST Статус консоли
+	JP	InputSymbol	; CONIN Консольный ввод
+	JP	PrintCharFromC	; CONOUT Консольный вывод
 BIOSENTRYEND:
 
 
@@ -2336,7 +2340,7 @@ BDOS:	LD	HL, 0000H	; Сохраняем стек
 	LD	C, E
 	JP	Z, FUNC01	; Функция 1 C_READ
 	DEC	A
-	JP	Z, COUT_C	; Функция 2 C_WRITE
+	JP	Z, PrintCharFromC	; Функция 2 C_WRITE
 	SUB	4
 	JP	Z, FUNC06	; Функция 6 C_RAWIO
 	SUB	3
@@ -2344,14 +2348,14 @@ BDOS:	LD	HL, 0000H	; Сохраняем стек
 	DEC	A
 	JP	Z, GETLIN2	; Функция 10 C_READSTR
 	DEC	A
-	JP	Z, STATUS	; Функция 11 C_STAT
+	JP	Z, GetKeyboardStatus	; Функция 11 C_STAT
 	DEC	A
 	JP	NZ, ColdBoot	; Функции 13 и выше
 	LD	A, 20H		; Функция 12
 	LD	B, 00H
 	RET
 
-FUNC01:	CALL	CONIN
+FUNC01:	CALL	InputSymbol
 	JP	SCOUTA
 
 ;
@@ -2460,7 +2464,7 @@ INIT:
 ; ──────────────────────────────────────────────
 
 AFB86:	LD	C,(HL)			; 10 bytes
-	CALL	WRBYTE
+	CALL	TapeWriteByte
 	CALL	AF999
 	JP	AFB86
 
@@ -2513,6 +2517,22 @@ BAKSTP:	LD	A,E			; 15 bytes
 	DEC	HL
 	JP	AF8F3
 
+REATARAM	; +36
+WRITEARAM	; +39
+SETCUR		; +3C
+	RET
+; ──────────────────────────────────────────────
+
+ReadVideoRAM:
+	PUSH	HL			; 7 bytes
+	LD	HL,(EK_ADR)
+	LD	A,(HL)
+	POP	HL
+	RET
+
+ASKTOP: LD	HL,(RAMTOP)	; +30
+SETTOP:	LD	(RAMTOP),HL	; +33
+	RET
 
 	END
 
