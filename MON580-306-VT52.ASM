@@ -2841,7 +2841,35 @@ ProcessBackspace:
 
 READARAM	; +36
 WRITEARAM	; +39
+	RET
+
 SetCursorPos		; +3C
+;Ž„Žƒ€ŒŒ€ ‚›—ˆ‘‹…ˆŸ €„…‘€, ‚ Š€Ž‰ Ž‹€‘’ˆ, ‘ŽŽ’…’‘’‚“˜…ƒŽ ŠŽŽ„ˆ€’€Œ.
+;‚•Ž„›… „€›…:
+;		 - Y ŠŽŽ„ˆ€’€ L - X ŠŽŽ„ˆ€’€
+;‚›•Ž„›… „€›…: HL - €„…‘
+ADR:	PUSH DE 		;‡€ŽŒˆ’œ 
+	PUSH ‚C 		;…ƒˆ‘’› 
+	LD ‘, L 	;‚‘ ŠŽŽ„ˆ€’“ X 
+	LD €,  	;‚ € ŠŽŽ„ˆ€’“ Y 
+	LD DE, 78 	;‚ DE „‹ˆ“ ‘’ŽŠˆ 
+	LD HL, 0 	;‚›—ˆ‘‹…ˆ…
+S1:	OR € 		;€„…‘€ Ž
+	JP	Z, PROD 	;”ŽŒ“‹…:
+	RRA 		;€„…‘:78"Y
+	JP	NC, 32
+	ADD HL, DE
+S2:	EX	HL, DE
+	ADD HL, HL 		;
+	EX	HL, HL 		;
+	JP S1
+PROD:	EX	HL, DE 		;
+	LD HL, SCRN 	; ‡€ƒ“‡ˆ’œ €„…‘
+	ADD HL,DE		; ŠŽŽ„ˆ€’ Ž. 0.
+	LD ‚C, Ž 	; ‘‹Ž†ˆ’œ ‘ €„…‘ŽŒ €—€‹€
+	ADD HL, ‚C 		;ˆ ˆ€‚ˆ’œ X
+	POP ‚C 		; ‚Ž‘‘’€Ž‚ˆ’œ
+	POP DE 		;…ƒˆ‘’›.
 	RET
 
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
