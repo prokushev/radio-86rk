@@ -138,12 +138,11 @@ INIT3:
 	LD	(0001H), HL
 	LD	HL, RAMTOP-100H
 	LD	(0006H), HL
-	EX	DE, HL
+	PUSH	DE
+	DEC     D
 	LD	HL, BIOSENTRY
 	LD	BC, BIOSENTRYEND-BIOSENTRY
-	CALL	MOVLOO
-
-	NOP
+	JP	MOVLOO
 
 ;	ORG	0F86CH
 ; ДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДД
@@ -2507,18 +2506,21 @@ SetFreeMemAddr:
 ColdBoot:
 	LD	HL,BASE-1
 	LD	(RAMTOP),HL
-	LD	SP,HL
 
 	LD	A,8AH
 	LD	(PU),A
 
-	INC	HL			; LD HL,BASE
+	INC	HL			; LD HL, BASE
+	LD	SP,HL
+	LD	DE, WarmBoot
+	PUSH	DE
+	PUSH	HL			; ‘®еа ­пҐ¬ RAMTOP ¤«п ЇҐаҐЎа®б  BIOS
 	LD	C,L			; 0
 	LD	DE,COMBUF+2CH
 	CALL	DirectiveFill
 
-	XOR	A
-	LD	(WRPFLG), A
+;	XOR	A
+;	LD	(WRPFLG), A
 
 	LD	A, 0A9H
 	LD	(CURST), A
@@ -2537,7 +2539,7 @@ ColdBoot:
 ; ДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДД
 
 INIT:						;
-	PUSH	HL
+	POP	DE
 	PUSH	DE
 	LD	A, 0C3H
 	LD	(0), A
