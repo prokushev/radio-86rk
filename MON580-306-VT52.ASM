@@ -1,5 +1,6 @@
 ; ═══════════════════════════════════════════════════════════════════════
-;  МОНИТОР-1.20 для Радио-86РК для КР580, VT-52, совместимый с Орион-128
+;  МОНИТОР-1.20 для Радио-86РК для КР580, совместимый с Орион-128,
+;  поддержкой VT-52 и эмулятором CP/M
 ; ═══════════════════════════════════════════════════════════════════════
 
 	CPU	8080
@@ -8,7 +9,9 @@
 ; ──────────────────────────────────────────────
 RABADR	EQU	0F800H		; Адрес начала ПЗУ
 DOPPPA	EQU	0A000H		; Адрес дополнительного ППА
+PPA	EQU	08000H		; Адрес основного ППА
 K_ORIG	EQU	1		; если 0, то измененный курсор
+BASE    EQU	7600H		; размер ОЗУ
 ; ──────────────────────────────────────────────
 
 CHK	MACRO	adr, msg
@@ -19,7 +22,7 @@ CHK	MACRO	adr, msg
 
 	ORG	RABADR
 
-BASE    EQU	7600H			; ниже D0H байтов - служебные ячейки
+; ниже D0H байтов - служебные ячейки
 
 EK_ADR  EQU	BASE			; текущий адрес на экране
 POSX	EQU	BASE+02H		; Координаты курсора. Порядок важен.
@@ -70,7 +73,7 @@ SCBASE  EQU	BASE+01C2H		; 77C2 ЛЕВ.ВЕРХН.УГОЛ ЭКР.
 VG_75   EQU	0C000H
 VT_57   EQU	0E000H
 
-PA	EQU	8000H
+PA	EQU	PPA
 PB	EQU	PA+1
 PC	EQU	PA+2
 PU	EQU	PA+3
@@ -118,7 +121,31 @@ LOOP	MACRO	ADDR
 Version:
 	DB	"V5.x"
 
-	ORG	0F86CH
+; ──────────────────────────────────────────────
+; Блок эмуляции точек входа BIOS и BDOS
+; ──────────────────────────────────────────────
+
+BIOSENTRY:			; 15 bytes
+	JP	BDOS		; CBOOT Холодный старт
+	JP	WarmBoot	; WBOOT Теплый старт
+	JP	GetKeyboardStatus		; CONST Статус консоли
+	JP	InputSymbol	; CONIN Консольный ввод
+	JP	PrintCharFromC	; CONOUT Консольный вывод
+BIOSENTRYEND:
+
+INIT3:
+	LD	HL, RAMTOP-100H+3
+	LD	(0001H), HL
+	LD	HL, RAMTOP-100H
+	LD	(0006H), HL
+	EX	DE, HL
+	LD	HL, BIOSENTRY
+	LD	BC, BIOSENTRYEND-BIOSENTRY
+	CALL	MOVLOO
+
+	NOP
+
+;	ORG	0F86CH
 ; ──────────────────────────────────────────────
 ; "Теплый" старт МОНИТОРа
 ; ВХОД:
@@ -138,15 +165,14 @@ WarmBoot:
 	LD	(PDU),A
 
 	CALL	RST_18
-	DB	13,10,'>'+128
+	DB	13,10,'>'+80H
 
 	CALL	InputDirective
 
 	LD	HL,WarmBoot
-	PUSH	HL
+	PUSH	HL			; в стеке лежит адрес возрата в МОНИТОР
 
-
-	CALL	GETPRM
+	CALL	ParseParameters
 	LD	HL,COMBUF
 	LD	A,(HL)
 	LD	HL,(PAR_BC)		; Z80: LD BC,(PAR_BC)
@@ -287,6 +313,23 @@ PrintString:
 	JP	PrintString
 
 ; ──────────────────────────────────────────────
+; Запись блока с HL по DE на магнитофон
+; ВХОД:
+;	HL	- начало блока
+;	DE	- конец блока
+; ВЫХОД:
+;	HL	- конец блока
+; ИЗМЕНЯЕТ:
+;	AF, C, HL
+; ──────────────────────────────────────────────
+
+TapeWriteFromHLtoDE:
+	LD	C,(HL)			; 10 bytes
+	CALL	TapeWriteByte
+	CALL	IncHLAndRetIfEqDE
+	JP	TapeWriteFromHLtoDE
+
+; ──────────────────────────────────────────────
 ; Ввод строки в буфер COMBUF
 ; ВХОД:
 ;	Нет
@@ -295,16 +338,6 @@ PrintString:
 ; ИЗМЕНЯЕТ:
 ;	AF, DE, HL, BC
 ; ──────────────────────────────────────────────
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
 
 	CHK	0F8EEH, "* Internal subroutine InputDirective shifted ! *"
 
@@ -354,7 +387,18 @@ AF91A:	SUB	B			; 2 bytes
 
 ; ──────────────────────────────────────────────
 
-	ORG	0f92ch
+BDOSRET:				; Точка возврата из функции BDOS
+	LD	HL, (TMPSTK)		; 7 bytes
+	LD	SP, HL
+	LD	L, A
+	LD	H, B
+	RET
+
+INIT2:	
+	LD	(5), A
+	JP	INIT3
+
+;	ORG	0f92ch
 
 ; ──────────────────────────────────────────────
 ; Читает аргументы со второй позиции буфера команды в регистры HL, DE, BC
@@ -370,9 +414,10 @@ AF91A:	SUB	B			; 2 bytes
 ;	AF, HL, DE, BC
 ; ──────────────────────────────────────────────
 
-	CHK	0F92cH, "* Internal subroutine GETPRM shifted ! *"
+	CHK	0F92cH, "* Internal subroutine ParseParameters shifted ! *"
 
-GETPRM:	LD	HL,PAR_HL	; Обнуляем параметры
+ParseParameters:
+	LD	HL,PAR_HL	; Обнуляем параметры
 	LD	DE,FLG_P2
 	LD	C,0
 	CALL	DirectiveFill
@@ -415,24 +460,6 @@ DirectiveFill:					; 7 bytes
 	JP	DirectiveFill
 
 ; ──────────────────────────────────────────────
-; Выполняет переход по адресу HL
-; ВХОД:
-;	HL	- адрес
-; ВЫХОД:
-;	НЕт
-; ИЗМЕНЯЕТ:
-;	Не определено
-; ОПИСАНИЕ:
-;	В стеке содержится адрес WarmBoot
-; ──────────────────────────────────────────────
-
-DirectiveGoto:
-	IF	(DirectiveGoto & 0FF00H) <> (DirectiveFill & 0FF00H)
-		ERROR	"DirectiveGoto and DirectiveFill must be in same page"
-	ENDIF
-	JP	(HL)			; 1 bytes
-
-; ──────────────────────────────────────────────
 ; Перемещает область памяти с HL по DE в адреса BC
 ; ВХОД:
 ;	HL	- начальный адрес
@@ -446,7 +473,7 @@ DirectiveGoto:
 ; ──────────────────────────────────────────────
 
 DirectiveTransfer:
-	IF	(DirectiveGoto & 0FF00H) <> (DirectiveTransfer & 0FF00H)
+	IF	(DirectiveFill & 0FF00H) <> (DirectiveTransfer & 0FF00H)
 		ERROR	"DirectiveGoto and DirectiveTransfer must be in same page"
 	ENDIF
 	LD	A,(HL)			; 9 bytes
@@ -483,6 +510,24 @@ SyntaxError:
 	CALL	RST_18
 	DB	'?'+80H
 	JP	WarmBoot
+
+; ──────────────────────────────────────────────
+; Выполняет переход по адресу HL
+; ВХОД:
+;	HL	- адрес
+; ВЫХОД:
+;	НЕТ
+; ИЗМЕНЯЕТ:
+;	Не определено
+; ОПИСАНИЕ:
+;	В стеке содержится адрес WarmBoot
+; ──────────────────────────────────────────────
+
+DirectiveGoto:
+	IF	(DirectiveGoto & 0FF00H) <> (DirectiveFill & 0FF00H)
+		ERROR	"DirectiveGoto and DirectiveFill must be in same page"
+	ENDIF
+	JP	(HL)			; 1 bytes
 
 ; ──────────────────────────────────────────────
 ; Сравнение значений HL и DE
@@ -951,12 +996,13 @@ TAB:	LD	A, L
 
 TABK2:	DB	09,0AH,0DH,7FH,08H,19H,18H,1AH	; 8 bytes
 
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
+; ──────────────────────────────────────────────
+
+FUNC01:	CALL	InputSymbol	; 6 bytes
+	JP	PrintCharFromA
+
+; ──────────────────────────────────────────────
+
 	nop
 	nop
 	
@@ -1448,7 +1494,7 @@ LF:	LD	A,H
 	PUSH	DE
 	LD	HL,SCBASE+78
 	LD	DE,SCBASE
-	LD	BC,25*78
+MOVLOO0:LD	BC,25*78
 MOVLOO:	LD	A,(HL)		; пересылка блока размером [BC]
 	LD	(DE),A		; (HL) --> (DE)
 	INC	HL
@@ -2061,14 +2107,7 @@ RLF:	LD	A,L
 	PUSH	DE
 	LD	HL,SCBASE+25*78
 	LD	DE,SCBASE+78+25*78
-	LD	BC,25*78
-MOVLO:	LD	A,(HL)		; пересылка блока размером [BC]
-	LD	(DE),A		; (HL) --> (DE)
-	DEC	HL
-	DEC	DE
-	LOOP	MOVLO
-	POP	DE
-	POP	HL
+	CALL	MOVLOO0		; Здесь еще можно сэкономить за счет предыдущей команды
 
 skip_ESC_I:
 	INC	A		;CP	'H'
@@ -2159,10 +2198,10 @@ CursorUp:
 	LD	A,H		; 10 bytes
 	CP	MARGIN_TOP	; это первая строка ?
 	RET	Z
-	DEC	H		; POXY--
+	DEC	H		; POSY--
 	RET
 
-	if 0
+	if 0			; Сейчас нигде не используется
 ; ──────────────────────────────────────────────
 ; Вычитает из HL DE
 ; ВХОД:
@@ -2185,20 +2224,6 @@ SUBHLDE:
 	LD	H, A
 	RET
 	endif
-
-	IF	0
-; ──────────────────────────────────────────────
-; Блок эмуляции точек входа BIOS и BDOS
-; ──────────────────────────────────────────────
-
-BIOSENTRY:
-	JP	BDOS		; CBOOT Холодный старт
-	JP	WarmBoot	; WBOOT Теплый старт
-	JP	GetKeyboardStatus		; CONST Статус консоли
-	JP	InputSymbol	; CONIN Консольный ввод
-	JP	PrintCharFromC	; CONOUT Консольный вывод
-BIOSENTRYEND:
-
 
 ; ──────────────────────────────────────────────
 ; Блок эмуляции точек входа BDOS
@@ -2231,8 +2256,8 @@ BDOS:	LD	HL, 0000H	; Сохраняем стек
 	LD	B, 00H
 	RET
 
-FUNC01:	CALL	InputSymbol
-	JP	PrintCharFromA
+	IF	0
+
 
 ;
 ;BDOS function 10 (C_READSTR) - Buffered console input
@@ -2301,59 +2326,8 @@ L00B6H:	LD	A, B
 	JP	L008CH
 	endif
 
-BDOSRET:
-	LD	HL, (TMPSTK)             ; Точка возврата из функции BDOS
-	LD	SP, HL
-	LD	L, A
-	LD	H, B
-	RET
-
-; ──────────────────────────────────────────────
-; Инициализация симулятора CP/M
-; ВХОД:
-;	HL=100H
-; ВЫХОД:
-;	Нет
-; ИЗМЕНЯЕТ:
-;	AF
-; ОПИСАНИЕ:
-; Перемещает эмулятор BIOS и BDOS в верхние адреса памяти
-; Корректирует точку входа в BIOS и BDOS
-; ──────────────────────────────────────────────
-
-INIT:
-	PUSH	HL
-	PUSH	DE
-	LD	A, 0C3H
-	LD	(0), A
-	LD	(5), A
-	LD	HL, RAMTOP-100H+3
-	LD	(0001H), HL
-	LD	HL, RAMTOP-100H
-	LD	(0006H), HL
-	EX	DE, HL
-	LD	HL, BIOSENTRY
-	LD	BC, BIOSENTRYEND-BIOSENTRY
-	JP	MOVLOO
-
 	ENDIF
 
-; ──────────────────────────────────────────────
-; Запись блока с HL по DE на магнитофон
-; ВХОД:
-;	HL	- начало блока
-;	DE	- конец блока
-; ВЫХОД:
-;	HL	- конец блока
-; ИЗМЕНЯЕТ:
-;	AF, C, HL
-; ──────────────────────────────────────────────
-
-TapeWriteFromHLtoDE:
-	LD	C,(HL)			; 10 bytes
-	CALL	TapeWriteByte
-	CALL	IncHLAndRetIfEqDE
-	JP	TapeWriteFromHLtoDE
 
 ; ──────────────────────────────────────────────
 ; Ввод символа без ожидания с проверкой нажатия Ctrl-C. 
@@ -2411,7 +2385,7 @@ ProcessBackspace:
 	CP	L			; начало буфера ввода ?
 	JP	Z,GotoCmdLineBegin
 	CALL	RST_18
-	DB	8,' ',8+128
+	DB	8,' ',8+80H
 	DEC	HL
 	JP	InputNextSymbol
 
@@ -2504,7 +2478,7 @@ ReadVideoRAM:
 ; ──────────────────────────────────────────────
 
 GetFreeMemAddr:
-	LD	HL,(RAMTOP)	; +30
+	LD	HL,(RAMTOP)	; 3 bytes
 
 ; ──────────────────────────────────────────────
 ; Устанавливает верхнею границу свободного ОЗУ
@@ -2517,7 +2491,7 @@ GetFreeMemAddr:
 ; ──────────────────────────────────────────────
 
 SetFreeMemAddr:
-	LD	(RAMTOP),HL	; +33
+	LD	(RAMTOP),HL	; 4 bytes
 	RET
 
 ; ──────────────────────────────────────────────
@@ -2555,7 +2529,19 @@ ColdBoot:
 
 	LD	HL,1D2AH
 	LD	(KNS_RD),HL
-	JP	WarmBoot
+
+; ──────────────────────────────────────────────
+; Инициализация симулятора CP/M
+; Перемещает эмулятор BIOS и BDOS в верхние адреса памяти
+; Корректирует точку входа в BIOS и BDOS
+; ──────────────────────────────────────────────
+
+INIT:						;
+	PUSH	HL
+	PUSH	DE
+	LD	A, 0C3H
+	LD	(0), A
+	JP	INIT2
 
 	END
 
