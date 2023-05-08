@@ -27,7 +27,7 @@ CHK	MACRO	adr, msg
 EK_ADR  EQU	BASE			; текущий адрес на экране
 POSX	EQU	BASE+02H		; Координаты курсора. Порядок важен.
 POSY	EQU	BASE+03H
-ESC_FL	EQU	BASE+04H
+ESC_FL	EQU	BASE+04H		; Флаг текущего статуса обработки Esc-последовательности
 KBDFLG	EQU	BASE+05H		; если =0, то есть символ в SYMBUF
 RUSLAT	EQU	BASE+06H		; допустимо только 0 или FF  !! Адрес должен быть xx06h иначе править SET_RL !!
 LAST_K	EQU	BASE+09H		; эти 2 байта должны следовать подряд
@@ -55,7 +55,7 @@ PAR_DE  EQU	BASE+29H
 PAR_BC  EQU	BASE+2BH
 FLG_P2	EQU	BASE+2DH		; флаг, что есть параметры 2 или 2,3
 INV_MG	EQU	BASE+2EH
-KNS_RD	EQU	BASE+2FH
+KNS_RD	EQU	BASE+2FH		; Константа чтения
 BUFSIZ	EQU	BASE+30H
 BUFCNT	EQU	BASE+31H
 COMBUF	EQU	BASE+33H		; буфер ввода директивы
@@ -134,9 +134,9 @@ BIOSENTRY:			; 15 bytes
 BIOSENTRYEND:
 
 INIT3:
-	LD	HL, RAMTOP-100H+3
+	LD	HL, BASE-100H+3
 	LD	(0001H), HL
-	LD	HL, RAMTOP-100H
+	LD	HL, BASE-100H
 	LD	(0006H), HL
 	PUSH	DE
 	DEC     D
@@ -2106,7 +2106,7 @@ RLF:	LD	A,L
 	PUSH	DE
 	LD	HL,SCBASE+25*78
 	LD	DE,SCBASE+78+25*78
-	CALL	MOVLOO0		; Здесь еще можно сэкономить за счет предыдущей команды
+	JP	MOVLOO0		; BUG - Вернется фиг знает куда
 
 skip_ESC_I:
 	INC	A		;CP	'H'
@@ -2512,15 +2512,13 @@ ColdBoot:
 
 	INC	HL			; LD HL, BASE
 	LD	SP,HL
+
 	LD	DE, WarmBoot
 	PUSH	DE
 	PUSH	HL			; Сохраняем RAMTOP для переброса BIOS
 	LD	C,L			; 0
 	LD	DE,COMBUF+2CH
 	CALL	DirectiveFill
-
-;	XOR	A
-;	LD	(WRPFLG), A
 
 	LD	A, 0A9H
 	LD	(CURST), A
