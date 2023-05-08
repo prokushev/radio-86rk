@@ -57,8 +57,8 @@ PAR_BC  EQU	BASE+2BH
 FLG_P2	EQU	BASE+2DH		; флаг, что есть параметры 2 или 2,3
 INV_MG	EQU	BASE+2EH
 KNS_RD	EQU	BASE+2FH		; Константа чтения
-BUFSIZ	EQU	BASE+30H
-BUFCNT	EQU	BASE+31H
+BUFSIZ	EQU	BASE+30H		; Размер буфера ввода
+BUFCNT	EQU	BASE+31H		; Число введенных символов в буфер ввода
 COMBUF	EQU	BASE+33H		; буфер ввода директивы
 STACK	EQU	BASE+0D0H		; стек монитора
 
@@ -186,8 +186,8 @@ BIOSENTRYEND:
 
 
 INIT2:	
-	nop
-	nop
+	NOP
+	NOP
 	LD	(BDOSST), A
 	LD	HL, BDOS
 	LD	(BDOSST+1), HL
@@ -340,9 +340,11 @@ MSGCPM:	EX	DE, HL
 ; ──────────────────────────────────────────────
 
 PrintString:
+	PUSH	BC
 	LD	B, 0			; 13 bytes
 	LD	A,(HL)
 	CP	B			; CP 0
+	POP	BC
 	RET	Z
 	CALL	PrintCharFromA
 	INC	HL
@@ -367,8 +369,6 @@ TapeWriteFromHLtoDE:
 	JP	TapeWriteFromHLtoDE
 
 	nop
-	nop
-	nop
 
 ; ──────────────────────────────────────────────
 ; Ввод строки в буфер COMBUF
@@ -383,7 +383,9 @@ TapeWriteFromHLtoDE:
 	CHK	0F8EEH, "* Internal subroutine InputDirective shifted ! *"
 
 InputDirective:
-	LD	DE,COMBUF
+	LD	HL,COMBUF-2
+	LD	(HL), (COMBUF & 00FFh)+31	; Размер буфера
+	EX	DE, HL
 
 ; ──────────────────────────────────────────────
 ; Ввод строки в буфер DE (CP/M совместимо)
@@ -396,44 +398,46 @@ InputDirective:
 ; ──────────────────────────────────────────────
 
 GETLIN2:
-	EX	DE, HL
-	LD	D,H
-	LD	E,L
+	PUSH	DE
+	POP	HL
+	LD	C, (HL)
+	INC	HL
 GotoCmdLineBegin:
 	XOR	A
-	LD	B,A			; чтобы на выходе получить флаг пустой строки
+	LD	B, A
 	CALL	SET_RL			; Включить латинский регистр
 InputNextSymbol:
 	CALL	InputSymbol		; используется в DirectiveModify
 	CP	7FH
 	JP	Z,ProcessBackspace
-	LD	(HL),A
+	INC	HL
+	LD	(HL), A
 	CALL	PrintCharFromA
 	CP	13
-	JP	Z,AF91A
+	JP	Z,L00B2H		;AF91A
 	CP	03
 	JP	Z,WarmBoot
-	LD	B,E			; B=76H --> бит D7=0
-	LD	A, (COMBUF & 00FFh)+31
-	CP	L
-	JP	Z,SyntaxError
-	INC	HL
-	LD	(BUFCNT), HL
-	JP	InputNextSymbol
-
-; ──────────────────────────────────────────────
-
-BDOSRET:				; Точка возврата из функции BDOS
-	LD	HL, (TMPSTK)		; 7 bytes
-	LD	SP, HL
-	LD	L, A
-	LD	H, B
+	INC	B
+	LD	A, C
+	CP	B
+	JP	NZ, InputNextSymbol;	SyntaxError
+	LD	B, C
+L00B2H:	INC	DE
+	EX	DE, HL
+	LD	(HL), B
+;	SUB	B
 	RET
+
 
 ; ──────────────────────────────────────────────
 
 TABK2:	DB	09,0AH,0DH,7FH,08H,19H,18H,1AH	; 8 bytes
 
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
 ;	ORG	0f92ch
 
 ; ──────────────────────────────────────────────
@@ -459,7 +463,7 @@ ParseParameters:
 	CALL	DirectiveFill
 
 ;if	high (BASE+34H) eq high BASE
-	LD	E,34H
+	LD	E, (COMBUF+1) & 0FFH; 34H
 ;    else
 ;	.printx *      Wrong BASE (Low BASE need be < 0E0H) !
 ;endif
@@ -2411,13 +2415,17 @@ ReadKeyCode:
 ; ──────────────────────────────────────────────
 
 ProcessBackspace:
-	LD	A,E			; 15 bytes
-	CP	L			; начало буфера ввода ?
-	JP	Z,GotoCmdLineBegin
+	LD	A,B			; 15 bytes
+	OR	A			; начало буфера ввода ?
+	JP	Z,GotoCmdLineBegin	; GotoCmdLineBegin
+	DEC	B
+	DEC	HL
+;	PUSH	HL
 	CALL	RST_18
 	DB	8,' ',8+80H
-	DEC	HL
+;	POP	HL
 	JP	InputNextSymbol
+
 
 ; ──────────────────────────────────────────────
 ; Возвращает в HL координаты курсора
@@ -2495,6 +2503,15 @@ ReadVideoRAM:
 
 
 ; ──────────────────────────────────────────────
+
+BDOSRET:				; Точка возврата из функции BDOS
+	LD	HL, (TMPSTK)		; 7 bytes
+	LD	SP, HL
+	LD	L, A
+	LD	H, B
+	RET
+
+; ──────────────────────────────────────────────
 ; Первичная инициализация МОНИТОРа
 ; ВХОД:
 ;	Нет
@@ -2515,7 +2532,7 @@ ColdBoot:
 	LD	DE,COMBUF+2CH
 	CALL	DirectiveFill
 
-	LD	HL, BASE-1
+	LD	L, (BASE-1) & 0FFH	; LD HL, BASE-1
 	LD	(RAMTOP),HL
 
 	LD	A, 0A9H
@@ -2534,7 +2551,6 @@ ColdBoot:
 ; Корректирует точку входа в BIOS и BDOS
 ; ──────────────────────────────────────────────
 
-INIT:						;
 	LD	A, 0C3H				; JMP opcode
 	LD	(0), A
 	LD	(5), A
