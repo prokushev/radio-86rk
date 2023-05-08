@@ -12,6 +12,7 @@ DOPPPA	EQU	0A000H		; Адрес дополнительного ППА
 PPA	EQU	08000H		; Адрес основного ППА
 K_ORIG	EQU	1		; если 0, то измененный курсор
 BASE    EQU	7600H		; размер ОЗУ
+BDOSST	EQU	7500H		; Начало BDOS
 ; ──────────────────────────────────────────────
 
 CHK	MACRO	adr, msg
@@ -126,23 +127,23 @@ Version:
 ; ──────────────────────────────────────────────
 
 BIOSENTRY:			; 15 bytes
-	JP	BDOS		; CBOOT Холодный старт
+	JP	ColdBoot	; CBOOT Холодный старт
 	JP	WarmBoot	; WBOOT Теплый старт
 	JP	GetKeyboardStatus		; CONST Статус консоли
 	JP	InputSymbol	; CONIN Консольный ввод
 	JP	PrintCharFromC	; CONOUT Консольный вывод
 BIOSENTRYEND:
 
-INIT3:
-	LD	HL, BASE-100H+3
+INIT2:	
+	LD	(BDOSST), A
+	LD	HL, BDOS
+	LD	(BDOSST+1), HL
+	LD	HL, BIOSENTRY+3	; WBOOT
 	LD	(0001H), HL
-	LD	HL, BASE-100H
+	LD	HL, BDOSST
 	LD	(0006H), HL
-	PUSH	DE
-	DEC     D
-	LD	HL, BIOSENTRY
-	LD	BC, BIOSENTRYEND-BIOSENTRY
-	JP	MOVLOO
+	NOP
+	NOP
 
 ;	ORG	0F86CH
 ; ──────────────────────────────────────────────
@@ -393,9 +394,12 @@ BDOSRET:				; Точка возврата из функции BDOS
 	LD	H, B
 	RET
 
-INIT2:	
-	LD	(5), A
-	JP	INIT3
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
 
 ;	ORG	0f92ch
 
@@ -2504,21 +2508,18 @@ SetFreeMemAddr:
 ; ──────────────────────────────────────────────
 
 ColdBoot:
-	LD	HL,BASE-1
-	LD	(RAMTOP),HL
+	LD	HL,BASE
+	LD	SP,HL
 
 	LD	A,8AH
 	LD	(PU),A
 
-	INC	HL			; LD HL, BASE
-	LD	SP,HL
-
-	LD	DE, WarmBoot
-	PUSH	DE
-	PUSH	HL			; Сохраняем RAMTOP для переброса BIOS
 	LD	C,L			; 0
 	LD	DE,COMBUF+2CH
 	CALL	DirectiveFill
+
+	LD	HL, BASE-1
+	LD	(RAMTOP),HL
 
 	LD	A, 0A9H
 	LD	(CURST), A
@@ -2537,10 +2538,9 @@ ColdBoot:
 ; ──────────────────────────────────────────────
 
 INIT:						;
-	POP	DE
-	PUSH	DE
-	LD	A, 0C3H
+	LD	A, 0C3H				; JMP opcode
 	LD	(0), A
+	LD	(5), A
 	JP	INIT2
 
 	END
