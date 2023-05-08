@@ -97,28 +97,76 @@ LOOP	MACRO	ADDR
 ; Блок векторов МОНИТОРа
 ; ──────────────────────────────────────────────
 
-	JP	ColdBoot		; +0
-	JP	InputSymbol 		; +3
-	JP	TapeReadByte		; +6
-	JP	PrintCharFromC		; +9
-	JP	TapeWriteByte		; +C
-	JP	PrintCharFromC		; +F   это д.быть PRINT
-	JP	GetKeyboardStatus	; +12
-	JP	PrintHexByte 		; +15
-	JP	PrintString  		; +18
-	JP	ReadKeyCode 		; +1B
-	JP	GetCursorPos		; +1E
-	JP	ReadVideoRAM		; +21
-	JP	TapeReadBlock		; +24
-	JP	TapeWriteBlock		; +27
-	JP	CalcChecksum		; +2A
-	JP	InitVideo		; +2D
-	JP	GetFreeMemAddr		; +30
-	JP	SetFreeMemAddr		; +33
-	JP	READARAM		; +36
-	JP	WRITEARAM		; +39
-	JP	SetCursorPos		; +3C
-	JP	Beep			; +3F
+	JP	ColdBoot		; F800
+	JP	InputSymbol 		; F803
+	JP	TapeReadByte		; F806
+	JP	PrintCharFromC		; F809
+	JP	TapeWriteByte		; F80C
+	JP	PrintCharFromC		; F80F   это д.быть PRINT
+	JP	GetKeyboardStatus	; F812
+	JP	PrintHexByte 		; F815
+	JP	PrintString  		; F818
+	JP	ReadKeyCode 		; F81B
+	JP	GetCursorPos		; F81E
+	JP	ReadVideoRAM		; F821
+	JP	TapeReadBlock		; F824
+	JP	TapeWriteBlock		; F827
+	JP	CalcChecksum		; F82A
+	JP	InitVideo		; F82D
+; ──────────────────────────────────────────────
+; Возвращает верхнею границу свободного ОЗУ
+; ВХОД:
+;	Нет
+; ВЫХОД:
+;	HL	- адрес последней доступной ячейки ОЗУ
+; ИЗМЕНЯЕТ:
+;	HL
+; ──────────────────────────────────────────────
+
+GetFreeMemAddr:				; F830
+	LD	HL,(RAMTOP)		; 3 bytes
+
+; ──────────────────────────────────────────────
+; Устанавливает верхнею границу свободного ОЗУ
+; ВХОД:
+;	HL	- адрес последней доступной ячейки ОЗУ
+; ВЫХОД:
+;	HL	- адрес последней доступной ячейки ОЗУ
+; ИЗМЕНЯЕТ:
+;	Нет
+; ──────────────────────────────────────────────
+
+SetFreeMemAddr:				; F833
+	LD	(RAMTOP),HL		; 4 bytes
+
+	RET				; F836
+; ──────────────────────────────────────────────
+; Возврат каретки
+; ВХОД:
+;	L=POSX, H=POSY
+; ВЫХОД:
+;	L=POSX, H=POSY
+; ИЗМЕНЯЕТ:
+; 	L
+; ОПИСАНИЕ:
+;	Курсор перемещается в начало текущей строки.
+; ──────────────────────────────────────────────
+
+COD_0D:	LD	L, MARGIN_LEFT		; 3 bytes
+
+; ──────────────────────────────────────────────
+
+	RET				; F839
+
+; ──────────────────────────────────────────────
+
+AF91A:	SUB	B			; 2 bytes
+	RET
+
+; ──────────────────────────────────────────────
+
+	JP	SetCursorPos		; F83C
+	JP	Beep			; F83F
 Version:
 	DB	"V5.x"
 
@@ -134,7 +182,12 @@ BIOSENTRY:			; 15 bytes
 	JP	PrintCharFromC	; CONOUT Консольный вывод
 BIOSENTRYEND:
 
+; ──────────────────────────────────────────────
+
+
 INIT2:	
+	nop
+	nop
 	LD	(BDOSST), A
 	LD	HL, BDOS
 	LD	(BDOSST+1), HL
@@ -142,8 +195,6 @@ INIT2:
 	LD	(0001H), HL
 	LD	HL, BDOSST
 	LD	(0006H), HL
-	NOP
-	NOP
 
 ;	ORG	0F86CH
 ; ──────────────────────────────────────────────
@@ -216,20 +267,6 @@ AFEAF:	LD	A,0FFH
 	POP	HL
 	RET
 
-; ──────────────────────────────────────────────
-; Возврат каретки
-; ВХОД:
-;	L=POSX, H=POSY
-; ВЫХОД:
-;	L=POSX, H=POSY
-; ИЗМЕНЯЕТ:
-; 	L
-; ОПИСАНИЕ:
-;	Курсор перемещается в начало текущей строки.
-; ──────────────────────────────────────────────
-
-COD_0D:	LD	L, MARGIN_LEFT		; 3 bytes
-	RET
 
 ; ──────────────────────────────────────────────
 ; Загрузка BC с поиском синхробайта
@@ -329,6 +366,10 @@ TapeWriteFromHLtoDE:
 	CALL	IncHLAndRetIfEqDE
 	JP	TapeWriteFromHLtoDE
 
+	nop
+	nop
+	nop
+
 ; ──────────────────────────────────────────────
 ; Ввод строки в буфер COMBUF
 ; ВХОД:
@@ -370,7 +411,7 @@ InputNextSymbol:
 	CALL	PrintCharFromA
 	CP	13
 	JP	Z,AF91A
-	CP	'.'
+	CP	03
 	JP	Z,WarmBoot
 	LD	B,E			; B=76H --> бит D7=0
 	LD	A, (COMBUF & 00FFh)+31
@@ -382,11 +423,6 @@ InputNextSymbol:
 
 ; ──────────────────────────────────────────────
 
-AF91A:	SUB	B			; 2 bytes
-	RET
-
-; ──────────────────────────────────────────────
-
 BDOSRET:				; Точка возврата из функции BDOS
 	LD	HL, (TMPSTK)		; 7 bytes
 	LD	SP, HL
@@ -394,12 +430,9 @@ BDOSRET:				; Точка возврата из функции BDOS
 	LD	H, B
 	RET
 
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
+; ──────────────────────────────────────────────
+
+TABK2:	DB	09,0AH,0DH,7FH,08H,19H,18H,1AH	; 8 bytes
 
 ;	ORG	0f92ch
 
@@ -995,9 +1028,6 @@ TAB:	LD	A, L
 	LD	L, A
 	RET
 
-; ──────────────────────────────────────────────
-
-TABK2:	DB	09,0AH,0DH,7FH,08H,19H,18H,1AH	; 8 bytes
 
 ; ──────────────────────────────────────────────
 
@@ -1006,8 +1036,11 @@ FUNC01:	CALL	InputSymbol	; 6 bytes
 
 ; ──────────────────────────────────────────────
 
-	nop
-	nop
+LD_BLK:	CALL	TapeReadByteNoSync			; 10 bytes
+	LD	(HL),A
+	CALL	IncHLAndRetIfEqDE
+	JP	LD_BLK
+
 	
 ; ──────────────────────────────────────────────
 ; Печать перевода строки, числа из HL в 16-ричном формате, пробела,
@@ -1366,7 +1399,7 @@ PrintHexNibble:
 ; ──────────────────────────────────────────────
 
 PrintCharFromA:
-	PUSH	BC		; 10 bytes
+	PUSH	BC		; 
 	LD	C,A
 	DB	06h		; LD B,..
 
@@ -1779,12 +1812,6 @@ TOBACK:
 	CALL	SetCursorPos
 	JP	POPREGA
 
-; ──────────────────────────────────────────────
-
-LD_BLK:	CALL	TapeReadByteNoSync			; 10 bytes
-	LD	(HL),A
-	CALL	IncHLAndRetIfEqDE
-	JP	LD_BLK
 
 ; ──────────────────────────────────────────────
 ; Обработчик ESC-последовательности
@@ -2237,7 +2264,7 @@ BDOS:	LD	HL, 0000H	; Сохраняем стек
 	LD	(TMPSTK), HL
 	LD	SP, STACK
 	DEC	C
-	JP	M, ColdBoot	; Функция 0 P_TERMCPM
+	JP	M, WarmBoot	; Функция 0 P_TERMCPM
 	LD	HL, BDOSRET
 	PUSH	HL
 	LD	A, C
@@ -2254,7 +2281,7 @@ BDOS:	LD	HL, 0000H	; Сохраняем стек
 	DEC	A
 	JP	Z, GetKeyboardStatus	; Функция 11 C_STAT
 	DEC	A
-	JP	NZ, ColdBoot	; Функции 13 и выше не поддерживается
+	JP	NZ, WarmBoot	; Функции 13 и выше не поддерживается
 	LD	A, 20H		; Функция 12 S_BDOSVER
 	LD	B, 00H
 	RET
@@ -2392,10 +2419,6 @@ ProcessBackspace:
 	DEC	HL
 	JP	InputNextSymbol
 
-READARAM	; +36
-WRITEARAM	; +39
-	RET
-
 ; ──────────────────────────────────────────────
 ; Возвращает в HL координаты курсора
 ; ВХОД:
@@ -2470,32 +2493,6 @@ ReadVideoRAM:
 	POP	HL
 	RET
 
-; ──────────────────────────────────────────────
-; Возвращает верхнею границу свободного ОЗУ
-; ВХОД:
-;	Нет
-; ВЫХОД:
-;	HL	- адрес последней доступной ячейки ОЗУ
-; ИЗМЕНЯЕТ:
-;	HL
-; ──────────────────────────────────────────────
-
-GetFreeMemAddr:
-	LD	HL,(RAMTOP)	; 3 bytes
-
-; ──────────────────────────────────────────────
-; Устанавливает верхнею границу свободного ОЗУ
-; ВХОД:
-;	HL	- адрес последней доступной ячейки ОЗУ
-; ВЫХОД:
-;	HL	- адрес последней доступной ячейки ОЗУ
-; ИЗМЕНЯЕТ:
-;	Нет
-; ──────────────────────────────────────────────
-
-SetFreeMemAddr:
-	LD	(RAMTOP),HL	; 4 bytes
-	RET
 
 ; ──────────────────────────────────────────────
 ; Первичная инициализация МОНИТОРа
