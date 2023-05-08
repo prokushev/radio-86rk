@@ -326,6 +326,15 @@ https://ruecm.forum2x2.ru/t1112-topic
 
 ## СТАНДАРТНЫЕ ПОДПРОГРАММЫ CP/M BDOS
 
+- BDOS function 0 (P_TERMCPM) - System Reset
+- BDOS function 1 (C_READ) - Console input
+- BDOS function 2 (C_WRITE) - Console output
+- BDOS function 6 (C_RAWIO) - Direct console I/O
+- BDOS function 9 (C_WRITESTR) - Output string
+- BDOS function 10 (C_READSTR) - Buffered console input
+- BDOS function 11 (C_STAT) - Console status
+- BDOS function 12 (S_BDOSVER) - Return version number
+
 ## УПРАВЛЯЮЩИЕ КОДЫ ДИСПЛЕЯ
 
  Данная версия МОНИТОРа реализует поддержку управляющих кодов

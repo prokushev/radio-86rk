@@ -2254,8 +2254,8 @@ BDOS:	LD	HL, 0000H	; Сохраняем стек
 	DEC	A
 	JP	Z, GetKeyboardStatus	; Функция 11 C_STAT
 	DEC	A
-	JP	NZ, ColdBoot	; Функции 13 и выше
-	LD	A, 20H		; Функция 12
+	JP	NZ, ColdBoot	; Функции 13 и выше не поддерживается
+	LD	A, 20H		; Функция 12 S_BDOSVER
 	LD	B, 00H
 	RET
 
