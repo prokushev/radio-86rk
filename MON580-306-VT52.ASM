@@ -12,7 +12,7 @@ DOPPPA	EQU	0A000H		; Адрес дополнительного ППА
 PPA	EQU	08000H		; Адрес основного ППА
 K_ORIG	EQU	1		; если 0, то измененный курсор
 BASE    EQU	7600H		; размер ОЗУ
-BDOSST	EQU	7500H		; Начало BDOS
+BDOSST	EQU	7500H		; Начало BDOS, возможно, конфликтует с RKDOS.
 ; ──────────────────────────────────────────────
 
 CHK	MACRO	adr, msg
@@ -113,6 +113,7 @@ LOOP	MACRO	ADDR
 	JP	TapeWriteBlock		; F827
 	JP	CalcChecksum		; F82A
 	JP	InitVideo		; F82D
+
 ; ──────────────────────────────────────────────
 ; Возвращает верхнею границу свободного ОЗУ
 ; ВХОД:
@@ -158,12 +159,8 @@ COD_0D:	LD	L, MARGIN_LEFT		; 3 bytes
 
 	RET				; F839
 
-; ──────────────────────────────────────────────
-
-AF91A:	SUB	B			; 2 bytes
-	RET
-
-; ──────────────────────────────────────────────
+	NOP
+	NOP
 
 	JP	SetCursorPos		; F83C
 	JP	Beep			; F83F
@@ -174,12 +171,15 @@ Version:
 ; Блок эмуляции точек входа BIOS и BDOS
 ; ──────────────────────────────────────────────
 
-BIOSENTRY:			; 15 bytes
-	JP	ColdBoot	; CBOOT Холодный старт
-	JP	WarmBoot	; WBOOT Теплый старт
-	JP	GetKeyboardStatus		; CONST Статус консоли
-	JP	InputSymbol	; CONIN Консольный ввод
-	JP	PrintCharFromC	; CONOUT Консольный вывод
+BIOSENTRY:
+	JP	ColdBoot		; CBOOT Холодный старт
+	JP	WarmBoot		; WBOOT Теплый старт
+	JP	GetKeyboardStatus	; CONST Статус консоли
+	JP	InputSymbol		; CONIN Консольный ввод
+	JP	PrintCharFromC		; CONOUT Консольный вывод
+	JP	PrintCharFromC		; LIST Печать на принтер. это д.быть PRINT
+	JP	TapeWriteByte		; PUNCH/AUXOUT Вывод не перфоратор/магнитофон
+	JP	TapeReadByte		; READER/AUXIN Ввод данных с перволенты/магнитофона
 BIOSENTRYEND:
 
 ; ──────────────────────────────────────────────
@@ -188,9 +188,6 @@ BIOSENTRYEND:
 INIT2:	
 	NOP
 	NOP
-	LD	(BDOSST), A
-	LD	HL, BDOS
-	LD	(BDOSST+1), HL
 	LD	HL, BIOSENTRY+3	; WBOOT
 	LD	(0001H), HL
 	LD	HL, BDOSST
@@ -216,7 +213,7 @@ WarmBoot:
 	LD	(PDU),A
 
 	CALL	RST_18
-	DB	13,10,'>'+80H
+	DB	13,10,'=>'+80H
 
 	CALL	InputDirective
 
@@ -368,8 +365,6 @@ TapeWriteFromHLtoDE:
 	CALL	IncHLAndRetIfEqDE
 	JP	TapeWriteFromHLtoDE
 
-	nop
-
 ; ──────────────────────────────────────────────
 ; Ввод строки в буфер COMBUF
 ; ВХОД:
@@ -425,7 +420,6 @@ InputNextSymbol:
 L00B2H:	INC	DE
 	EX	DE, HL
 	LD	(HL), B
-;	SUB	B
 	RET
 
 
@@ -2547,13 +2541,15 @@ ColdBoot:
 
 ; ──────────────────────────────────────────────
 ; Инициализация симулятора CP/M
-; Перемещает эмулятор BIOS и BDOS в верхние адреса памяти
-; Корректирует точку входа в BIOS и BDOS
+; Размещает точки входа в BIOS и BDOS
 ; ──────────────────────────────────────────────
 
 	LD	A, 0C3H				; JMP opcode
 	LD	(0), A
 	LD	(5), A
+	LD	(BDOSST), A
+	LD	HL, BDOS
+	LD	(BDOSST+1), HL
 	JP	INIT2
 
 	END
