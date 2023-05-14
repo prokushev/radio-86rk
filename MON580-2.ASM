@@ -1,11 +1,32 @@
 ; ═══════════════════════════════════════════════════════════════════════
-;  МОНИТОР-1.20 для Радио-86РК для КР580, совместимый с Орион-128,
+;  МОНИТОР-2.00 для Радио-86РК для КР580, совместимый с Орион-128,
 ;  поддержкой VT-52 и эмулятором CP/M
+; ───────────────────────────────────────────────────────────────────────
+;  Часть, находящаяся в ROM по адресам F800H-FFFFH
 ; ═══════════════════════════════════════════════════════════════════════
 
 	CPU	8080
 	Z80SYNTAX	EXCLUSIVE
 
+; ──────────────────────────────────────────────
+; Дальняя CALL block, label
+; ──────────────────────────────────────────────
+
+FCALL	MACRO	block, adr
+		CALL	FARCALL
+		DB	block
+		DB	(adr & 0FFH)
+	ENDM
+
+; ──────────────────────────────────────────────
+; Дальняя JMP block, label
+; ──────────────────────────────────────────────
+
+FJMP	MACRO	block, adr
+		CALL	FARJMP
+		DB	block
+		DB	(adr & 0FFH)
+	ENDM
 
 CHK	MACRO	adr, msg
 		IF	adr-$
@@ -22,9 +43,21 @@ LOOP	MACRO	ADDR
 	JP	NZ,ADDR
 	ENDM
 
+
+; ──────────────────────────────────────────────
+; Системные переменные МОНИТОРа
+; ──────────────────────────────────────────────
+
 	INCLUDE	"SYSVARS.INC"
 
+; ──────────────────────────────────────────────
+; Подпрограммы МОНИТОРа, размещенные на ROM-диске
+; ──────────────────────────────────────────────
+
+	INCLUDE	"MON580-2-ROM.INC"
+
 	ORG	RABADR
+
 
 ; ──────────────────────────────────────────────
 ; Блок векторов МОНИТОРа
@@ -104,6 +137,8 @@ Version:
 ; Блок эмуляции точек входа BIOS и BDOS
 ; ──────────────────────────────────────────────
 
+	SHARED	BIOS
+BIOS:
 BIOSENTRY:
 	JP	ColdBoot		; CBOOT Холодный старт
 	JP	WarmBoot		; WBOOT Теплый старт
@@ -121,10 +156,18 @@ BIOSENTRYEND:
 INIT2:	
 	NOP
 	NOP
-	LD	HL, BIOSENTRY+3	; WBOOT
-	LD	(0001H), HL
-	LD	HL, BDOSST
-	LD	(0006H), HL
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
 
 ;	ORG	0F86CH
 ; ──────────────────────────────────────────────
@@ -244,45 +287,6 @@ TapeReadWord:
 	RET
 
 ; ──────────────────────────────────────────────
-; Печать строки по адресу DE
-; ВХОД:
-;	DE	- адрес строки. $ - признак конца
-;		  или символ больше 7Fh
-; ВЫХОД:
-;	HL	- адрес последнего напечатанного символа
-; ИЗМЕНЯЕТ:
-;	AF, HL, DE
-; ──────────────────────────────────────────────
-
-MSGCPM:	EX	DE, HL
-	PUSH	BC
-	LD	B, '$'
-	DB	11H			; LD DE, xx, 
-
-; ──────────────────────────────────────────────
-; Печать строки по адресу HL
-; ВХОД:
-;	HL	- адрес строки. 0H - признак конца
-;		  или символ больше 7Fh
-; ВЫХОД:
-;	HL	- адрес последнего напечатанного символа
-; ИЗМЕНЯЕТ:
-;	AF, HL
-; ──────────────────────────────────────────────
-
-PrintString:
-	PUSH	BC
-	LD	B, 0			; NOP, если пришли из MSGCPM
-	LD	A,(HL)
-	CP	B			; CP 0 или CP '$'
-	POP	BC
-	RET	Z
-	CALL	PrintCharFromA
-	INC	HL
-	RET	M			; RET if high bit set
-	JP	PrintString
-
-; ──────────────────────────────────────────────
 ; Запись блока с HL по DE на магнитофон
 ; ВХОД:
 ;	HL	- начало блока
@@ -300,6 +304,30 @@ TapeWriteFromHLtoDE:
 	JP	TapeWriteFromHLtoDE
 
 ; ──────────────────────────────────────────────
+; Чтение блока из ROM-диск в буфер
+; ВХОД:
+;	A	- номер блока (0-15)
+; ВЫХОД:
+; ИЗМЕНЯЕТ:
+; ──────────────────────────────────────────────
+
+ReadBlock:
+	LD	BC, ROMBUF
+	LD	L, 0
+	LD	E, 080h
+	CCF						; CF=0
+	RRA						; A/2
+	LD	H, A
+	LD	D, A
+	JP	NC, skip
+	EX	DE, HL					; L<->E
+	INC	D
+skip:
+	DEC	DE
+	JP	DirectiveReadROM			; HL-начальный, DE-конечный, BC-целевой
+
+
+; ──────────────────────────────────────────────
 ; Ввод строки в буфер COMBUF
 ; ВХОД:
 ;	Нет
@@ -309,6 +337,7 @@ TapeWriteFromHLtoDE:
 ;	AF, DE, HL, BC
 ; ──────────────────────────────────────────────
 
+;	ORG	0F8EEH
 	CHK	0F8EEH, "* Internal subroutine InputDirective shifted ! *"
 
 InputDirective:
@@ -361,11 +390,7 @@ L00B2H:	INC	DE
 
 TABK2:	DB	09,0AH,0DH,7FH,08H,19H,18H,1AH	; 8 bytes
 
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
+BDOS:	FJMP	1, BDOSENTRY
 
 ; ──────────────────────────────────────────────
 ; Читает аргументы со второй позиции буфера команды в регистры HL, DE, BC
@@ -373,9 +398,9 @@ TABK2:	DB	09,0AH,0DH,7FH,08H,19H,18H,1AH	; 8 bytes
 ; ВХОД:
 ;	Нет
 ; ВЫХОД:
-;	HL	- первый аргумент
-;	DE	- первый аргумент, если один параметр в строке, иначе второй аргумент
-;	BC	- третий аргумент
+;	PAR_HL	- первый аргумент
+;	PAR_DE	- первый аргумент, если один параметр в строке, иначе второй аргумент
+;	PAR_BC	- третий аргумент
 ;	При ошибке разбора выходит в МОНИТОР
 ; ИЗМЕНЯЕТ:
 ;	AF, HL, DE, BC
@@ -389,11 +414,8 @@ ParseParameters:
 	LD	C,0
 	CALL	DirectiveFill
 
-;if	high (BASE+34H) eq high BASE
-	LD	E, (COMBUF+1) & 0FFH; 34H
-;    else
-;	.printx *      Wrong BASE (Low BASE need be < 0E0H) !
-;endif
+	LD	E, (COMBUF+1) & 0FFH; Второй символ в буфере ввода
+
 	CALL	GET_HL
 	LD	(PAR_HL),HL
 	LD	(PAR_DE),HL
@@ -960,10 +982,13 @@ TAB:	LD	A, L
 	RET
 
 
-; ──────────────────────────────────────────────
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
 
-FUNC01:	CALL	InputSymbol	; 6 bytes
-	JP	PrintCharFromA
 
 ; ──────────────────────────────────────────────
 
@@ -1693,25 +1718,6 @@ IncHLAndRetIfEqDE:
 POPAF:	POP	AF
 	RET
 
-; ──────────────────────────────────────────────
-;BDOS function 6 (C_RAWIO) - Direct console I/O
-;Supported by: CP/M 1.4 and later, with variations
-;Entered with C=6, E=code. Returned values (in A) vary.
-;
-;E=0FFh
-;Return a character without echoing if one is waiting;
-; zero if none is available. In MP/M 1, this works like
-; E=0FDh below and waits for a character.
-;Values of E not supported on a particular system will
-; output the character. Under CP/M 2 and lower, direct 
-;console functions may interact undesirably with non-direct
-; ones, since certain buffers may be bypassed. Do not mix them.
-; ──────────────────────────────────────────────
-
-FUNC06:	INC	E		; Test for 0FFH
-	JP	NZ,PrintCharFromC
-	CALL	GetKeyboardStatus
-	RET	Z
 
 ; ──────────────────────────────────────────────
 ; Ввод символа с ожиданием. 
@@ -2162,133 +2168,6 @@ CursorUp:
 	DEC	H		; POSY--
 	RET
 
-	if 0			; Сейчас нигде не используется
-; ──────────────────────────────────────────────
-; Вычитает из HL DE
-; ВХОД:
-;	HL	- уменьшаемое
-;	DE	- вычитаемое
-; ВЫХОД:
-;	HL	- результат
-; ИЗМЕНЯЕТ:
-;	HL, AF
-; ОПИСАНИЕ:
-;	Вычитает DE из HL
-; ──────────────────────────────────────────────
-
-SUBHLDE:
-	LD	A, L
-	SUB	E
-	LD	L, A
-	LD	A, H
-	SBC	A, D
-	LD	H, A
-	RET
-	endif
-
-; ──────────────────────────────────────────────
-; Блок эмуляции точек входа BDOS
-; ──────────────────────────────────────────────
-
-BDOS:	LD	HL, 0000H	; Сохраняем стек
-	ADD	HL, SP
-	LD	(TMPSTK), HL
-	LD	SP, STACK
-	DEC	C
-	JP	M, WarmBoot	; Функция 0 P_TERMCPM
-	LD	HL, BDOSRET
-	PUSH	HL
-	LD	A, C
-	LD	C, E
-	JP	Z, FUNC01	; Функция 1 C_READ
-	DEC	A
-	JP	Z, PrintCharFromC	; Функция 2 C_WRITE
-	SUB	4
-	JP	Z, FUNC06	; Функция 6 C_RAWIO
-	SUB	3
-	JP	Z, MSGCPM	; Функция 9 C_WRITESTR
-	DEC	A
-	JP	Z, GETLIN2	; Функция 10 C_READSTR
-	DEC	A
-	JP	Z, GetKeyboardStatus	; Функция 11 C_STAT
-	DEC	A
-	JP	NZ, WarmBoot	; Функции 13 и выше не поддерживается
-	LD	A, 20H		; Функция 12 S_BDOSVER
-	LD	B, 00H
-	RET
-
-	IF	0
-
-
-;
-;BDOS function 10 (C_READSTR) - Buffered console input
-;Supported by: All versions, with variations
-;Entered with C=0Ah, DE=address or zero.
-;
-;This function reads characters from the keyboard into a memory buffer
-; until RETURN is pressed. The Delete key is handled correctly. In later
-; versions, more features can be used at this point; ZPM3 includes a
-; full line editor with recall of previous lines typed.
-;
-;On entry, DE is the address of a buffer. If DE=0, the DMA address
-; is used (CP/M 3 and later)
-; and the buffer already contains data:
-;
-;DE=address:                 DE=0 :
-;buffer: DEFB    size        buffer: DEFB    size
-        ;DEFB    ?                   DEFB    len
-        ;DEFB    bytes               DEFB    bytes
-;;The value at buffer+0 is the amount of bytes available in the
-; buffer. Once the limit has been reached, no more can be added,
-; although the line editor can still be used.
-;If DE=0 (in 16-bit versions, DX=0FFFFh) the next byte contains 
-;the number of bytes already in the buffer; otherwise this is 
-;ignored. On return from the function, it contains the number 
-;of bytes present in the buffer.
-;
-;The bytes typed then follow. There is no end marker.
-;
-
-	if 0
-	EX	DE, HL
-	LD	C, (HL)
-	LD	B, 00H
-	INC	HL
-L008CH:	CALL	0F803H
-	CP	7FH
-	JP	Z, L00B6H
-	CALL	PrintCharFromA
-	CP	0DH
-	JP	Z, L00B2H
-	CP	03H
-	JP	Z, 0F800H
-	INC	HL
-	LD	(HL), A
-	INC	B
-	LD	A, C
-	CP	B
-	JP	NZ, L008CH
-	LD	B, C
-
-L00B2H:	INC	DE
-	EX	DE, HL
-	LD	(HL), B
-	RET
-
-L00B6H:	LD	A, B
-	OR	A
-	JP	Z, L008CH
-	DEC	B
-	DEC	HL
-	;PUSH	HL
-	CALL	RST_18
-	DB	8, ' ', 8+80h		; см. TZABOJ
-	;POP	HL
-	JP	L008CH
-	endif
-
-	ENDIF
-
 
 ; ──────────────────────────────────────────────
 ; Ввод символа без ожидания с проверкой нажатия Ctrl-C. 
@@ -2347,10 +2226,8 @@ ProcessBackspace:
 	JP	Z,GotoCmdLineBegin	; GotoCmdLineBegin
 	DEC	B
 	DEC	HL
-;	PUSH	HL
 	CALL	RST_18
 	DB	8,' ',8+80H
-;	POP	HL
 	JP	InputNextSymbol
 
 
@@ -2430,15 +2307,6 @@ ReadVideoRAM:
 
 
 ; ──────────────────────────────────────────────
-
-BDOSRET:				; Точка возврата из функции BDOS
-	LD	HL, (TMPSTK)		; 7 bytes
-	LD	SP, HL
-	LD	L, A
-	LD	H, B
-	RET
-
-; ──────────────────────────────────────────────
 ; Первичная инициализация МОНИТОРа
 ; ВХОД:
 ;	Нет
@@ -2471,19 +2339,63 @@ ColdBoot:
 
 	LD	HL,1D2AH
 	LD	(KNS_RD),HL
+; TODO определить наличие ROM-диска, и если он есть, то запустить с него инит
+	JP	WarmBoot
 
 ; ──────────────────────────────────────────────
-; Инициализация симулятора CP/M
-; Размещает точки входа в BIOS и BDOS
+; Печать строки по адресу HL
+; ВХОД:
+;	HL	- адрес строки. 0H - признак конца
+;		  или символ больше 7Fh
+; ВЫХОД:
+;	HL	- адрес последнего напечатанного символа
+; ИЗМЕНЯЕТ:
+;	AF, BC, HL
+; ПРИМЕЧАНИЯ:
+; 	Код в ROM-диске ожидает именно такие 4 первые
+;	команды. При их изменении нужно править в ROM-диске
 ; ──────────────────────────────────────────────
 
-	LD	A, 0C3H				; JMP opcode
-	LD	(0), A
-	LD	(5), A
-	LD	(BDOSST), A
-	LD	HL, BDOS
-	LD	(BDOSST+1), HL
-	JP	INIT2
+PrintString:
+	PUSH	BC
+	LD	B, 0
+	LD	A,(HL)
+	CP	B			; CP 0 или CP '$'
+	POP	BC
+	RET	Z
+	CALL	PrintCharFromA
+	INC	HL
+	RET	M			; RET if high bit set
+	JP	PrintString
+
+FARJZ:	EX	(SP), HL
+	INC	HL
+	INC	HL
+	EX	(SP), HL
+	RET	NZ
+	EX	(SP), HL
+	DEC	HL
+	DEC	HL
+	EX	(SP), HL
+FARJMP:	EX	(SP), HL		; Сохраняем HL в стек, а в HL адрес возврата
+	LD	A, (HL)
+	CALL	ReadBlock		; Считываем блок c ROM-диска
+	INC	HL
+	LD	A, (HL)
+	LD 	H, ROMBUF>>8
+	LD 	L, A
+	EX	(SP), HL		; Восстанавливаем значение HL, а адрес вызова помещеам в стек
+	RET				; Вызываем считанную функцию
+
+; ──────────────────────────────────────────────
+; Точка возврата из функции BDOS
+; ──────────────────────────────────────────────
+
+BDOSRET:				; Точка возврата из функции BDOS
+	LD	HL, (TMPSTK)		; 7 bytes
+	LD	SP, HL
+	LD	L, A
+	LD	H, B
+	RET
 
 	END
-
