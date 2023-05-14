@@ -1,5 +1,5 @@
 ; mon580-2-rom.asm-Include File for Assembler Program
-INITBDOS equ 7645H
+INITBDOS equ 7672H
 BDOSENTRY equ 7640H
 DirectiveModifyROM equ 7640H
 DirectiveDumpROM equ 7656H
