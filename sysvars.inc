@@ -45,7 +45,7 @@ KNS_RD	EQU	BASE+21H		; 1 Константа чтения
 BUFSIZ	EQU	BASE+22H		; 1 Размер буфера ввода
 BUFCNT	EQU	BASE+23H		; 1 Число введенных символов в буфер ввода
 COMBUF	EQU	BASE+24H		; COMBUFMAX буфер ввода директивы
-COMBUFMAX	EQU	29		; Максимальный размер буфера ввода команд
+COMBUFMAX	EQU	28		; Максимальный размер буфера ввода команд
 STACK	EQU	BASE+0D0H		; стек монитора
 
 ROMBUF	EQU	BASE+40H		; ROMBUFMAX буфер подкачки кода из ROM-диска (только для МОНИТОРа 2.0)

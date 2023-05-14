@@ -2304,7 +2304,7 @@ ColdBoot:
 	LD	HL, 3
 	LD	(PDB),HL
 	LD	A,(PDA)
-	CP	0C3H
+	CP	0CDH
 
 	JP	NZ, WarmBoot
 
