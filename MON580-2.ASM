@@ -602,12 +602,14 @@ DirectiveSearch:
 	IF	(DirectiveSearch & 0FF00H) <> (DirectiveReadROM & 0FF00H)
 		ERROR	"DirectiveReadROM and DirectiveSearch must be in same page"
 	ENDIF
-	LD	A,C			; 11 bytes
-	CP	(HL)
-	CALL	Z,PrintCRAndHexWordAndSpace
-	CALL	IncHLAndRetIfEqDEWithBrk
-	JP	DirectiveSearch
+	FJMP	3, DirectiveSearchROM
 
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
 	NOP
 ; 컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
 
