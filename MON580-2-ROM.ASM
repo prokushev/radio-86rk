@@ -24,6 +24,11 @@
 ; ───────────────────────────────────────────────────────────────────────
 
 	INCLUDE	"syscalls.inc"
+	IF	STUB
+	INCLUDE	"stub.inc"
+	ELSE
+	INCLUDE	"MON580-2.INC"
+	ENDIF
 
 ; ───────────────────────────────────────────────────────────────────────
 ; Адреса системных переменных
@@ -46,7 +51,7 @@ FJPZ	MACRO	block, adr
 
 
 CHK	MACRO	adr, msg
-		IF	$>=(adr)
+		IF	$>(adr)
 			ERROR	msg
 		ENDIF
 	ENDM
@@ -62,8 +67,104 @@ CHK	MACRO	adr, msg
 ; TODO Блок защиты загрузки на Орион-128. Выводит
 ; сообщение, что данный диск предназначен для Радио-86РК.
 ; ──────────────────────────────────────────────
-
+	nop
+	nop
+	nop
+	db 0c3h
 	RET
+
+; ──────────────────────────────────────────────
+; Инициализация симулятора CP/M
+; Размещает точки входа в BIOS и BDOS
+; ──────────────────────────────────────────────
+
+	SHARED	INITBDOS
+INITBDOS:
+	LD	A, 0C3H				; JMP opcode
+	LD	(0), A
+	LD	HL, BDOSST
+	LD	(0001H), HL
+
+	LD	(5), A
+;	LD	HL, BIOSENTRY+3	; WBOOT
+	LD	(0006H), HL
+
+	LD	(BDOSST), A
+	LD	HL, BDOS
+	LD	(BDOSST+1), HL
+
+	LD	(8), A
+	LD	HL, FARJZ
+	LD	(9), HL
+
+	LD	HL, CPMMSG
+	CALL	PrintString
+	JP	WarmBoot
+CPMMSG:
+	DB	' s |mulqtorom CP/','M'+80H
+
+	CHK	ROMBUF+ROMBUFMAX, "* Block overflow ! *"
+	DEPHASE
+
+; ───────────────────────────────────────────────────────────────────────
+; Блок 1
+; ───────────────────────────────────────────────────────────────────────
+
+	ORG	080H
+	PHASE	ROMBUF
+
+; ──────────────────────────────────────────────
+; Блок эмуляции точек входа BDOS
+; ──────────────────────────────────────────────
+; To make a BDOS call in an 8-bit CP/M, use:
+;
+;    LD  DE,parameter
+;    LD  C,function
+;    CALL    5
+;
+; In CP/M 1.x, 8-bit values are returned in A and 
+; 16-bit values in BA. In later 8-bit versions,
+; they are also returned in L and HL respectively. 
+; ──────────────────────────────────────────────
+
+	SHARED	BDOSENTRY
+BDOSENTRY:
+	LD	HL, 0000H		; Сохраняем стек
+	ADD	HL, SP
+	LD	(TMPSTK), HL
+	LD	SP, STACK
+	DEC	C
+	JP	M, WarmBoot		; Функция 0 P_TERMCPM
+	LD	HL, BDOSRET
+	PUSH	HL
+	LD	A, C
+	LD	C, E
+	FJPZ	2, C_READ		; Функция 1 C_READ
+	DEC	A
+	JP	Z, PrintCharFromC	; Функция 2 C_WRITE
+	SUB	4
+	FJPZ	2, C_RAWIO		; Функция 6 C_RAWIO
+	SUB	3
+	FJPZ	2, C_WRITESTR		; Функция 9 C_WRITESTR
+	DEC	A
+	FJPZ	2, C_READSTR		; Функция 10 C_READSTR
+	DEC	A
+	JP	Z, GetKeyboardStatus	; Функция 11 C_STAT
+	DEC	A
+	JP	NZ, WarmBoot	; Функции 13 и выше не поддерживается
+	LD	A, 20H		; Функция 12 S_BDOSVER
+	LD	B, 00H
+	RET
+
+	CHK	ROMBUF+ROMBUFMAX, "* Block overflow ! *"
+	DEPHASE
+
+; ───────────────────────────────────────────────────────────────────────
+; Блок 2
+; ───────────────────────────────────────────────────────────────────────
+
+	ORG	0100H
+	PHASE	ROMBUF
 
 ; ──────────────────────────────────────────────
 ; Печать строки по адресу DE
@@ -87,8 +188,7 @@ C_WRITESTR:
 
 C_READ:	EX	(SP),HL		; восстанавливаем HL из стеке
 	CALL	InputSymbol	; 6 bytes
-	LD	C, A
-	JP	PrintCharFromC
+	JP	PrintCharFromA
 
 ; ──────────────────────────────────────────────
 ;BDOS function 6 (C_RAWIO) - Direct console I/O
@@ -136,10 +236,7 @@ InputNextSymbol:
 	JP	Z,ProcessBackspace
 	INC	HL
 	LD	(HL), A
-	PUSH	BC
-	LD	C, A
-	CALL	PrintCharFromC
-	POP	BC
+	CALL	PrintCharFromA
 	CP	13
 	JP	Z,L00B2H
 	CP	03
@@ -168,91 +265,7 @@ ProcessBackspace:
 
 BkSp:	DB	8,' ',8+80H
 
-	if 0
-; ──────────────────────────────────────────────
-; Инициализация симулятора CP/M
-; Размещает точки входа в BIOS и BDOS
-; ──────────────────────────────────────────────
-
-	LD	A, 0C3H				; JMP opcode
-	LD	(0), A
-	LD	(5), A
-	LD	(8), A
-	LD	(BDOSST), A
-	LD	HL, BDOS
-	LD	(BDOSST+1), HL
-	LD	HL, BIOSENTRY+3	; WBOOT
-	LD	(0001H), HL
-	LD	HL, BDOSST
-	LD	(0006H), HL
-	LD	HL, BDOS
-	JP	WarmBoot
-
-	endif
-
 	CHK	ROMBUF+ROMBUFMAX, "* Block overflow ! *"
-	DEPHASE
-
-; ───────────────────────────────────────────────────────────────────────
-; Блок 1
-; ───────────────────────────────────────────────────────────────────────
-
-	ORG	080H
-	PHASE	ROMBUF
-
-; ──────────────────────────────────────────────
-; Блок эмуляции точек входа BDOS
-; ──────────────────────────────────────────────
-; To make a BDOS call in an 8-bit CP/M, use:
-;
-;    LD  DE,parameter
-;    LD  C,function
-;    CALL    5
-;
-; In CP/M 1.x, 8-bit values are returned in A and 
-; 16-bit values in BA. In later 8-bit versions,
-; they are also returned in L and HL respectively. 
-; ──────────────────────────────────────────────
-
-	SHARED	BDOSENTRY
-BDOSENTRY:
-	LD	HL, 0000H		; Сохраняем стек
-	ADD	HL, SP
-	LD	(TMPSTK), HL
-	LD	SP, STACK
-	DEC	C
-	JP	M, WarmBoot		; Функция 0 P_TERMCPM
-	LD	HL, BDOSRET
-	PUSH	HL
-	LD	A, C
-	LD	C, E
-	FJPZ	0, C_READ		; Функция 1 C_READ
-	DEC	A
-	JP	Z, PrintCharFromC	; Функция 2 C_WRITE
-	SUB	4
-	FJPZ	0, C_RAWIO		; Функция 6 C_RAWIO
-	SUB	3
-	FJPZ	0, C_WRITESTR		; Функция 9 C_WRITESTR
-	DEC	A
-	FJPZ	0, C_READSTR		; Функция 10 C_READSTR
-	DEC	A
-	JP	Z, GetKeyboardStatus	; Функция 11 C_STAT
-	DEC	A
-	JP	NZ, WarmBoot	; Функции 13 и выше не поддерживается
-	LD	A, 20H		; Функция 12 S_BDOSVER
-	LD	B, 00H
-	RET
-
-	DEPHASE
-
-; ───────────────────────────────────────────────────────────────────────
-; Блок 2
-; ───────────────────────────────────────────────────────────────────────
-
-	ORG	0100H
-	PHASE	ROMBUF
-
-
 	DEPHASE
 
 ; ───────────────────────────────────────────────────────────────────────
@@ -262,8 +275,91 @@ BDOSENTRY:
 	ORG	0180H
 	PHASE	ROMBUF
 
-	DB	80H dup 0ffH
+	SHARED	DirectiveModifyROM
+DirectiveModifyROM:
+	CALL	PrintCRAndHexWordAndSpaceAndHexByteMemAndSpace			; 22 bytes
+	PUSH	HL
+	CALL	InputDirective
+	POP	HL
+	JP	NC,AFA3B
+	PUSH	HL
+	CALL	GET_HL
+	LD	A,L
+	POP	HL
+	LD	(HL),A
+AFA3B:	INC	HL
+	JP	DirectiveModifyROM
 
+; ──────────────────────────────────────────────
+; Дамп области памяти с HL по DE
+; ВХОД:
+;	HL	- начальный адрес
+;	DE	- конечный адрес
+; ВЫХОД:
+;	HL	- конечный адрес источника
+; ИЗМЕНЯЕТ:
+;	AF, HL		!!TODO!! проверить подпрограммы на изменение
+; ──────────────────────────────────────────────
+
+	SHARED	DirectiveDumpROM
+DirectiveDumpROM:
+	CALL	PrintCRAndHexWordAndSpace			; 18 bytes
+AF9C8:	CALL	PrintHexByteFromMemAndSpace
+	CALL	IncHLAndRetIfEqDEWithBrk
+	LD	A,L
+	AND	0FH
+	JP	Z,DirectiveDumpROM
+	JP	AF9C8
+
+; ──────────────────────────────────────────────
+; Вывод текста области памяти с HL по DE
+; ВХОД:
+;	HL	- начальный адрес
+;	DE	- конечный адрес
+; ВЫХОД:
+;	HL	- конечный адрес источника
+; ИЗМЕНЯЕТ:
+;	AF, HL		!!TODO!! проверить подпрограммы на изменение
+; ──────────────────────────────────────────────
+
+	SHARED	DirectiveListROM
+DirectiveListROM:
+	CALL	PrintCRAndHexWordAndSpace			; 30 bytes
+AFA0B:	LD	A,(HL)
+	OR	A
+	JP	M,AFA15
+	CP	20H
+	JP	NC,AFA17
+AFA15:	LD	A,'.'
+AFA17:	CALL	PrintCharFromA
+	CALL	IncHLAndRetIfEqDEWithBrk
+	LD	A,L
+	AND	0FH
+	JP	Z,DirectiveListROM
+	JP	AFA0B
+
+; ──────────────────────────────────────────────
+; Перемещает область памяти с HL по DE в адреса BC
+; ВХОД:
+;	HL	- начальный адрес
+;	DE	- конечный адрес
+;	BC	- целевой адрес
+; ВЫХОД:
+;	HL	- конечный адрес источника
+;	BC	- целевой конечный адрес
+; ИЗМЕНЯЕТ:
+;	AF, HL, BC
+; ──────────────────────────────────────────────
+
+	SHARED	DirectiveTransferROM
+DirectiveTransferROM:
+	LD	A,(HL)			; 9 bytes
+	LD	(BC),A
+	INC	BC
+	CALL	IncHLAndRetIfEqDE
+	JP	DirectiveTransferROM
+
+	CHK	ROMBUF+ROMBUFMAX, "* Block overflow ! *"
 	DEPHASE
 
 ; ───────────────────────────────────────────────────────────────────────
@@ -275,6 +371,7 @@ BDOSENTRY:
 
 	DB	80H dup 0ffH
 
+	CHK	ROMBUF+ROMBUFMAX, "* Block overflow ! *"
 	DEPHASE
 
 ; ───────────────────────────────────────────────────────────────────────
@@ -286,6 +383,7 @@ BDOSENTRY:
 
 	DB	80H dup 0ffH
 
+	CHK	ROMBUF+ROMBUFMAX, "* Block overflow ! *"
 	DEPHASE
 
 ; ───────────────────────────────────────────────────────────────────────
@@ -297,6 +395,7 @@ BDOSENTRY:
 
 	DB	80H dup 0ffH
 
+	CHK	ROMBUF+ROMBUFMAX, "* Block overflow ! *"
 	DEPHASE
 
 ; ───────────────────────────────────────────────────────────────────────
@@ -308,6 +407,7 @@ BDOSENTRY:
 
 	DB	80H dup 0ffH
 
+	CHK	ROMBUF+ROMBUFMAX, "* Block overflow ! *"
 	DEPHASE
 
 ; ───────────────────────────────────────────────────────────────────────
@@ -319,6 +419,7 @@ BDOSENTRY:
 
 	DB	80H dup 0ffH
 
+	CHK	ROMBUF+ROMBUFMAX, "* Block overflow ! *"
 	DEPHASE
 
 ; ───────────────────────────────────────────────────────────────────────
@@ -330,6 +431,7 @@ BDOSENTRY:
 
 	DB	80H dup 0ffH
 
+	CHK	ROMBUF+ROMBUFMAX, "* Block overflow ! *"
 	DEPHASE
 
 ; ───────────────────────────────────────────────────────────────────────
@@ -341,6 +443,7 @@ BDOSENTRY:
 
 	DB	80H dup 0ffH
 
+	CHK	ROMBUF+ROMBUFMAX, "* Block overflow ! *"
 	DEPHASE
 
 ; ───────────────────────────────────────────────────────────────────────
@@ -352,6 +455,7 @@ BDOSENTRY:
 
 	DB	80H dup 0ffH
 
+	CHK	ROMBUF+ROMBUFMAX, "* Block overflow ! *"
 	DEPHASE
 
 ; ───────────────────────────────────────────────────────────────────────
@@ -363,6 +467,7 @@ BDOSENTRY:
 
 	DB	80H dup 0ffH
 
+	CHK	ROMBUF+ROMBUFMAX, "* Block overflow ! *"
 	DEPHASE
 
 ; ───────────────────────────────────────────────────────────────────────
@@ -374,6 +479,7 @@ BDOSENTRY:
 
 	DB	80H dup 0ffH
 
+	CHK	ROMBUF+ROMBUFMAX, "* Block overflow ! *"
 	DEPHASE
 
 ; ───────────────────────────────────────────────────────────────────────
@@ -385,6 +491,7 @@ BDOSENTRY:
 
 	DB	80H dup 0ffH
 
+	CHK	ROMBUF+ROMBUFMAX, "* Block overflow ! *"
 	DEPHASE
 
 ; ───────────────────────────────────────────────────────────────────────
@@ -396,6 +503,7 @@ BDOSENTRY:
 
 	DB	80H dup 0ffH
 
+	CHK	ROMBUF+ROMBUFMAX, "* Block overflow ! *"
 	DEPHASE
 
 	END

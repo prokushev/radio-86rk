@@ -313,7 +313,7 @@ TapeWriteFromHLtoDE:
 
 InputDirective:
 	LD	HL,COMBUF-2
-	LD	(HL), (COMBUF & 00FFh)+COMBUFMAX	; Размер буфера
+	LD	(HL), COMBUFMAX	; Размер буфера
 	EX	DE, HL
 
 ; ──────────────────────────────────────────────
@@ -2455,11 +2455,11 @@ ColdBoot:
 	LD	A,8AH
 	LD	(PU),A
 
-	LD	C,L			; 0
-	LD	DE,COMBUF+COMBUFMAX
+	LD	C,L			; LD C, 0
+	LD	DE,COMBUF+COMBUFMAX-1
 	CALL	DirectiveFill
 
-	LD	L, (BASE-1) & 0FFH	; LD HL, BASE-1
+	LD	HL, BASE-1
 	LD	(RAMTOP),HL
 
 	LD	A, 0A9H

@@ -9,16 +9,6 @@
 	Z80SYNTAX	EXCLUSIVE
 
 ; ──────────────────────────────────────────────
-; Дальняя CALL block, label
-; ──────────────────────────────────────────────
-
-FCALL	MACRO	block, adr
-		CALL	FARCALL
-		DB	block
-		DB	(adr & 0FFH)
-	ENDM
-
-; ──────────────────────────────────────────────
 ; Дальняя JMP block, label
 ; ──────────────────────────────────────────────
 
@@ -134,40 +124,63 @@ Version:
 	DB	"V5.x"
 
 ; ──────────────────────────────────────────────
-; Блок эмуляции точек входа BIOS и BDOS
+; Печать строки по адресу HL
+; ВХОД:
+;	HL	- адрес строки. 0H - признак конца
+;		  или символ больше 7Fh
+; ВЫХОД:
+;	HL	- адрес последнего напечатанного символа
+; ИЗМЕНЯЕТ:
+;	AF, BC, HL
+; ПРИМЕЧАНИЯ:
+; 	Код в ROM-диске ожидает именно такие 4 первые
+;	команды. При их изменении нужно править в ROM-диске
 ; ──────────────────────────────────────────────
 
-	SHARED	BIOS
-BIOS:
-BIOSENTRY:
-	JP	ColdBoot		; CBOOT Холодный старт
-	JP	WarmBoot		; WBOOT Теплый старт
-	JP	GetKeyboardStatus	; CONST Статус консоли
-	JP	InputSymbol		; CONIN Консольный ввод
-	JP	PrintCharFromC		; CONOUT Консольный вывод
-	JP	PrintCharFromC		; LIST Печать на принтер. это д.быть PRINT
-	JP	TapeWriteByte		; PUNCH/AUXOUT Вывод не перфоратор/магнитофон
-	JP	TapeReadByte		; READER/AUXIN Ввод данных с перволенты/магнитофона
-BIOSENTRYEND:
+PrintString:
+	PUSH	BC
+	LD	B, 0
+	LD	A,(HL)
+	CP	B			; CP 0 или CP '$'
+	POP	BC
+	RET	Z
+	CALL	PrintCharFromA
+	INC	HL
+	RET	M			; RET if high bit set
+	JP	PrintString
 
 ; ──────────────────────────────────────────────
 
+; ──────────────────────────────────────────────
 
-INIT2:	
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
+LD_BLK:	CALL	TapeReadByteNoSync			; 10 bytes
+	LD	(HL),A
+	CALL	IncHLAndRetIfEqDE
+	JP	LD_BLK
+
+; ──────────────────────────────────────────────
+; Возвращает символ в текущих координатах видео ОЗУ
+; ВХОД:
+;	Нет
+; ВЫХОД:
+;	A	- символ в текущих координатах
+; ИЗМЕНЯЕТ:
+;	A
+; ──────────────────────────────────────────────
+
+ReadVideoRAM:
+	PUSH	HL			; 7 bytes
+	LD	HL,(EK_ADR)
+	LD	A,(HL)
+	POP	HL
+	RET
+
+; ──────────────────────────────────────────────
+
+RST_18:	EX	(SP),HL			; 6 bytes
+	CALL	PrintString
+	EX	(SP),HL
+	RET
 
 ;	ORG	0F86CH
 ; ──────────────────────────────────────────────
@@ -315,7 +328,7 @@ ReadBlock:
 	LD	BC, ROMBUF
 	LD	L, 0
 	LD	E, 080h
-	CCF						; CF=0
+	NOP						; SCF,CCF	; CF=0
 	RRA						; A/2
 	LD	H, A
 	LD	D, A
@@ -342,7 +355,7 @@ skip:
 
 InputDirective:
 	LD	HL,COMBUF-2
-	LD	(HL), (COMBUF & 00FFh)+COMBUFMAX	; Размер буфера
+	LD	(HL), COMBUFMAX	; Размер буфера
 	EX	DE, HL
 
 ; ──────────────────────────────────────────────
@@ -365,14 +378,14 @@ GotoCmdLineBegin:
 	LD	B, A
 	CALL	SET_RL			; Включить латинский регистр
 InputNextSymbol:
-	CALL	InputSymbol		; используется в DirectiveModify
+	CALL	InputSymbol
 	CP	7FH
 	JP	Z,ProcessBackspace
 	INC	HL
 	LD	(HL), A
 	CALL	PrintCharFromA
 	CP	13
-	JP	Z,L00B2H		;AF91A
+	JP	Z,Enter
 	CP	03
 	JP	Z,WarmBoot
 	INC	B
@@ -380,7 +393,7 @@ InputNextSymbol:
 	CP	B
 	JP	NZ, InputNextSymbol;	SyntaxError
 	LD	B, C
-L00B2H:	INC	DE
+Enter:	INC	DE
 	EX	DE, HL
 	LD	(HL), B
 	RET
@@ -390,7 +403,24 @@ L00B2H:	INC	DE
 
 TABK2:	DB	09,0AH,0DH,7FH,08H,19H,18H,1AH	; 8 bytes
 
-BDOS:	FJMP	1, BDOSENTRY
+; ──────────────────────────────────────────────
+; Перемещает область памяти с HL по DE в адреса BC
+; ВХОД:
+;	HL	- начальный адрес
+;	DE	- конечный адрес
+;	BC	- целевой адрес
+; ВЫХОД:
+;	HL	- конечный адрес источника
+;	BC	- целевой конечный адрес
+; ИЗМЕНЯЕТ:
+;	AF, HL, BC
+; ──────────────────────────────────────────────
+
+DirectiveTransfer:
+;	IF	(DirectiveFill & 0FF00H) <> (DirectiveTransfer & 0FF00H)
+;		ERROR	"DirectiveGoto and DirectiveTransfer must be in same page"
+;	ENDIF
+	FJMP	3, DirectiveTransferROM
 
 ; ──────────────────────────────────────────────
 ; Читает аргументы со второй позиции буфера команды в регистры HL, DE, BC
@@ -431,6 +461,7 @@ ParseParameters:
 	RET	C
 	JP	SyntaxError
 
+
 ; ──────────────────────────────────────────────
 ; Заполняет память с HL по DE байтом C
 ; ВХОД:
@@ -444,32 +475,13 @@ ParseParameters:
 ; ──────────────────────────────────────────────
 
 DirectiveFill:					; 7 bytes
-	LD	(HL),C
-	CALL	IncHLAndRetIfEqDE
-	JP	DirectiveFill
-
-; ──────────────────────────────────────────────
-; Перемещает область памяти с HL по DE в адреса BC
-; ВХОД:
-;	HL	- начальный адрес
-;	DE	- конечный адрес
-;	BC	- целевой адрес
-; ВЫХОД:
-;	HL	- конечный адрес источника
-;	BC	- целевой конечный адрес
-; ИЗМЕНЯЕТ:
-;	AF, HL, BC
-; ──────────────────────────────────────────────
-
-DirectiveTransfer:
 	IF	(DirectiveFill & 0FF00H) <> (DirectiveTransfer & 0FF00H)
 		ERROR	"DirectiveGoto and DirectiveTransfer must be in same page"
 	ENDIF
-	LD	A,(HL)			; 9 bytes
-	LD	(BC),A
-	INC	BC
+
+	LD	(HL),C
 	CALL	IncHLAndRetIfEqDE
-	JP	DirectiveTransfer
+	JP	DirectiveFill
 
 ; ──────────────────────────────────────────────
 
@@ -517,6 +529,16 @@ DirectiveGoto:
 		ERROR	"DirectiveGoto and DirectiveFill must be in same page"
 	ENDIF
 	JP	(HL)			; 1 bytes
+
+; ──────────────────────────────────────────────
+
+TOBACK:					; 6 bytes
+	CALL	SetCursorPos
+	JP	POPREGA
+
+	NOP
+	NOP
+	NOP
 
 ; ──────────────────────────────────────────────
 ; Сравнение значений HL и DE
@@ -596,8 +618,22 @@ PrintCR:
 	DB	13,10 + 80H
 	RET
 
+DirectiveDump:
+	IF	(DirectiveSearch & 0FF00H) <> (DirectiveDump & 0FF00H)
+		ERROR	"DirectiveDump and DirectiveSearch must be in same page"
+	ENDIF
+	FJMP	3, DirectiveDumpROM
+
+DirectiveModify:
+
+	IF	(DirectiveSearch & 0FF00H) <> (DirectiveModify & 0FF00H)
+		ERROR	"DirectiveModify and DrectiveSearch must be in same page"
+	ENDIF
+
+	FJMP	3, DirectiveModifyROM
+
 ; ──────────────────────────────────────────────
-; Дамп области памяти с HL по DE
+; Вывод текста области памяти с HL по DE
 ; ВХОД:
 ;	HL	- начальный адрес
 ;	DE	- конечный адрес
@@ -607,18 +643,13 @@ PrintCR:
 ;	AF, HL		!!TODO!! проверить подпрограммы на изменение
 ; ──────────────────────────────────────────────
 
-DirectiveDump:
-	IF	(DirectiveSearch & 0FF00H) <> (DirectiveDump & 0FF00H)
-		ERROR	"DirectiveDump and DirectiveSearch must be in same page"
-	ENDIF
-	CALL	PrintCRAndHexWordAndSpace			; 18 bytes
-AF9C8:	CALL	PrintHexByteFromMemAndSpace
-	CALL	IncHLAndRetIfEqDEWithBrk
-	LD	A,L
-	AND	0FH
-	JP	Z,DirectiveDump
-	JP	AF9C8
+DirectiveList:
 
+	IF	(DirectiveSearch & 0FF00H) <> (DirectiveList & 0FF00H)
+		ERROR	"DirectiveList and DirectiveSearch must be in same page"
+	ENDIF
+
+	FJMP	3, DirectiveListROM
 
 ; ──────────────────────────────────────────────
 DIRTABLE:				; 23 bytes
@@ -639,35 +670,7 @@ DIRTABLE:				; 23 bytes
 	DB	'T', DirectiveTransfer & 0FFH
 	DB	0
 
-
-DirectiveModify:
-
-	IF	(DIRTABLE & 0FF00H) <> (DirectiveModify & 0FF00H)
-		ERROR	"DirectiveModify and DIRTABLE must be in same page"
-	ENDIF
-
-	CALL	PrintCRAndHexWordAndSpaceAndHexByteMemAndSpace			; 22 bytes
-	PUSH	HL
-	CALL	InputDirective
-	POP	HL
-	JP	NC,AFA3B
-	PUSH	HL
-	CALL	GET_HL
-	LD	A,L
-	POP	HL
-	LD	(HL),A
-AFA3B:	INC	HL
-	JP	DirectiveModify
-
 ; ──────────────────────────────────────────────
-
-DirectiveOutputTape:
-
-	IF	(DIRTABLE & 0FF00H) <> (DirectiveOutputTape & 0FF00H)
-		ERROR	"DirectiveOutputTape and DIRTABLE must be in same page"
-	ENDIF
-
-	JP	DirectiveOutputTape_2
 
 DirectiveCompare:
 	IF	(DirectiveCompare & 0FF00H) <> (DirectiveFill & 0FF00H)
@@ -676,40 +679,13 @@ DirectiveCompare:
 
 	JP	DirectiveCompare_2
 
-; ──────────────────────────────────────────────
-; Вывод текста области памяти с HL по DE
-; ВХОД:
-;	HL	- начальный адрес
-;	DE	- конечный адрес
-; ВЫХОД:
-;	HL	- конечный адрес источника
-; ИЗМЕНЯЕТ:
-;	AF, HL		!!TODO!! проверить подпрограммы на изменение
-; ──────────────────────────────────────────────
 
-DirectiveList:
+DirectiveOutputTape:
 
-	IF	(DIRTABLE & 0FF00H) <> (DirectiveList & 0FF00H)
-		ERROR	"DirectiveList and DIRTABLE must be in same page"
+	IF	(DIRTABLE & 0FF00H) <> (DirectiveOutputTape & 0FF00H)
+		ERROR	"DirectiveOutputTape and DIRTABLE must be in same page"
 	ENDIF
 
-	CALL	PrintCRAndHexWordAndSpace			; 30 bytes
-AFA0B:	LD	A,(HL)
-	OR	A
-	JP	M,AFA15
-	CP	20H
-	JP	NC,AFA17
-AFA15:	LD	A,'.'
-AFA17:	CALL	PrintCharFromA
-	CALL	IncHLAndRetIfEqDEWithBrk
-	LD	A,L
-	AND	0FH
-	JP	Z,DirectiveList
-	JP	AFA0B
-
-; ──────────────────────────────────────────────
-
-DirectiveOutputTape_2:
 	LD	A,C
 	OR	A
 	JP	Z,AFB35
@@ -824,18 +800,102 @@ AFD77:	DEC	C
 	JP	AFD77
 
 ; ──────────────────────────────────────────────
+; Увеличивает HL и вызывает второй RET, если равен DE
+; При нажатии Brk выходит с ошибкой в МОНИТОР
+; ВХОД:
+;	HL	- текущий адрес
+;	DE	- целевой адрес
+; ВЫХОД:
+;	Нет
+; ИЗМЕНЯЕТ:
+;	AF
+; ──────────────────────────────────────────────
+	SHARED	IncHLAndRetIfEqDEWithBrk
+IncHLAndRetIfEqDEWithBrk:
+	CALL	ReadKeyCodeChkBrk		; 11 bytes
 
-RST_18:	EX	(SP),HL			; 6 bytes
-	CALL	PrintString
-	EX	(SP),HL
+; ──────────────────────────────────────────────
+; Увеличивает HL и вызывает второй RET, если равен DE
+; ВХОД:
+;	HL	- текущий адрес
+;	DE	- целевой адрес
+; ВЫХОД:
+;	Нет
+; ИЗМЕНЯЕТ:
+;	AF, HL
+; ──────────────────────────────────────────────
+	SHARED	IncHLAndRetIfEqDE
+IncHLAndRetIfEqDE:
+	CALL	Compare_HL_DE
+	INC	HL
+	RET	NZ
+	DEC	HL
+POPAF:	POP	AF
 	RET
+	
+; ──────────────────────────────────────────────
+
+ProcessBackspace:
+	LD	A,B			; 15 bytes
+	OR	A			; начало буфера ввода ?
+	JP	Z,GotoCmdLineBegin	; GotoCmdLineBegin
+	DEC	B
+	DEC	HL
+	CALL	RST_18
+	DB	8,' ',8+80H
+	JP	InputNextSymbol
+
+; ──────────────────────────────────────────────
+; Ввод символа без ожидания с проверкой нажатия Ctrl-C. 
+; При нажатии Ctrl-C выход в МОНИТОР с переинцициализацией ВГ.
+; ВХОД:
+;	Нет
+; ВЫХОД:
+;	A=0FFH - не нажата
+;	A=0FEH - РУС/ЛАТ
+;	A - код клавиши
+; ИЗМЕНЯЕТ:
+;	AF
+; ──────────────────────────────────────────────
+
+ReadKeyCodeChkBrk:
+	CALL	ReadKeyCode			; 12 bytes
+	CP	3
+	RET	NZ
+	CALL	InitVideo
+	JP	SyntaxError
 
 	NOP
 	NOP
 	NOP
 	NOP
 	NOP
-	
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+
 ; ──────────────────────────────────────────────
 
 TapeReadBlock:
@@ -857,8 +917,6 @@ TapeReadBlock:
 		ERROR	"RUSLAT low byte must be 06h"
 	ENDIF
 SET_RL:	LD	(RUSLAT),A		; Т.к. адрес RUSLAT xx06h, то предыдущий трюк с LD B, .. повторится..
-
-; ──────────────────────────────────────────────
 
 	CHK	0FACEH, "* Internal subroutine InitVideo shifted ! *"
 InitVideo:			; 1001.0011
@@ -909,6 +967,7 @@ AFAE1:	LD	A,(HL)		; read status
 ;	AF, BС, DE, HL
 ; ──────────────────────────────────────────────
 
+	SHARED	GET_HL
 GET_HL:	LD	HL,0		; 48 bytes
 AF95D:	LD	A,(DE)		; Выход: CY=1 если разделитель <ВК>
 	INC	DE
@@ -981,21 +1040,15 @@ TAB:	LD	A, L
 	LD	L, A
 	RET
 
+; ──────────────────────────────────────────────
 
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-
+TABK1:	DB	0CH,1FH,1BH,0,1,2,3,4,5	  ; 9 bytes
 
 ; ──────────────────────────────────────────────
 
-LD_BLK:	CALL	TapeReadByteNoSync			; 10 bytes
-	LD	(HL),A
-	CALL	IncHLAndRetIfEqDE
-	JP	LD_BLK
+AFEF3:	LD	A,H			; 7 bytes
+	LD	HL,TABK1
+	JP	AFEFE
 
 	
 ; ──────────────────────────────────────────────
@@ -1071,11 +1124,6 @@ PrintHexWordAndSpace:
 	LD	A,L
 	JP	PrintHexByteAndSpace
 
-; ──────────────────────────────────────────────
-
-AFEF3:	LD	A,H			; 7 bytes
-	LD	HL,TABK1
-	JP	AFEFE
 
 ; ──────────────────────────────────────────────
 
@@ -1354,6 +1402,7 @@ PrintHexNibble:
 ;	Нет
 ; ──────────────────────────────────────────────
 
+	SHARED	PrintCharFromA
 PrintCharFromA:
 	PUSH	BC		; 
 	LD	C,A
@@ -1640,7 +1689,7 @@ AFC34:	LD	HL,(TMPSTK)		; 18 bytes
 ; ИЗМЕНЯЕТ:
 ;	AF
 ; ──────────────────────────────────────────────
-
+	SHARED	PrintCRAndHexWordAndSpaceAndHexByteMemAndSpace
 PrintCRAndHexWordAndSpaceAndHexByteMemAndSpace:
 	CALL	PrintCRAndHexWordAndSpace			; 12 bytes
 
@@ -1654,6 +1703,7 @@ PrintCRAndHexWordAndSpaceAndHexByteMemAndSpace:
 ;	AF
 ; ──────────────────────────────────────────────
 
+	SHARED	PrintHexByteFromMemAndSpace
 PrintHexByteFromMemAndSpace:
 	LD	A,(HL)
 
@@ -1684,39 +1734,6 @@ PrintSpace:
 	LD	A,20H
 	JP	PrintCharFromA
 
-; ──────────────────────────────────────────────
-; Увеличивает HL и вызывает второй RET, если равен DE
-; При нажатии Brk выходит с ошибкой в МОНИТОР
-; ВХОД:
-;	HL	- текущий адрес
-;	DE	- целевой адрес
-; ВЫХОД:
-;	Нет
-; ИЗМЕНЯЕТ:
-;	AF
-; ──────────────────────────────────────────────
-
-IncHLAndRetIfEqDEWithBrk:
-	CALL	ReadKeyCodeChkBrk		; 11 bytes
-
-; ──────────────────────────────────────────────
-; Увеличивает HL и вызывает второй RET, если равен DE
-; ВХОД:
-;	HL	- текущий адрес
-;	DE	- целевой адрес
-; ВЫХОД:
-;	Нет
-; ИЗМЕНЯЕТ:
-;	AF, HL
-; ──────────────────────────────────────────────
-
-IncHLAndRetIfEqDE:
-	CALL	Compare_HL_DE
-	INC	HL
-	RET	NZ
-	DEC	HL
-POPAF:	POP	AF
-	RET
 
 
 ; ──────────────────────────────────────────────
@@ -1729,7 +1746,7 @@ POPAF:	POP	AF
 ;	AF		 TODO: проверить, что изменяет GetKeyboardStatus
 ; ──────────────────────────────────────────────
 
-InputSymbol:
+InputSymbol:				; 15 bytes
 	CALL	GetKeyboardStatus
 	OR	A
 	JP	Z,InputSymbol
@@ -1739,15 +1756,6 @@ InputSymbol:
 	RET
 
 
-; ──────────────────────────────────────────────
-
-TABK1:	DB	0CH,1FH,1BH,0,1,2,3,4,5	  ; 9 bytes
-
-; ──────────────────────────────────────────────
-
-TOBACK:	
-	CALL	SetCursorPos
-	JP	POPREGA
 
 
 ; ──────────────────────────────────────────────
@@ -2086,7 +2094,7 @@ skip_ESC_I:
 
 ClearScreen:
 	LD	HL,SA		; 17 bytes
-CLSLOO:	XOR	A
+CLSLOO:	XOR	A		; Метку не переносить! Используется ClearEOS
 	LD	(HL),A
 	INC	HL
 	OR	H
@@ -2170,26 +2178,6 @@ CursorUp:
 
 
 ; ──────────────────────────────────────────────
-; Ввод символа без ожидания с проверкой нажатия Ctrl-C. 
-; При нажатии Ctrl-C выход в МОНИТОР с переинцициализацией ВГ.
-; ВХОД:
-;	Нет
-; ВЫХОД:
-;	A=0FFH - не нажата
-;	A=0FEH - РУС/ЛАТ
-;	A - код клавиши
-; ИЗМЕНЯЕТ:
-;	AF		 TODO: проверить, что изменяет ReadKeyCode и InitVideo
-; ──────────────────────────────────────────────
-
-ReadKeyCodeChkBrk:
-	CALL	ReadKeyCode			; 12 bytes
-	CP	3
-	RET	NZ
-	CALL	InitVideo
-	JP	SyntaxError
-
-; ──────────────────────────────────────────────
 ; Ввод символа без ожидания. 
 ; ВХОД:
 ;	Нет
@@ -2198,7 +2186,7 @@ ReadKeyCodeChkBrk:
 ;	A=0FEH - РУС/ЛАТ
 ;	A - код клавиши
 ; ИЗМЕНЯЕТ:
-;	AF		 TODO: проверить, что изменяет ReadKeyCode и InitVideo
+;	AF
 ; ──────────────────────────────────────────────
 
 ReadKeyCode:
@@ -2217,19 +2205,6 @@ ReadKeyCode:
 	JP	NZ,AFE97
 	DEC	A
 	RET
-
-; ──────────────────────────────────────────────
-
-ProcessBackspace:
-	LD	A,B			; 15 bytes
-	OR	A			; начало буфера ввода ?
-	JP	Z,GotoCmdLineBegin	; GotoCmdLineBegin
-	DEC	B
-	DEC	HL
-	CALL	RST_18
-	DB	8,' ',8+80H
-	JP	InputNextSymbol
-
 
 ; ──────────────────────────────────────────────
 ; Возвращает в HL координаты курсора
@@ -2289,24 +2264,6 @@ PROD:	LD	DE, SA		; ЗАГРУЗИТЬ АДРЕС
 	RET
 
 ; ──────────────────────────────────────────────
-; Возвращает символ в текущих координатах видео ОЗУ
-; ВХОД:
-;	Нет
-; ВЫХОД:
-;	A	- символ в текущих координатах
-; ИЗМЕНЯЕТ:
-;	A
-; ──────────────────────────────────────────────
-
-ReadVideoRAM:
-	PUSH	HL			; 7 bytes
-	LD	HL,(EK_ADR)
-	LD	A,(HL)
-	POP	HL
-	RET
-
-
-; ──────────────────────────────────────────────
 ; Первичная инициализация МОНИТОРа
 ; ВХОД:
 ;	Нет
@@ -2322,12 +2279,12 @@ ColdBoot:
 
 	LD	A,8AH
 	LD	(PU),A
-
-	LD	C,L			; 0
-	LD	DE,COMBUF+COMBUFMAX
+	
+	LD	C,L			; LD C, 0
+	LD	DE,COMBUF+COMBUFMAX-1
 	CALL	DirectiveFill
 
-	LD	L, (BASE-1) & 0FFH	; LD HL, BASE-1
+	LD	HL, BASE-1
 	LD	(RAMTOP),HL
 
 	LD	A, 0A9H
@@ -2339,35 +2296,59 @@ ColdBoot:
 
 	LD	HL,1D2AH
 	LD	(KNS_RD),HL
-; TODO определить наличие ROM-диска, и если он есть, то запустить с него инит
-	JP	WarmBoot
+
+	; Проверяем наличие ROM-диска (4-ый байт содержит C3H)
+	; TODO Надо проверить разные версии ORDOS, похоже, начальный код разный
+	LD	HL, 3
+	LD	(PDB),HL
+	LD	A,(PDA)
+	CP	0C3H
+
+	JP	NZ, WarmBoot
+
+	FJMP	0, INITBDOS
 
 ; ──────────────────────────────────────────────
-; Печать строки по адресу HL
-; ВХОД:
-;	HL	- адрес строки. 0H - признак конца
-;		  или символ больше 7Fh
-; ВЫХОД:
-;	HL	- адрес последнего напечатанного символа
-; ИЗМЕНЯЕТ:
-;	AF, BC, HL
-; ПРИМЕЧАНИЯ:
-; 	Код в ROM-диске ожидает именно такие 4 первые
-;	команды. При их изменении нужно править в ROM-диске
+; Блок эмуляции точек входа BIOS и BDOS
 ; ──────────────────────────────────────────────
+	ORG	0FF76H
+BIOSENTRY:
+	JP	ColdBoot		; CBOOT Холодный старт
+	JP	WarmBoot		; WBOOT Теплый старт
+	JP	GetKeyboardStatus	; CONST Статус консоли
+	JP	InputSymbol		; CONIN Консольный ввод
+	JP	PrintCharFromC		; CONOUT Консольный вывод
+	JP	PrintCharFromC		; LIST Печать на принтер. это д.быть PRINT
+	JP	TapeWriteByte		; PUNCH/AUXOUT Вывод не перфоратор/магнитофон
+	JP	TapeReadByte		; READER/AUXIN Ввод данных с перволенты/магнитофона
+	JP	0			; HOME	;21: Move disc head to track 0
+	JP	0			; SELDSK	;24: Select disc drive
+	JP	0			; SETTRK	;27: Set track number
+	JP	0			; SETSEC	;30: Set sector number
+	JP	0			; SETDMA	;33: Set DMA address
+	JP	0			; READ	;36: Read a sector
+	JP	0			; WRITE	;39: Write a sector
+	JP	0			; LISTST	;42: Status of list device
+	JP	0			; SECTRAN	;45: Sector translation for skewing
+	JP	0			; CONOST	;48: Status of console output
+	JP	0			; AUXIST	;51: Status of auxiliary input
+	JP	0			; AUXOST	;54: Status of auxiliary output
+	JP	0			; DEVTBL	;57: Address of devices table
+	JP	0			; DEVINI	;60: Initialise a device
+	JP	0			; DRVTBL	;63: Address of discs table
+	JP	0			; MULTIO	;66: Read/write multiple sectors
+	JP	0			; FLUSH	;69: Flush host buffers
+	JP	0			; MOVE	;72: Move a block of memory
+	JP	0			; TIME	;75: Real time clock
+	JP	0			; SELMEM	;78: Select memory bank
+	JP	0			; SETBNK	;81: Select bank for DMA operation
+	JP	0			; XMOVE	;84: Preload banks for MOVE
+	JP	0			; USERF	;87: System-depedent functions
+	JP	0			; RESERV1	;90: Reserved
+	JP	0			; RESERV2	;93: Reserved
+BIOSENTRYEND:
 
-PrintString:
-	PUSH	BC
-	LD	B, 0
-	LD	A,(HL)
-	CP	B			; CP 0 или CP '$'
-	POP	BC
-	RET	Z
-	CALL	PrintCharFromA
-	INC	HL
-	RET	M			; RET if high bit set
-	JP	PrintString
-
+	SHARED	FARJZ
 FARJZ:	EX	(SP), HL
 	INC	HL
 	INC	HL
@@ -2379,7 +2360,13 @@ FARJZ:	EX	(SP), HL
 	EX	(SP), HL
 FARJMP:	EX	(SP), HL		; Сохраняем HL в стек, а в HL адрес возврата
 	LD	A, (HL)
+	PUSH	HL
+	PUSH	BC
+	PUSH	DE
 	CALL	ReadBlock		; Считываем блок c ROM-диска
+	POP	DE
+	POP	BC
+	POP	HL
 	INC	HL
 	LD	A, (HL)
 	LD 	H, ROMBUF>>8
@@ -2388,9 +2375,15 @@ FARJMP:	EX	(SP), HL		; Сохраняем HL в стек, а в HL адрес возврата
 	RET				; Вызываем считанную функцию
 
 ; ──────────────────────────────────────────────
+; Точка вызова функции BDOS
+; ──────────────────────────────────────────────
+	SHARED	BDOS
+BDOS:	FJMP	1, BDOSENTRY		; 5 bytes
+
+; ──────────────────────────────────────────────
 ; Точка возврата из функции BDOS
 ; ──────────────────────────────────────────────
-
+	SHARED	BDOSRET
 BDOSRET:				; Точка возврата из функции BDOS
 	LD	HL, (TMPSTK)		; 7 bytes
 	LD	SP, HL
