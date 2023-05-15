@@ -680,6 +680,20 @@ DIRTABLE:				; 23 bytes
 
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 
+DirectiveU:			; 15 bytes
+	IF	(DirectiveGoto & 0FF00H) <> (DirectiveU & 0FF00H)
+		ERROR	"DirectiveGoto and DirectiveU must be in same page"
+	ENDIF
+	LD	HL, 07E00H
+	LD	DE, 07FFFH
+	LD	BC, 07400H
+	PUSH	BC
+	CALL	DirectiveReadROM
+	POP	HL
+	JP	(HL)
+
+; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
 DirectiveOutputTape:
 
 	IF	(DIRTABLE & 0FF00H) <> (DirectiveOutputTape & 0FF00H)
@@ -833,17 +847,6 @@ IncHLAndRetIfEqDE:
 POPAF:	POP	AF
 	RET
 	
-; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
-
-ProcessBackspace:
-	LD	A,B			; 15 bytes
-	OR	A			; ­ ç «® ¡ãä¥à  ¢¢®¤  ?
-	JP	Z,GotoCmdLineBegin	; GotoCmdLineBegin
-	DEC	B
-	DEC	HL
-	CALL	RST_18
-	DB	8,' ',8+80H
-	JP	InputNextSymbol
 
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 ; ‚¢®¤ á¨¬¢®«  ¡¥§ ®¦¨¤ ­¨ï á ¯à®¢¥àª®© ­ ¦ â¨ï Ctrl-C. 
@@ -895,7 +898,7 @@ ReadKeyCode:
 	RET
 
 ;	NOP
-	;NOP
+	NOP
 	NOP
 
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
@@ -1129,14 +1132,15 @@ PrintHexWordAndSpace:
 
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 
-DirectiveU:
-	LD	HL, 07E00H
-	LD	DE, 07FFFH
-	LD	BC, 07400H
-	PUSH	BC
-	CALL	DirectiveReadROM
-	POP	HL
-	JP	(HL)
+ProcessBackspace:
+	LD	A,B			; 15 bytes
+	OR	A			; ­ ç «® ¡ãä¥à  ¢¢®¤  ?
+	JP	Z,GotoCmdLineBegin	; GotoCmdLineBegin
+	DEC	B
+	DEC	HL
+	CALL	RST_18
+	DB	8,' ',8+80H
+	JP	InputNextSymbol
 
 	NOP
 	NOP

@@ -558,98 +558,95 @@ AF9E6:	INC	BC
 	ORG     07E00H
 	
 	PHASE	07400H
-	if	0
-PRINT:	EQU     0F818	;‚›‚Ž„ ‘ŽŽ™…ˆŸ € Š€ 
-WW:	EQU	0F803	;‚‚Ž„ ‘ Š‹€‚ˆ€’“› 
+PRINT:	EQU     0F818H	;‚›‚Ž„ ‘ŽŽ™…ˆŸ € Š€ 
+WW:	EQU	0F803H	;‚‚Ž„ ‘ Š‹€‚ˆ€’“› 
 WYW:	EQU	0F609H	; ‚›‚Ž„ ‘ˆŒ‚Ž‹€ € Š€ 
 CONST:	EQU	6     	;—ˆ‘‹Ž Žƒ€ŒŒ 
-ŒŽ:	LXI	H,SOI 	; ‚›‚…‘’ˆ Š€’€‹Žƒ 
-MI:	CALL	PRINT 	;ROM-DISK/32K 
+M0:	LD	HL,SO1 	; ‚›‚…‘’ˆ Š€’€‹Žƒ 
+M1:	CALL	PRINT 	;ROM-DISK/32K 
 	CALL    WW    	; ‚›Ž Œ…ž. 
-	CPI     'Z'   	;“‘’€Ž‚Š€ €ŒŸ’ˆ ‚ 0?
- 	JZ      ZERO  	;…’,
-	CPI     'S'   	; ‡€ˆ‘œ ‚Ž ‚…Œ…›‰ 
-	JZ      SAVE  	; “”…?- …’,
- 	CPI     'L'   	;‘—ˆ’›‚€ˆ… ‚ ’…Š‘’Ž‚›‰ 
-	JZ      LOAD  	; “”…?-…’, 
-	SUI     ‡Ž   	; ‚•Ž„ˆ’ ‹ˆ €†€’€Ÿ 
-	JM      ŒŽ    	; –ˆ”€ ‚ „ˆ€€‡Ž 
-	CPI     CONST 	; “ Š€‡€›• ‡€—…ˆ‰? 
-	JNC     ŒŽ    	;…’, Ž‚’Žˆ’œ ‚‚Ž„. 
-	MOV     ‚,€   	;„€, ŠŽ„ ‘Ž•€ˆ’œ. 
-	ORA     €     	;’Ž 0?   
-	JNZ     Œ2    	;…’, € ‚›—ˆ‘‹…ˆ… €„…‘Ž‚. 
-	XRA     €     	;„€, Ž—ˆ‘’ˆ’œ ‘‹“†…“ž 
-	STA     2117 	;Ÿ—…‰Š“ €ŒŸ’ˆ BASIC. 
-M2:	LXI     D,6   	;˜€ƒ Žˆ‘Š€ Ž ’€‹ˆ–…. 
-	LXI     H,TABL	; €‡Ž‚›‰ €„…‘ ’€‹ˆ–›. 
-	XRA     €     	; ‘Ž„…†ˆŒŽ… €ŠŠ“Œ“‹Ÿ’Ž€ 
-Œ‡:	‘Œ     ‚     	; €‚Ž •€ˆŒŽŒ“ ŠŽ„“? 
-	JZ      Œ4    	;„€, ‚‡Ÿ’œ €„…‘€ Žƒ€ŒŒ›. 
-	DAD     D     	;…’, ……‰’ˆ € ‘‹…„“ž™“ž 
-	INR     €     	; ‘’ŽŠ“ ’€‹ˆ–›, “‚…‹ˆ—ˆ’œ „€›…
-	JMP     Œ‡    	;€ŠŠ“Œ“‹Ÿ’Ž€ ˆ ‚Ž‚œ ‘€‚ˆ’œ 
-Œ4:	SPHL          	;ˆ‘Ž‹œ‡“Ÿ ‘’…Š,
-	POP          	; ‚‡Ÿ’œ 
-	POP     D     	; €„…‘€ 
-	POP     ‚     	; Žƒ€ŒŒ›. 
-	DCX     SP    	; Ž‘‹…„ˆ‰ €„…‘ 
-	DCX     SP    	; -‘’€’Ž‚›‰ .
+	CP	'Z'   	;“‘’€Ž‚Š€ €ŒŸ’ˆ ‚ 0?
+ 	JP	Z, ZERO	;…’,
+	CP     'S'   	; ‡€ˆ‘œ ‚Ž ‚…Œ…›‰ 
+	JP	Z, SAVE  	; “”…?- …’,
+ 	CP     'L'   	;‘—ˆ’›‚€ˆ… ‚ ’…Š‘’Ž‚›‰ 
+	JP	Z, LOAD	; “”…?-…’, 
+	SUB     30H   	; ‚•Ž„ˆ’ ‹ˆ €†€’€Ÿ 
+	JP	M, M0  	; –ˆ”€ ‚ „ˆ€€‡Ž 
+	CP     CONST 	; “ Š€‡€›• ‡€—…ˆ‰? 
+	JP	NC, M0 	;…’, Ž‚’Žˆ’œ ‚‚Ž„. 
+	LD	B,A   	;„€, ŠŽ„ ‘Ž•€ˆ’œ. 
+	OR	A     	;’Ž 0?   
+	JP	NZ, M2 	;…’, € ‚›—ˆ‘‹…ˆ… €„…‘Ž‚. 
+	XOR     A     	;„€, Ž—ˆ‘’ˆ’œ ‘‹“†…“ž 
+	LD	(2117H),A 	;Ÿ—…‰Š“ €ŒŸ’ˆ BASIC. 
+M2:	LD      DE,6   	;˜€ƒ Žˆ‘Š€ Ž ’€‹ˆ–…. 
+	LD      HL,TABL	; €‡Ž‚›‰ €„…‘ ’€‹ˆ–›. 
+	XOR     A     	; ‘Ž„…†ˆŒŽ… €ŠŠ“Œ“‹Ÿ’Ž€ 
+M3:	CP     B     	; €‚Ž •€ˆŒŽŒ“ ŠŽ„“? 
+	JP	Z, M4    	;„€, ‚‡Ÿ’œ €„…‘€ Žƒ€ŒŒ›. 
+	ADD     HL, DE     	;…’, ……‰’ˆ € ‘‹…„“ž™“ž 
+	INC     A     	; ‘’ŽŠ“ ’€‹ˆ–›, “‚…‹ˆ—ˆ’œ „€›…
+	JP     M3    	;€ŠŠ“Œ“‹Ÿ’Ž€ ˆ ‚Ž‚œ ‘€‚ˆ’œ 
+M4:	LD	SP, HL  ;ˆ‘Ž‹œ‡“Ÿ ‘’…Š,
+	POP     HL     	; ‚‡Ÿ’œ 
+	POP     DE     	; €„…‘€ 
+	POP     BC     	; Žƒ€ŒŒ›. 
+	DEC     SP    	; Ž‘‹…„ˆ‰ €„…‘ 
+	DEC     SP    	; -‘’€’Ž‚›‰ .
 ; Ž„Žƒ€ŒŒ€ MONITORA, Ž…‘…—ˆ‚€ž™€Ÿ ŠŽˆŽ‚€ˆ… 
 ; „€›• ˆ‡ €„…‘“…ŒŽ‰ Ž‹€‘’ˆ ‡“ ‚ €„…‘“…Œ“ž 
 ; Ž‹€‘’œ Ž‡“ Ž‹œ‡Ž‚€’…‹Ÿ. 
 	CALL    0FA68H	; ……‘›‹Š€ Žƒ€ŒŒ›. 
-	POP          	; ‚‡Ÿ’œ €„…‘ 
-	PCHL          	;ˆ ‡€“‘’ˆ’œ Žƒ€ŒŒ“.
+	POP     HL     	; ‚‡Ÿ’œ €„…‘ 
+	JP	(HL)          	;ˆ ‡€“‘’ˆ’œ Žƒ€ŒŒ“.
 ; Ž„Žƒ€ŒŒ€ ‘—ˆ’›‚€ˆŸ ”€‰‹€ ˆ‡ ‚…Œ…ŽƒŽ “”…€ 
 ;‚ ’…Š‘’Ž‚›‰ “”… …„€Š’Ž€ "ŒˆŠŽ". 
-LOAD:	LXI     , S04 	; Ž„’‚…„ˆ’œ 
+LOAD:	LD     HL, SO4 	; Ž„’‚…„ˆ’œ 
 	CALL    PRINT 	;‚›Ž ‘—ˆ’›‚€ˆŸ. 
-	LXI     ,4A00	;€—€‹œ›‰ €„…‘ 
-	LXI     D,2100H	;BPEMEHHOƒO “”…€. 
-RDO:	LXI     B,28FFH	;O'EM ”€‰‹€. 
-RDI:	MOV     A,M   	;……‘‹€’œ
-	STAX    D     	;”€‰‹ 
-	INX     H     	;ˆ3
-	INX     D     	;‚…Œ…ŽƒŽ “”…€ 
-	DCX     ‚     	;B ’…Š‘’Ž‚›‰ “”… 
-	MOV     €,‚   	;‘ €„…‘€ 2100. 
-	ORA     ‘     	; 
-	JNZ     RDI   	; 
-	JMP     ŒŽ    	;‚›‰’ˆ‚ Œ…ž.
+	LD     HL,4A00H	;€—€‹œ›‰ €„…‘ 
+	LD     DE,2100H	;BPEMEHHOƒO “”…€. 
+RD0:	LD     BC,28FFH	;O'EM ”€‰‹€. 
+RD1:	LD     A,(HL)   	;……‘‹€’œ
+	LD	(DE),A     	;”€‰‹ 
+	INC     HL     	;ˆ3
+	INC     DE     	;‚…Œ…ŽƒŽ “”…€ 
+	DEC     BC     	;B ’…Š‘’Ž‚›‰ “”… 
+	LD     A,B   	;‘ €„…‘€ 2100. 
+	OR     C     	; 
+	JP	NZ,     RD1   	; 
+	JP     M0    	;‚›‰’ˆ ‚ Œ…ž.
 ;Ž„Žƒ€ŒŒ€ ‘Ž•€…ˆŸ ”€‰‹€ ‚Ž ‚…Œ…ŽŒ 
 ; “”……. …‘‹ˆ Ž '…Œ ”€‰‹€ …‚›˜€…’ 28FFH, ’Ž 
 ; Ž…€–ˆŸ Ž •€…ˆž … ‚›Ž‹Ÿ…’‘Ÿ. 
-SAVE:	LXI     , 2100 
-SI:	MOV     A,M   	;Ž‚…ˆ’œ €‡Œ…
-	CPI     0FFH  	; ”€‰‹€. 
-	JZ     S2    	;…‘‹ˆ ”€‰‹ HE “Œ…™€…’‘Ÿ 
-	INX          	;‚Ž ‚…Œ…ŽŒ 
-	MOV     €,    	; “”……, ’Ž 
-	CPI     4€   	; 
-	JNZ     SI    	;
-	LXI     H,SO6 	;‘ŽŽ™ˆ’œ, € ……‘›‹Š“ 
-	JMP     MI    	;HE Žˆ‡‚Ž„ˆ’œ.
-S2:	LXI 	H,SO5 	; ˆ€—…
+SAVE:	LD     HL, 2100H
+S1:	LD     A,(HL)   	;Ž‚…ˆ’œ €‡Œ…
+	CP     0FFH  	; ”€‰‹€. 
+	JP	Z, S2    	;…‘‹ˆ ”€‰‹ HE “Œ…™€…’‘Ÿ 
+	INC     HL     	;‚Ž ‚…Œ…ŽŒ 
+	LD     A, H   	; “”……, ’Ž 
+	CP     4AH   	; 
+	JP	NZ,     S1    	;
+	LD     HL,SO6 	;‘ŽŽ™ˆ’œ, € ……‘›‹Š“ 
+	JP     M1    	;HE Žˆ‡‚Ž„ˆ’œ.
+S2:	LD 	HL,SO5 	; ˆ€—…
 	CALL 	PRINT 	;Ž„’‚…„ˆ’œ ‡€ˆ‘œ
-	LXI 	,2100	;‚Ž ‚…Œ…›‰ “”….
-	LXI 	D,4A00H ;
-	JMP 	RDO 	;“©’ˆ € ‡€ˆ‘œ.
+	LD 	HL,2100H	;‚Ž ‚…Œ…›‰ “”….
+	LD 	DE,4A00H ;
+	JP 	RD0 	;“©’ˆ € ‡€ˆ‘œ.
 ;Ž„Žƒ€ŒŒ€ Ž—ˆ‘’Šˆ €ŒŸ’ˆ (‡€ˆ‘œ "0"
 ;BO ‚‘… „Ž‘’“›… Ž‹œ‡Ž‚€’…‹ž Ÿ—…‰Šˆ Ž‡“,
 ; ŠŽŒ… Ÿ—……Š, €—ˆ€Ÿ ‘ 7400).
-ZERO:	LXI 	H,SO5 	;Ž„’‚…„ˆ’œ ˆ…Œ
+ZERO:	LD 	HL,SO5 	;Ž„’‚…„ˆ’œ ˆ…Œ
 	CALL 	PRINT 	; Ž…€–ˆˆ ‘Ž‘€ RAM.
-	LXI 	,0 	;
-Z1:	MVI 	Œ,0 	;Ž—ˆ‘’ˆ’œ
-	INX 	 	; €ŒŸ’œ.
-	MOV 	A, 	;
-	‘I 	74 	;…‘‹ˆ €„…‘ Ž‹œ˜…
-	JNZ 	Z1 	; 7400, ’Ž ‚›‰’ˆ
-	JMP 	ŒŽ 	;‚ Œ…).
-	endif
-SOI:	DB 	1FH,0CH,0AH
-	DB	"\"ROM-DISK/32K\"V2.0-91";
+	LD 	HL,0 	;
+Z1:	LD 	(HL),0 	;Ž—ˆ‘’ˆ’œ
+	INC 	HL 	; €ŒŸ’œ.
+	LD 	A,H 	;
+	CP 	74H 	;…‘‹ˆ €„…‘ Ž‹œ˜…
+	JP	NZ, 	Z1 	; 7400, ’Ž ‚›‰’ˆ
+	JP 	M0 	;‚ Œ…ž.
+SO1:	DB 	1FH,0CH,0AH,"\"ROM-DISK/32K\"V2.1-23";
 	DB 	0AH,0AH,0DH,"DIR:";
 	DB 	0DH,0AH,"<0>-BASIC";
 	DB 	0DH,0AH,"<1>-ED/ASSM";
@@ -660,7 +657,7 @@ SOI:	DB 	1FH,0CH,0AH
 	DB 	0AH,0DH
 	DB 	0AH,0DH," <S>-BUFF" ;
 	DB 	0AH,0DH," <L>-RED" ;
-	DB 	0AH,0DH," <2>-0/RAM" ;
+	DB 	0AH,0DH," <Z>-0/RAM" ;
 	DB 	0DH,0AH,0
 SO3:	DB 	19H		;
 SO4:	DB 	19H		;
