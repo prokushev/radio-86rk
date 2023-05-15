@@ -2278,8 +2278,7 @@ ColdBoot:
 	LD	HL,1D2AH
 	LD	(KNS_RD),HL
 
-	; Проверяем наличие ROM-диска (4-ый байт содержит C3H)
-	; TODO Надо проверить разные версии ORDOS, похоже, начальный код разный
+	; Проверяем наличие ROM-диска (4-ый байт содержит CDH)
 	LD	HL, 3
 	LD	(PDB),HL
 	LD	A,(PDA)
@@ -2288,6 +2287,20 @@ ColdBoot:
 	JP	NZ, WarmBoot
 
 	FJMP	0, INITBDOS
+
+; ──────────────────────────────────────────────
+; BC bytes DE->HL
+; ──────────────────────────────────────────────
+MoveBlock:				; 11 bytes
+	LD	A, (DE)
+	LD	(HL), A
+	INC	HL
+	INC	DE
+	DEC	BC
+	LD	A,B
+	OR	C
+	JP	NZ, MoveBlock
+	RET
 
 ; ──────────────────────────────────────────────
 ; Блок эмуляции точек входа BIOS и BDOS
@@ -2320,7 +2333,7 @@ BIOSENTRY:
 	JP	0			; DRVTBL	;63: Address of discs table
 	JP	0			; MULTIO	;66: Read/write multiple sectors
 	JP	0			; FLUSH	;69: Flush host buffers
-	JP	0			; MOVE	;72: Move a block of memory
+	JP	MoveBlock		; MOVE	;72: Move a block of memory
 	JP	0			; TIME	;75: Real time clock
 	JP	0			; SELMEM	;78: Select memory bank
 	JP	0			; SETBNK	;81: Select bank for DMA operation
