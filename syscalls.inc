@@ -15,5 +15,6 @@ InitVideo		EQU	0F82Dh
 WarmBoot		EQU	0F86CH
 InputDirective		EQU	0F8EEH
 Compare_HL_DE		EQU	0F990H
+ReadROM			EQU	0FA68H
 PrintCRAndHexWordAndSpace EQU	0FB78H
 

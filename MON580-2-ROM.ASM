@@ -597,7 +597,7 @@ M4:	LD	SP, HL  ;ˆ‘Ž‹œ‡“Ÿ ‘’…Š,
 ; Ž„Žƒ€ŒŒ€ MONITORA, Ž…‘…—ˆ‚€ž™€Ÿ ŠŽˆŽ‚€ˆ… 
 ; „€›• ˆ‡ €„…‘“…ŒŽ‰ Ž‹€‘’ˆ ‡“ ‚ €„…‘“…Œ“ž 
 ; Ž‹€‘’œ Ž‡“ Ž‹œ‡Ž‚€’…‹Ÿ. 
-	CALL    0FA68H	; ……‘›‹Š€ Žƒ€ŒŒ›. 
+	CALL    ReadROM	;0FA68H	; ……‘›‹Š€ Žƒ€ŒŒ›. 
 	POP     HL     	; ‚‡Ÿ’œ €„…‘ 
 	JP	(HL)          	;ˆ ‡€“‘’ˆ’œ Žƒ€ŒŒ“.
 ; Ž„Žƒ€ŒŒ€ ‘—ˆ’›‚€ˆŸ ”€‰‹€ ˆ‡ ‚…Œ…ŽƒŽ “”…€ 

@@ -1,11 +1,11 @@
 ; mon580-2.asm-Include File for Assembler Program
-IncHLAndRetIfEqDEWithBrk equ 0FA7FH
-IncHLAndRetIfEqDE equ 0FA82H
+IncHLAndRetIfEqDEWithBrk equ 0FA8DH
+IncHLAndRetIfEqDE equ 0FA90H
 GET_HL equ 0FAFFH
-PrintCharFromA equ 0FCAAH
-PrintCRAndHexWordAndSpaceAndHexByteMemAndSpace equ 0FDFEH
-PrintHexByteFromMemAndSpace equ 0FE01H
-PrintHexByteAndSpace equ 0FE02H
+PrintCharFromA equ 0FCA9H
+PrintCRAndHexWordAndSpaceAndHexByteMemAndSpace equ 0FDFDH
+PrintHexByteFromMemAndSpace equ 0FE00H
+PrintHexByteAndSpace equ 0FE01H
 BIOSENTRY equ 0FF76H
 FARJZ equ 0FFD9H
 BDOS equ 0FFF4H

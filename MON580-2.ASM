@@ -791,14 +791,38 @@ AFB19:	LD	A,(HL)
 	JP	AFB19
 
 ; ──────────────────────────────────────────────
+; Ввод символа без ожидания с проверкой нажатия Ctrl-C. 
+; При нажатии Ctrl-C выход в МОНИТОР с переинцициализацией ВГ.
+; ВХОД:
+;	Нет
+; ВЫХОД:
+;	A=0FFH - не нажата
+;	A=0FEH - РУС/ЛАТ
+;	A - код клавиши
+; ИЗМЕНЯЕТ:
+;	AF
+; ──────────────────────────────────────────────
 
-KEY_FE:	LD	A,(PC)			; 17 bytes
-	RLA
-	JP	NC,KEY_FE		; ждём отпускания РУС/ЛАТ
-	LD	A,(RUSLAT)
-	CPL
-	CALL	SET_RL
-	JP	AFE1A
+ReadKeyCodeChkBrk:
+	CALL	ReadKeyCode			; 12 bytes
+	CP	3
+	RET	NZ
+	CALL	InitVideo
+	JP	SyntaxError
+
+	CHK	0FA68H, "* Internal subroutine ReadROM shifted ! *"
+ReadROM:
+	JP	DirectiveReadROM
+
+ProcessBackspace:
+	LD	A,B			; 15 bytes
+	OR	A			; начало буфера ввода ?
+	JP	Z,GotoCmdLineBegin	; GotoCmdLineBegin
+	DEC	B
+	DEC	HL
+	CALL	RST_18
+	DB	8,' ',8+80H
+	JP	InputNextSymbol
 
 ; ──────────────────────────────────────────────
 
@@ -849,26 +873,6 @@ POPAF:	POP	AF
 	
 
 ; ──────────────────────────────────────────────
-; Ввод символа без ожидания с проверкой нажатия Ctrl-C. 
-; При нажатии Ctrl-C выход в МОНИТОР с переинцициализацией ВГ.
-; ВХОД:
-;	Нет
-; ВЫХОД:
-;	A=0FFH - не нажата
-;	A=0FEH - РУС/ЛАТ
-;	A - код клавиши
-; ИЗМЕНЯЕТ:
-;	AF
-; ──────────────────────────────────────────────
-
-ReadKeyCodeChkBrk:
-	CALL	ReadKeyCode			; 12 bytes
-	CP	3
-	RET	NZ
-	CALL	InitVideo
-	JP	SyntaxError
-
-; ──────────────────────────────────────────────
 ; Ввод символа без ожидания. 
 ; ВХОД:
 ;	Нет
@@ -898,9 +902,8 @@ ReadKeyCode:
 	RET
 
 ;	NOP
-	NOP
-	NOP
-
+;	NOP
+;	NOP
 ; ──────────────────────────────────────────────
 
 TapeReadBlock:
@@ -1132,18 +1135,19 @@ PrintHexWordAndSpace:
 
 ; ──────────────────────────────────────────────
 
-ProcessBackspace:
-	LD	A,B			; 15 bytes
-	OR	A			; начало буфера ввода ?
-	JP	Z,GotoCmdLineBegin	; GotoCmdLineBegin
-	DEC	B
-	DEC	HL
-	CALL	RST_18
-	DB	8,' ',8+80H
-	JP	InputNextSymbol
+; ──────────────────────────────────────────────
 
-	NOP
-	NOP
+KEY_FE:	LD	A,(PC)			; 17 bytes
+	RLA
+	JP	NC,KEY_FE		; ждём отпускания РУС/ЛАТ
+	LD	A,(RUSLAT)
+	CPL
+	CALL	SET_RL
+	JP	AFE1A
+
+
+;	NOP
+;	NOP
 	NOP
 	NOP
 

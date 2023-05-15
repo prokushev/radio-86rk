@@ -119,14 +119,12 @@ BIOSENTRYEND:
 
 
 INIT2:	
-	NOP
-	NOP
-	LD	HL, BIOSENTRY+3	; WBOOT
-	LD	(0001H), HL
-	LD	HL, BDOSST
-	LD	(0006H), HL
+	LD	(0006H), HL			; BDOSST
+	LD	A, 0C3H				; JMP opcode
+	LD	(0), A
+	LD	(5), A
+	LD	(BDOSST), A
 
-;	ORG	0F86CH
 ; ──────────────────────────────────────────────
 ; "Теплый" старт МОНИТОРа
 ; ВХОД:
@@ -733,23 +731,41 @@ AFB4D:	CALL	TapeWriteByte
 	JP	InitVideo
 
 ; ──────────────────────────────────────────────
+; Возвращает символ в текущих координатах видео ОЗУ
+; ВХОД:
+;	Нет
+; ВЫХОД:
+;	A	- символ в текущих координатах
+; ИЗМЕНЯЕТ:
+;	A
+; ──────────────────────────────────────────────
 
-AFF3B:	LD	A,L			; 23 bytes
-	AND	2FH
-	LD	L,A
-AFF3F:	LD	A,L
-	CP	40H
+ReadVideoRAM:
+	PUSH	HL			; 7 bytes
+	LD	HL,(EK_ADR)
+	LD	A,(HL)
 	POP	HL
-	RET	P
-	PUSH	HL
-	LD	L,A
-	AND	00FH
-	CP	00CH
-	LD	A,L
-	JP	M,AFF50
-	XOR	10H
-AFF50:	POP	HL
 	RET
+
+
+; ──────────────────────────────────────────────
+
+BDOSRET:				; Точка возврата из функции BDOS
+	LD	HL, (TMPSTK)		; 7 bytes
+	LD	SP, HL
+	LD	L, A
+	LD	H, B
+	RET
+
+	CHK	0FA68H, "* Internal subroutine ReadROM shifted ! *"
+ReadROM:
+	JP	DirectiveReadROM
+
+; ──────────────────────────────────────────────
+
+TABK1:	DB	0CH,1FH,1BH,0,1,2,3,4,5	  ; 9 bytes
+	NOP
+	NOP
 
 ; ──────────────────────────────────────────────
 ; Расчет контрольной суммы блока памяти с HL по DE
@@ -808,12 +824,6 @@ RST_18:	EX	(SP),HL			; 6 bytes
 	EX	(SP),HL
 	RET
 
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	
 ; ──────────────────────────────────────────────
 
 TapeReadBlock:
@@ -1733,9 +1743,6 @@ InputSymbol:
 	RET
 
 
-; ──────────────────────────────────────────────
-
-TABK1:	DB	0CH,1FH,1BH,0,1,2,3,4,5	  ; 9 bytes
 
 ; ──────────────────────────────────────────────
 
@@ -2342,15 +2349,13 @@ ReadKeyCode:
 ; ──────────────────────────────────────────────
 
 ProcessBackspace:
-	LD	A,B			; 15 bytes
+	LD	A,B			; 16 bytes
 	OR	A			; начало буфера ввода ?
 	JP	Z,GotoCmdLineBegin	; GotoCmdLineBegin
 	DEC	B
 	DEC	HL
-;	PUSH	HL
 	CALL	RST_18
 	DB	8,' ',8+80H
-;	POP	HL
 	JP	InputNextSymbol
 
 
@@ -2412,30 +2417,22 @@ PROD:	LD	DE, SA		; ЗАГРУЗИТЬ АДРЕС
 	RET
 
 ; ──────────────────────────────────────────────
-; Возвращает символ в текущих координатах видео ОЗУ
-; ВХОД:
-;	Нет
-; ВЫХОД:
-;	A	- символ в текущих координатах
-; ИЗМЕНЯЕТ:
-;	A
-; ──────────────────────────────────────────────
 
-ReadVideoRAM:
-	PUSH	HL			; 7 bytes
-	LD	HL,(EK_ADR)
-	LD	A,(HL)
+AFF3B:	LD	A,L			; 23 bytes
+	AND	2FH
+	LD	L,A
+AFF3F:	LD	A,L
+	CP	40H
 	POP	HL
-	RET
-
-
-; ──────────────────────────────────────────────
-
-BDOSRET:				; Точка возврата из функции BDOS
-	LD	HL, (TMPSTK)		; 7 bytes
-	LD	SP, HL
-	LD	L, A
-	LD	H, B
+	RET	P
+	PUSH	HL
+	LD	L,A
+	AND	00FH
+	CP	00CH
+	LD	A,L
+	JP	M,AFF50
+	XOR	10H
+AFF50:	POP	HL
 	RET
 
 ; ──────────────────────────────────────────────
@@ -2477,12 +2474,11 @@ ColdBoot:
 ; Размещает точки входа в BIOS и BDOS
 ; ──────────────────────────────────────────────
 
-	LD	A, 0C3H				; JMP opcode
-	LD	(0), A
-	LD	(5), A
-	LD	(BDOSST), A
 	LD	HL, BDOS
 	LD	(BDOSST+1), HL
+	LD	HL, BIOSENTRY+3	; WBOOT
+	LD	(0001H), HL
+	LD	HL, BDOSST
 	JP	INIT2
 
 	END
