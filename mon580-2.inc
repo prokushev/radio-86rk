@@ -6,6 +6,7 @@ PrintCharFromA equ 0FCA9H
 PrintCRAndHexWordAndSpaceAndHexByteMemAndSpace equ 0FDFDH
 PrintHexByteFromMemAndSpace equ 0FE00H
 PrintHexByteAndSpace equ 0FE01H
+BIOSENTRY equ 0FF76H
 FARJZ equ 0FFD9H
 BDOS equ 0FFF4H
 BDOSRET equ 0FFF9H

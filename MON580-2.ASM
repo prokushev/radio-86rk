@@ -2293,6 +2293,7 @@ ColdBoot:
 ; Блок эмуляции точек входа BIOS и BDOS
 ; ──────────────────────────────────────────────
 	ORG	0FF76H
+	SHARED	BIOSENTRY
 BIOSENTRY:
 	JP	ColdBoot		; CBOOT Холодный старт
 	JP	WarmBoot		; WBOOT Теплый старт
