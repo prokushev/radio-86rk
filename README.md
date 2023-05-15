@@ -355,6 +355,25 @@ https://ruecm.forum2x2.ru/t1112-topic
 - BDOS function 11 (C_STAT) - Console status
 - BDOS function 12 (S_BDOSVER) - Return version number
 
+## НУЛЕВАЯ СТРАНИЦА
+
+- 00–02 	Code 	Exit program (jumps to the BIOS, and is also used to find BIOS entry points).[1]
+- 03 	Byte 	I/O byte, an optional feature allowing device reassignment in CP/M 2.
+- 04 	Byte 	Current command processor drive (low 4 bits) and user number (high 4 bits).
+- 05–07 	Code 	Jump to CP/M BDOS entry - main system call entry point. This is also the address of the first byte of memory not usable by the program.[1]
+- 08–3A 	Code 	8080 restart/interrupt vectors.
+- 3B–4F 	Bytes 	Reserved
+- 50 	Byte 	The drive from which the program was loaded (CP/M 3)
+- 51–52 	Word 	Address of the password for the first FCB (CP/M 3)
+- 53 	Byte 	Length of the password for the first FCB (CP/M 3)
+- 54–55 	Word 	Address of the password for the second FCB (CP/M 3)
+- 56 	Byte 	Length of the password for the second FCB (CP/M 3)
+- 57–5B 	Bytes 	Reserved
+- 5C–6B 		Default FCB 1
+- 6C–7F 		Default FCB 2 (overwritten if FCB 1 is opened)
+- 80 	Byte 	Number of characters in command tail.
+- 81–FF 	Bytes 	Command tail (everything after the program name). 
+
 ## УПРАВЛЯЮЩИЕ КОДЫ ДИСПЛЕЯ
 
  Данная версия МОНИТОРа реализует поддержку управляющих кодов
