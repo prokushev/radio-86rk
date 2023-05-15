@@ -604,11 +604,15 @@ DirectiveSearch:
 	ENDIF
 	FJMP	3, DirectiveSearchROM
 
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
+; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+DirectiveCompare:
+	IF	(DirectiveCompare & 0FF00H) <> (DirectiveFill & 0FF00H)
+		ERROR	"DirectiveCompare and DirectiveFill must be in same page"
+	ENDIF
+
+	FJMP	3, DirectiveCompareROM
+
 	NOP
 	NOP
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
@@ -653,6 +657,7 @@ DirectiveList:
 
 	FJMP	3, DirectiveListROM
 
+
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 DIRTABLE:				; 23 bytes
 	IF	(DIRTABLE & 0FF00H) <> (DirectiveDump & 0FF00H)
@@ -673,14 +678,6 @@ DIRTABLE:				; 23 bytes
 	DB	0
 
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
-
-DirectiveCompare:
-	IF	(DirectiveCompare & 0FF00H) <> (DirectiveFill & 0FF00H)
-		ERROR	"DirectiveCompare and DirectiveFill must be in same page"
-	ENDIF
-
-	JP	DirectiveCompare_2
-
 
 DirectiveOutputTape:
 
@@ -867,33 +864,35 @@ ReadKeyCodeChkBrk:
 	CALL	InitVideo
 	JP	SyntaxError
 
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
+; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+; ‚¢®¤ á¨¬¢®«  ¡¥§ ®¦¨¤ ­¨ï. 
+; ‚•„:
+;	¥â
+; ‚›•„:
+;	A=0FFH - ­¥ ­ ¦ â 
+;	A=0FEH - “‘/‹€’
+;	A - ª®¤ ª« ¢¨è¨
+; ˆ‡Œ…Ÿ…’:
+;	AF
+; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+ReadKeyCode:
+	LD	A,(PC)		; 30 bytes
+	RLA
+	LD	A,0FEH
+	RET	NC
+	XOR	A
+	LD	(PA),A
+	LD	A,(RUSLAT)
+	AND	00000001B
+	OR	00000110B	; § ¦¨£ ¥¬/£ á¨¬ á¢¥â®¤¨®¤
+	LD	(PU),A
+	LD	A,(PB)
+	INC	A
+	JP	NZ,AFE97
+	DEC	A
+	RET
+
 	NOP
 	NOP
 	NOP
@@ -1129,16 +1128,25 @@ PrintHexWordAndSpace:
 
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 
-DirectiveCompare_2:
-	LD	A,(BC)			; 19 bytes
-	CP	(HL)
-	JP	Z,AF9E6
-	CALL	PrintCRAndHexWordAndSpaceAndHexByteMemAndSpace
-	LD	A,(BC)
-	CALL	PrintHexByteAndSpace
-AF9E6:	INC	BC
-	CALL	IncHLAndRetIfEqDEWithBrk
-	JP	DirectiveCompare_2
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
 
 
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
@@ -1719,6 +1727,7 @@ PrintHexByteFromMemAndSpace:
 ;	AF
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 
+	SHARED	PrintHexByteAndSpace
 PrintHexByteAndSpace:
 	CALL	PrintHexByte
 
@@ -2176,36 +2185,6 @@ CursorUp:
 	CP	MARGIN_TOP	; íâ® ¯¥à¢ ï áâà®ª  ?
 	RET	Z
 	DEC	H		; POSY--
-	RET
-
-
-; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
-; ‚¢®¤ á¨¬¢®«  ¡¥§ ®¦¨¤ ­¨ï. 
-; ‚•„:
-;	¥â
-; ‚›•„:
-;	A=0FFH - ­¥ ­ ¦ â 
-;	A=0FEH - “‘/‹€’
-;	A - ª®¤ ª« ¢¨è¨
-; ˆ‡Œ…Ÿ…’:
-;	AF
-; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
-
-ReadKeyCode:
-	LD	A,(PC)		; 30 bytes
-	RLA
-	LD	A,0FEH
-	RET	NC
-	XOR	A
-	LD	(PA),A
-	LD	A,(RUSLAT)
-	AND	00000001B
-	OR	00000110B	; § ¦¨£ ¥¬/£ á¨¬ á¢¥â®¤¨®¤
-	LD	(PU),A
-	LD	A,(PB)
-	INC	A
-	JP	NZ,AFE97
-	DEC	A
 	RET
 
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ

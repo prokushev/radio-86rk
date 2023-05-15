@@ -6,4 +6,5 @@ DirectiveDumpROM equ 7656H
 DirectiveListROM equ 7668H
 DirectiveTransferROM equ 7686H
 DirectiveSearchROM equ 768FH
+DirectiveCompareROM equ 769AH
 ; Ende Include File for Assembler Program

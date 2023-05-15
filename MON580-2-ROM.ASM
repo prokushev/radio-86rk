@@ -380,6 +380,18 @@ DirectiveSearchROM:
 	CALL	IncHLAndRetIfEqDEWithBrk
 	JP	DirectiveSearchROM
 
+	SHARED	DirectiveCompareROM
+DirectiveCompareROM:
+	LD	A,(BC)			; 19 bytes
+	CP	(HL)
+	JP	Z,AF9E6
+	CALL	PrintCRAndHexWordAndSpaceAndHexByteMemAndSpace
+	LD	A,(BC)
+	CALL	PrintHexByteAndSpace
+AF9E6:	INC	BC
+	CALL	IncHLAndRetIfEqDEWithBrk
+	JP	DirectiveCompareROM
+
 	CHK	ROMBUF+ROMBUFMAX, "* Block overflow ! *"
 	DEPHASE
 
