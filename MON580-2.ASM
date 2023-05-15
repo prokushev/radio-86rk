@@ -2340,7 +2340,7 @@ BIOSENTRY:
 	DB	0,0,0			; SELMEM	;78: Select memory bank
 	DB	0,0,0			; SETBNK	;81: Select bank for DMA operation
 	DB	0,0,0			; XMOVE	;84: Preload banks for MOVE
-	DB	0,0,			; USERF	;87: System-depedent functions
+	DB	0,0			; USERF	;87: System-depedent functions
 	RET
 	JP	0			; RESERV1	;90: Reserved
 	JP	0			; RESERV2	;93: Reserved
