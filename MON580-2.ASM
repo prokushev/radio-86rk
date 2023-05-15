@@ -675,6 +675,7 @@ DIRTABLE:				; 23 bytes
 	DB	'R', DirectiveReadROM & 0FFH
 	DB	'S', DirectiveSearch & 0FFH
 	DB	'T', DirectiveTransfer & 0FFH
+	DB	'U', DirectiveU & 0FFH
 	DB	0
 
 ; 컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
@@ -893,8 +894,8 @@ ReadKeyCode:
 	DEC	A
 	RET
 
-	NOP
-	NOP
+;	NOP
+	;NOP
 	NOP
 
 ; 컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
@@ -1128,21 +1129,15 @@ PrintHexWordAndSpace:
 
 ; 컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
 
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
+DirectiveU:
+	LD	HL, 07E00H
+	LD	DE, 07FFFH
+	LD	BC, 07400H
+	PUSH	BC
+	CALL	DirectiveReadROM
+	POP	HL
+	JP	(HL)
+
 	NOP
 	NOP
 	NOP

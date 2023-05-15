@@ -1,6 +1,6 @@
 ; mon580-2.asm-Include File for Assembler Program
-IncHLAndRetIfEqDEWithBrk equ 0FA6EH
-IncHLAndRetIfEqDE equ 0FA71H
+IncHLAndRetIfEqDEWithBrk equ 0FA70H
+IncHLAndRetIfEqDE equ 0FA73H
 GET_HL equ 0FAFFH
 PrintCharFromA equ 0FCA9H
 PrintCRAndHexWordAndSpaceAndHexByteMemAndSpace equ 0FDFDH
