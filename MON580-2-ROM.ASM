@@ -82,18 +82,23 @@ MsgRKOnly:
 	SHARED	INITBDOS
 INITBDOS:
 	LD	A, 0C3H				; JMP opcode
+	
+	; CALL 0
 	LD	(0), A
-	LD	HL, BDOSST
+	LD	HL, BIOSENTRY+3	; WBOOT
 	LD	(0001H), HL
 
+	; CALL 5
 	LD	(5), A
-	LD	HL, BIOSENTRY+3	; WBOOT
+	LD	HL, BDOSST
 	LD	(0006H), HL
 
+	; BDOS Entry point
 	LD	(BDOSST), A
 	LD	HL, BDOS
 	LD	(BDOSST+1), HL
 
+	; RST 8 (Far Jump if zero)
 	LD	(8), A
 	LD	HL, FARJZ
 	LD	(9), HL
