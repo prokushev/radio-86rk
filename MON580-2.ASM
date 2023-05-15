@@ -2325,20 +2325,23 @@ BIOSENTRY:
 	JP	0			; WRITE	;39: Write a sector
 	JP	0			; LISTST	;42: Status of list device
 	JP	0			; SECTRAN	;45: Sector translation for skewing
-	JP	0			; CONOST	;48: Status of console output
-	JP	0			; AUXIST	;51: Status of auxiliary input
-	JP	0			; AUXOST	;54: Status of auxiliary output
+	DB	0,0,0			; CONOST	;48: Status of console output
+	DB	0,0,0			; AUXIST	;51: Status of auxiliary input
+	LD	A,0FFH			; AUXOST	;54: Status of auxiliary output
+	RET
 	JP	0			; DEVTBL	;57: Address of devices table
-	JP	0			; DEVINI	;60: Initialise a device
+	DB	0,0			; DEVINI	;60: Initialise a device
+	RET
 	JP	0			; DRVTBL	;63: Address of discs table
 	JP	0			; MULTIO	;66: Read/write multiple sectors
 	JP	0			; FLUSH	;69: Flush host buffers
 	JP	MoveBlock		; MOVE	;72: Move a block of memory
 	JP	0			; TIME	;75: Real time clock
-	JP	0			; SELMEM	;78: Select memory bank
-	JP	0			; SETBNK	;81: Select bank for DMA operation
-	JP	0			; XMOVE	;84: Preload banks for MOVE
-	JP	0			; USERF	;87: System-depedent functions
+	DB	0,0,0			; SELMEM	;78: Select memory bank
+	DB	0,0,0			; SETBNK	;81: Select bank for DMA operation
+	DB	0,0,0			; XMOVE	;84: Preload banks for MOVE
+	DB	0,0,			; USERF	;87: System-depedent functions
+	RET
 	JP	0			; RESERV1	;90: Reserved
 	JP	0			; RESERV2	;93: Reserved
 BIOSENTRYEND:
