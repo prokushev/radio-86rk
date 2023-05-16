@@ -1512,7 +1512,7 @@ skip_BEEP:
 CursorRight:
 	LD	A, (WRPFLG)	;
 	INC	A
-	JP	Z, WRP
+	JP	NZ, WRP
 	LD	A,L		; POSX
 	CP	MARGIN_LEFT+64	; последняя колонка ?
 	RET	Z
@@ -1521,8 +1521,6 @@ WRP:	INC	L		; POSX ++
 	CP	MARGIN_LEFT+64	; последняя колонка ?
 	RET	NZ
 	LD	L,MARGIN_LEFT	; нач.позиция по X на новой строке
-	RET
-
 
 ; ──────────────────────────────────────────────
 ; Перевод строки

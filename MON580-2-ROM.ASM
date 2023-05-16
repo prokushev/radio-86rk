@@ -545,8 +545,20 @@ AF9E6:	INC	BC
 	DEPHASE
 
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+; ¥©á¨ª
+; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+	ORG 0800H
+BASICROM:
+	BINCLUDE "basic.rom"
+EDASMROM:
+	BINCLUDE "edasm.rom"
+DPDDTROM:
+	BINCLUDE "dpddt.rom"
+
+; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 ; Žƒ€ŒŒ€ “€‚‹…ˆŸ ROM-DISK/32K „‹Ÿ ŠŽŒœž’…€ 
-;"€„ˆŽ-‚6Š" ‘ O'EMOM Ž‡“ Ž‹œ‡Ž‚€’…‹Ÿ 32Š.
+;"€„ˆŽ-86Š" ‘ OšEMOM Ž‡“ Ž‹œ‡Ž‚€’…‹Ÿ 32Š.
 ;Žƒ€ŒŒ€ “€‚‹…ˆŸ ‡€”ˆŠ‘ˆŽ‚€€ ‚ ‡“ 
 ;Ž €„…‘€Œ 7E00H-7FFFH. “Š€‡€“ž Ž‹€‘’œ ‡“ 
 ;‡€…™…Ž ˆ‘Ž‹œ‡Ž‚€’œ Ž„ ROM-DISK. 
@@ -555,22 +567,22 @@ AF9E6:	INC	BC
 ; ‚…•ˆ… €„…‘€ Ž‡“, €—ˆ€Ÿ ‘ 7400.
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 
-	ORG     07E00H
+	ORG	07E00H
 	
 	PHASE	07400H
-PRINT:	EQU     0F818H	;‚›‚Ž„ ‘ŽŽ™…ˆŸ € Š€ 
-WW:	EQU	0F803H	;‚‚Ž„ ‘ Š‹€‚ˆ€’“› 
-WYW:	EQU	0F609H	; ‚›‚Ž„ ‘ˆŒ‚Ž‹€ € Š€ 
+
 CONST:	EQU	6     	;—ˆ‘‹Ž Žƒ€ŒŒ 
 M0:	LD	HL,SO1 	; ‚›‚…‘’ˆ Š€’€‹Žƒ 
-M1:	CALL	PRINT 	;ROM-DISK/32K 
-	CALL    WW    	; ‚›Ž Œ…ž. 
+M1:	CALL	PrintString 	;ROM-DISK/32K 
+	CALL    InputSymbol    	; ‚›Ž Œ…ž. 
 	CP	'Z'   	;“‘’€Ž‚Š€ €ŒŸ’ˆ ‚ 0?
  	JP	Z, ZERO	;…’,
 	CP     'S'   	; ‡€ˆ‘œ ‚Ž ‚…Œ…›‰ 
 	JP	Z, SAVE  	; “”…?- …’,
  	CP     'L'   	;‘—ˆ’›‚€ˆ… ‚ ’…Š‘’Ž‚›‰ 
 	JP	Z, LOAD	; “”…?-…’, 
+ 	CP     'M'   	;
+	JP	Z, WarmBoot	;
 	SUB     30H   	; ‚•Ž„ˆ’ ‹ˆ €†€’€Ÿ 
 	JP	M, M0  	; –ˆ”€ ‚ „ˆ€€‡Ž 
 	CP     CONST 	; “ Š€‡€›• ‡€—…ˆ‰? 
@@ -594,19 +606,21 @@ M4:	LD	SP, HL  ;ˆ‘Ž‹œ‡“Ÿ ‘’…Š,
 	POP     BC     	; Žƒ€ŒŒ›. 
 	DEC     SP    	; Ž‘‹…„ˆ‰ €„…‘ 
 	DEC     SP    	; -‘’€’Ž‚›‰ .
+
 ; Ž„Žƒ€ŒŒ€ MONITORA, Ž…‘…—ˆ‚€ž™€Ÿ ŠŽˆŽ‚€ˆ… 
 ; „€›• ˆ‡ €„…‘“…ŒŽ‰ Ž‹€‘’ˆ ‡“ ‚ €„…‘“…Œ“ž 
 ; Ž‹€‘’œ Ž‡“ Ž‹œ‡Ž‚€’…‹Ÿ. 
 	CALL    ReadROM	;0FA68H	; ……‘›‹Š€ Žƒ€ŒŒ›. 
 	POP     HL     	; ‚‡Ÿ’œ €„…‘ 
 	JP	(HL)          	;ˆ ‡€“‘’ˆ’œ Žƒ€ŒŒ“.
+
 ; Ž„Žƒ€ŒŒ€ ‘—ˆ’›‚€ˆŸ ”€‰‹€ ˆ‡ ‚…Œ…ŽƒŽ “”…€ 
 ;‚ ’…Š‘’Ž‚›‰ “”… …„€Š’Ž€ "ŒˆŠŽ". 
 LOAD:	LD     HL, SO4 	; Ž„’‚…„ˆ’œ 
-	CALL    PRINT 	;‚›Ž ‘—ˆ’›‚€ˆŸ. 
+	CALL    PrintString 	;‚›Ž ‘—ˆ’›‚€ˆŸ. 
 	LD     HL,4A00H	;€—€‹œ›‰ €„…‘ 
 	LD     DE,2100H	;BPEMEHHOƒO “”…€. 
-RD0:	LD     BC,28FFH	;O'EM ”€‰‹€. 
+RD0:	LD     BC,28FFH	;OšEM ”€‰‹€. 
 RD1:	LD     A,(HL)   	;……‘‹€’œ
 	LD	(DE),A     	;”€‰‹ 
 	INC     HL     	;ˆ3
@@ -616,8 +630,9 @@ RD1:	LD     A,(HL)   	;……‘‹€’œ
 	OR     C     	; 
 	JP	NZ,     RD1   	; 
 	JP     M0    	;‚›‰’ˆ ‚ Œ…ž.
+
 ;Ž„Žƒ€ŒŒ€ ‘Ž•€…ˆŸ ”€‰‹€ ‚Ž ‚…Œ…ŽŒ 
-; “”……. …‘‹ˆ Ž '…Œ ”€‰‹€ …‚›˜€…’ 28FFH, ’Ž 
+; “”……. …‘‹ˆ Žš…Œ ”€‰‹€ …‚›˜€…’ 28FFH, ’Ž 
 ; Ž…€–ˆŸ Ž •€…ˆž … ‚›Ž‹Ÿ…’‘Ÿ. 
 SAVE:	LD     HL, 2100H
 S1:	LD     A,(HL)   	;Ž‚…ˆ’œ €‡Œ…
@@ -630,15 +645,16 @@ S1:	LD     A,(HL)   	;Ž‚…ˆ’œ €‡Œ…
 	LD     HL,SO6 	;‘ŽŽ™ˆ’œ, € ……‘›‹Š“ 
 	JP     M1    	;HE Žˆ‡‚Ž„ˆ’œ.
 S2:	LD 	HL,SO5 	; ˆ€—…
-	CALL 	PRINT 	;Ž„’‚…„ˆ’œ ‡€ˆ‘œ
+	CALL 	PrintString 	;Ž„’‚…„ˆ’œ ‡€ˆ‘œ
 	LD 	HL,2100H	;‚Ž ‚…Œ…›‰ “”….
 	LD 	DE,4A00H ;
 	JP 	RD0 	;“©’ˆ € ‡€ˆ‘œ.
-;Ž„Žƒ€ŒŒ€ Ž—ˆ‘’Šˆ €ŒŸ’ˆ (‡€ˆ‘œ "0"
+
+;Ž„Žƒ€ŒŒ€ Ž—ˆ‘’Šˆ €ŒŸ’ˆ (‡€ˆ‘œ "0")
 ;BO ‚‘… „Ž‘’“›… Ž‹œ‡Ž‚€’…‹ž Ÿ—…‰Šˆ Ž‡“,
 ; ŠŽŒ… Ÿ—……Š, €—ˆ€Ÿ ‘ 7400).
 ZERO:	LD 	HL,SO5 	;Ž„’‚…„ˆ’œ ˆ…Œ
-	CALL 	PRINT 	; Ž…€–ˆˆ ‘Ž‘€ RAM.
+	CALL 	PrintString 	; Ž…€–ˆˆ ‘Ž‘€ RAM.
 	LD 	HL,0 	;
 Z1:	LD 	(HL),0 	;Ž—ˆ‘’ˆ’œ
 	INC 	HL 	; €ŒŸ’œ.
@@ -646,7 +662,9 @@ Z1:	LD 	(HL),0 	;Ž—ˆ‘’ˆ’œ
 	CP 	74H 	;…‘‹ˆ €„…‘ Ž‹œ˜…
 	JP	NZ, 	Z1 	; 7400, ’Ž ‚›‰’ˆ
 	JP 	M0 	;‚ Œ…ž.
-SO1:	DB 	1FH,0CH,0AH,"\"ROM-DISK/32K\"V2.1-23";
+
+SO1:	DB 	1FH
+	DB	0CH,0AH,"\"ROM-DISK/32K\"V2.1-23";
 	DB 	0AH,0AH,0DH,"DIR:";
 	DB 	0DH,0AH,"<0>-BASIC";
 	DB 	0DH,0AH,"<1>-ED/ASSM";
@@ -658,21 +676,23 @@ SO1:	DB 	1FH,0CH,0AH,"\"ROM-DISK/32K\"V2.1-23";
 	DB 	0AH,0DH," <S>-BUFF" ;
 	DB 	0AH,0DH," <L>-RED" ;
 	DB 	0AH,0DH," <Z>-0/RAM" ;
+	DB 	0AH,0DH," <M>-MONITOR" ;
 	DB 	0DH,0AH,0
 SO3:	DB 	19H		;
 SO4:	DB 	19H		;
-SO5:	DB 	19H,7FH,08H,0
+SO5:	DB 	19H,19H,7FH,08H,0
 SO6:	DB 	0DH,"OUT OF BUFF",0
+
 ;’€‹ˆ–€ €„…‘Ž‚ ”€‰‹Ž‚ ROM~DISK/32K.
 ;Ž‘‹…„Ž‚€’…‹œŽ Ž Š€’€‹Žƒ“ “Š€‡€›;
 ;€—€‹œ›‰, ŠŽ…—›‰ €„…‘€ ”€‰‹€ ‚ ‡“.
 ;€—€‹œ›‰ €„…‘ ’ŽƒŽ †… ”€‰‹€ ‚ Ž‡“.
-TABL:	DW	0,1FFFH,0 		; BASIC
-	DW 	2000H,2FFFH,0		; RED/ASSM
-	DW 	3000H,3FFFH,6400H	; DP/DDT
-	DW 	6E4EH,74E3H,800H 	; SORT/UT
-	DW 	74E4H,7A94H,800H	; DR I V/260
-	DW 	7A95H,7DFFH,0		; PROGR
+TABL:	DW	BASICROM, BASICROM+1FFFH,0 	; BASIC
+	DW 	EDASMROM, EDASMROM+0FFFH,0	; RED/ASSM
+	DW 	DPDDTROM, DPDDTROM+0FFFH,6400H	; DP/DDT
+	DW 	6E4EH,74E3H,800H 		; SORT/UT
+	DW 	74E4H,7A94H,800H		; DRIV/260
+	DW 	7A95H,7DFFH,0			; PROGR
 
 	DEPHASE
 	
