@@ -16,6 +16,7 @@ GetFreeMemAddr		EQU	0F830H
 WarmBoot			EQU	0F86CH
 InputDirective		EQU	0F8EEH
 Compare_HL_DE		EQU	0F990H
+PrintCR				EQU	0F9B0H
 ReadROM				EQU	0FA68H
 PrintCRAndHexWordAndSpace EQU	0FB78H
 

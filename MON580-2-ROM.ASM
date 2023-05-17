@@ -607,6 +607,47 @@ SORTUTROM:
 
 CONST:	EQU	6     	;ЧИСЛО ПРОГРАММ 
 
+	if 0
+	LD	HL, 0800H		; Начало ROM-диска
+	LD	B, 7			; LD B, 08H
+LOP:	PUSH	HL
+	POP	DE
+	PUSH	BC
+	LD	BC, T
+	CALL	ReadROM
+	POP	BC
+	LD	A, (T)			; Проверяем маркер конца диска
+	CP	0FFH
+	JP	Z, EODIR
+	LD	C, A
+	CALL	PrintCharFromC
+	INC	HL
+	DEC	B
+	JP	NZ, LOP
+EODIR:	CALL	PrintCR
+	INC	HL
+	INC	HL
+
+	PUSH	HL
+	POP	DE
+	INC	DE
+	PUSH	BC
+	LD	BC, T
+	CALL	ReadROM
+	POP	BC
+	LD	HL, (T)
+	ADD	HL, DE
+	INC	HL
+	INC	HL
+	INC	HL
+	JP	LOP
+
+	CALL	InputSymbol
+	JP	WarmBoot
+
+T:	DW	0
+	endif
+	
 M0:	LD	HL,SO1 	; ВЫВЕСТИ КАТАЛОГ 
 M1:	CALL	PrintString 	;ROM-DISK/32K 
 	CALL    InputSymbol    	; ВЫБОР МЕНЮ. 
