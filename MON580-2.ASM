@@ -399,9 +399,6 @@ Enter:	INC	DE
 	RET
 
 
-; ──────────────────────────────────────────────
-
-TABK2:	DB	09,0AH,0DH,7FH,08H,19H,18H,1AH	; 8 bytes
 
 ; ──────────────────────────────────────────────
 ; Перемещает область памяти с HL по DE в адреса BC
@@ -421,6 +418,29 @@ DirectiveTransfer:
 ;		ERROR	"DirectiveGoto and DirectiveTransfer must be in same page"
 ;	ENDIF
 	FJMP	3, DirectiveTransferROM
+
+; ──────────────────────────────────────────────
+; Вывод текста области памяти с HL по DE
+; ВХОД:
+;	HL	- начальный адрес
+;	DE	- конечный адрес
+; ВЫХОД:
+;	HL	- конечный адрес источника
+; ИЗМЕНЯЕТ:
+;	AF, HL		!!TODO!! проверить подпрограммы на изменение
+; ──────────────────────────────────────────────
+
+DirectiveList:
+
+	IF	(DirectiveTransfer & 0FF00H) <> (DirectiveList & 0FF00H)
+		ERROR	"DirectiveTransfer and DirectiveList must be in same page"
+	ENDIF
+
+	FJMP	3, DirectiveListROM
+
+	NOP
+	NOP
+	NOP
 
 ; ──────────────────────────────────────────────
 ; Читает аргументы со второй позиции буфера команды в регистры HL, DE, BC
@@ -539,7 +559,7 @@ TOBACK:					; 6 bytes
 	NOP
 	NOP
 	NOP
-
+	
 ; ──────────────────────────────────────────────
 ; Сравнение значений HL и DE
 ; ВХОД:
@@ -639,26 +659,6 @@ DirectiveModify:
 	FJMP	3, DirectiveModifyROM
 
 ; ──────────────────────────────────────────────
-; Вывод текста области памяти с HL по DE
-; ВХОД:
-;	HL	- начальный адрес
-;	DE	- конечный адрес
-; ВЫХОД:
-;	HL	- конечный адрес источника
-; ИЗМЕНЯЕТ:
-;	AF, HL		!!TODO!! проверить подпрограммы на изменение
-; ──────────────────────────────────────────────
-
-DirectiveList:
-
-	IF	(DirectiveSearch & 0FF00H) <> (DirectiveList & 0FF00H)
-		ERROR	"DirectiveList and DirectiveSearch must be in same page"
-	ENDIF
-
-	FJMP	3, DirectiveListROM
-
-
-; ──────────────────────────────────────────────
 DIRTABLE:				; 23 bytes
 	IF	(DIRTABLE & 0FF00H) <> (DirectiveDump & 0FF00H)
 		ERROR	"DirectiveDump and DIRTABLE must be in same page"
@@ -676,6 +676,7 @@ DIRTABLE:				; 23 bytes
 	DB	'S', DirectiveSearch & 0FFH
 	DB	'T', DirectiveTransfer & 0FFH
 	DB	'U', DirectiveU & 0FFH
+	DB	'Z', DirectiveStart & 0FFH
 	DB	0
 
 ; ──────────────────────────────────────────────
@@ -687,10 +688,24 @@ DirectiveU:			; 15 bytes
 	LD	HL, 07E00H
 	LD	DE, 07FFFH
 	LD	BC, BASE-0200H
-	PUSH	BC
 	CALL	DirectiveReadROM
-	POP	HL
-	JP	(HL)
+
+; ──────────────────────────────────────────────
+; Выполняет переход по адресу 07400H
+; ВХОД:
+; ВЫХОД:
+;	НЕТ
+; ИЗМЕНЯЕТ:
+;	Не определено
+; ОПИСАНИЕ:
+;	В стеке содержится адрес WarmBoot
+; ──────────────────────────────────────────────
+
+DirectiveStart:
+	IF	(DirectiveStart & 0FF00H) <> (DirectiveFill & 0FF00H)
+		ERROR	"DirectiveStart and DirectiveFill must be in same page"
+	ENDIF
+	JP	BASE-0200H
 
 ; ──────────────────────────────────────────────
 
@@ -809,6 +824,10 @@ ReadKeyCodeChkBrk:
 	RET	NZ
 	CALL	InitVideo
 	JP	SyntaxError
+
+	NOP
+	NOP
+	NOP
 
 	CHK	0FA68H, "* Internal subroutine ReadROM shifted ! *"
 ReadROM:
@@ -2302,6 +2321,10 @@ MoveBlock:				; 11 bytes
 	OR	C
 	JP	NZ, MoveBlock
 	RET
+
+; ──────────────────────────────────────────────
+
+TABK2:	DB	09,0AH,0DH,7FH,08H,19H,18H,1AH	; 8 bytes
 
 ; ──────────────────────────────────────────────
 ; Блок эмуляции точек входа BIOS и BDOS

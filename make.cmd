@@ -1,6 +1,6 @@
 asw -lU -D BASE=07600H mon580-306-vt52.asm > mon580-1-32.lst
 p2bin mon580-306-vt52.p bios.rom
-asw -lU -D BASE=03600H mon580-306-vt52.asm > mon580-mon580-1-16.lst
+asw -lU -D BASE=03600H mon580-306-vt52.asm > mon580-1-16.lst
 p2bin mon580-306-vt52.p bios16k.rom
 asw -lUa -D STUB=1 mon580-2-rom.asm > mon580-2-rom-1.lst
 p2bin mon580-2-rom.p romdisk.rom
