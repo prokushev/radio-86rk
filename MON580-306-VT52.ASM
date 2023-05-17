@@ -2167,30 +2167,6 @@ CursorUp:
 	DEC	H		; POSY--
 	RET
 
-	if 0			; ‘¥©ç á ­¨£¤¥ ­¥ ¨á¯®«ì§ã¥âáï
-; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
-; ‚ëç¨â ¥â ¨§ HL DE
-; ‚•„:
-;	HL	- ã¬¥­ìè ¥¬®¥
-;	DE	- ¢ëç¨â ¥¬®¥
-; ‚›•„:
-;	HL	- à¥§ã«ìâ â
-; ˆ‡Œ…Ÿ…’:
-;	HL, AF
-; ˆ‘€ˆ…:
-;	‚ëç¨â ¥â DE ¨§ HL
-; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
-
-SUBHLDE:
-	LD	A, L
-	SUB	E
-	LD	L, A
-	LD	A, H
-	SBC	A, D
-	LD	H, A
-	RET
-	endif
-
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 ; «®ª í¬ã«ïæ¨¨ â®ç¥ª ¢å®¤  BDOS
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
@@ -2221,79 +2197,6 @@ BDOS:	LD	HL, 0000H	; ‘®åà ­ï¥¬ áâ¥ª
 	LD	A, 20H		; ”ã­ªæ¨ï 12 S_BDOSVER
 	LD	B, 00H
 	RET
-
-	IF	0
-
-
-;
-;BDOS function 10 (C_READSTR) - Buffered console input
-;Supported by: All versions, with variations
-;Entered with C=0Ah, DE=address or zero.
-;
-;This function reads characters from the keyboard into a memory buffer
-; until RETURN is pressed. The Delete key is handled correctly. In later
-; versions, more features can be used at this point; ZPM3 includes a
-; full line editor with recall of previous lines typed.
-;
-;On entry, DE is the address of a buffer. If DE=0, the DMA address
-; is used (CP/M 3 and later)
-; and the buffer already contains data:
-;
-;DE=address:                 DE=0 :
-;buffer: DEFB    size        buffer: DEFB    size
-        ;DEFB    ?                   DEFB    len
-        ;DEFB    bytes               DEFB    bytes
-;;The value at buffer+0 is the amount of bytes available in the
-; buffer. Once the limit has been reached, no more can be added,
-; although the line editor can still be used.
-;If DE=0 (in 16-bit versions, DX=0FFFFh) the next byte contains 
-;the number of bytes already in the buffer; otherwise this is 
-;ignored. On return from the function, it contains the number 
-;of bytes present in the buffer.
-;
-;The bytes typed then follow. There is no end marker.
-;
-
-	if 0
-	EX	DE, HL
-	LD	C, (HL)
-	LD	B, 00H
-	INC	HL
-L008CH:	CALL	0F803H
-	CP	7FH
-	JP	Z, L00B6H
-	CALL	PrintCharFromA
-	CP	0DH
-	JP	Z, L00B2H
-	CP	03H
-	JP	Z, 0F800H
-	INC	HL
-	LD	(HL), A
-	INC	B
-	LD	A, C
-	CP	B
-	JP	NZ, L008CH
-	LD	B, C
-
-L00B2H:	INC	DE
-	EX	DE, HL
-	LD	(HL), B
-	RET
-
-L00B6H:	LD	A, B
-	OR	A
-	JP	Z, L008CH
-	DEC	B
-	DEC	HL
-	;PUSH	HL
-	CALL	RST_18
-	DB	8, ' ', 8+80h		; á¬. TZABOJ
-	;POP	HL
-	JP	L008CH
-	endif
-
-	ENDIF
-
 
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 ; ‚¢®¤ á¨¬¢®«  ¡¥§ ®¦¨¤ ­¨ï á ¯à®¢¥àª®© ­ ¦ â¨ï Ctrl-C. 
