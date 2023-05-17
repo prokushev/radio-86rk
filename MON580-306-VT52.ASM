@@ -878,7 +878,7 @@ AFAE1:	LD	A,(HL)		; read status
 	LD	(HL),80H
 	LD	L,4		; VT_57+04
 	LD	(HL),SA & 00FFh ; 0D0H
-	LD	(HL),SA>>8	; 076H
+	LD	(HL),SA>>8	; 076H/036H
 	INC	L		; адрес VT_57+5
 	LD	(HL),23H
 	LD	(HL),49H
@@ -1178,7 +1178,7 @@ AFC0B:	DEC	D
 
 	LD	HL,VT_57+4
 	LD	(HL), SA & 00FFH		; 0D0H
-	LD	(HL), SA >>8		; 076H
+	LD	(HL), SA >>8		; 076H/036H
 	INC	HL
 	LD	(HL),023H
 	LD	(HL),049H
@@ -1277,7 +1277,7 @@ AFC7B:	POP	AF		; подъем стека на [рег.B] ячеек
 	LD	SP,HL
 	LD	HL,VT_57+4
 	LD	(HL), SA & 00FFh	; 0D0H
-	LD	(HL), SA >> 8	; 076H
+	LD	(HL), SA >> 8	; 076H/036H
 	INC	HL		; VT_57+5
 	LD	(HL),23H
 	LD	(HL),49H
