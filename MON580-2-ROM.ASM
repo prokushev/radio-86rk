@@ -549,18 +549,50 @@ AF9E6:	INC	BC
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 
 	ORG 0800H
+
+;0-7 - ˆŒŸ ”€‰‹€. ŒŽ†…’ ‘Ž„…†€’œ … Ž‹…… 8 ‘ˆŒ‚Ž‹Ž‚. …‘‹ˆ ˆŒŸ ‘Ž„…†ˆ’ Œ…œ˜… ‘ˆŒ‚Ž‹Ž‚, ‘‚ŽŽ„›… Ÿ—…‰Šˆ ‡€Ž‹Ÿž’‘Ÿ Ž…‹€Œˆ.
+;8-9 - €—€‹œ›‰ €„…‘ €‡Œ…™…ˆŸ Žƒ€ŒŒ› ˆ ‘—ˆ’›‚€ˆˆ …… ˆ‡ „ˆ‘Š€ ‚ Ž‡“ - €„…‘ "Ž‘€„Šˆ".
+;€-‚ - €‡Œ… ”€‰‹€. ‚ ’Ž’ €€Œ…’ Žƒ‹€‚‹…ˆ… ”€‰‹€(16 €‰’) … ‚•Ž„ˆ’.
+;‘ - €‰’ ”‹€ƒŽ‚. ‚ "ORDOS" V2.X ˆ‘Ž‹œ‡“…’‘Ÿ ’Ž‹œŠŽ ˆ’ D7. ‘Ž‘’ŽŸˆ… "1" “Š€‡›‚€…’ € ’Ž, —’Ž ”€‰‹ ‡€™ˆ™… Ž’ “ˆ—’Ž†…ˆŸ. Ž‘’€‹œ›… ˆ’› ‡€…‡…‚ˆŽ‚€› „‹Ÿ €‘˜ˆ…ˆŸ. ˆ‡Œ……ˆ… ‘Ž‘’ŽŸˆŸ ˆ’€ D7 Žˆ‡‚Ž„Ÿ’ ‚…˜ˆ… ‡€ƒ“†€…Œ›… „ˆ…Š’ˆ‚› Ž…€–ˆŽŽ‰ ‘ˆ‘’…Œ›.
+;D-F - ‘‹“†…›… Ÿ—…‰Šˆ ‘ˆ‘’…Œ›.
+
+FILE	MACRO name, start, size
+	DB	(0fff0h-$) & 0fh dup (0)	; ¢ëà ¢­¨¢ ­¨¥ ¯® £à ­¨æ¥ 16
+s	SET	$
+	DB	name
+	DB	$-s DUP (20H)
+	DW	start
+	DW	size
+	DB	080H
+	DB	0,0,0
+	ENDM
+
+ENDOFFILES	MACRO
+	DB	(0fff0h-$) & 0fh dup (0)	; ¢ëà ¢­¨¢ ­¨¥ ¯® £à ­¨æ¥ 16
+	DB	0FFH
+	ENDM
+
+	FILE "BASIC", 0, 02000H
 BASICROM:
 	BINCLUDE "basic.rom"
+
+	FILE "ASM", 0, 01000H
 EDASMROM:
 	BINCLUDE "edasm.rom"
+
+	FILE "DDT", 6400H, 01000H
 DPDDTROM:
 	BINCLUDE "dpddt.rom"
+	
+	FILE "SORT", 0, 0E96H
 SORTUTROM:
 	BINCLUDE "sortut.rom"
+	
+	ENDOFFILES
 
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 ; Žƒ€ŒŒ€ “€‚‹…ˆŸ ROM-DISK/32K „‹Ÿ ŠŽŒœž’…€ 
-;"€„ˆŽ-86Š" ‘ OšEMOM Ž‡“ Ž‹œ‡Ž‚€’…‹Ÿ 32Š.
+;"€„ˆŽ-86Š" ‘ OšEMOM Ž‡“ Ž‹œ‡Ž‚€’…‹Ÿ 16Š/32Š.
 ;Žƒ€ŒŒ€ “€‚‹…ˆŸ ‡€”ˆŠ‘ˆŽ‚€€ ‚ ‡“ 
 ;Ž €„…‘€Œ 7E00H-7FFFH. “Š€‡€“ž Ž‹€‘’œ ‡“ 
 ;‡€…™…Ž ˆ‘Ž‹œ‡Ž‚€’œ Ž„ ROM-DISK. 
@@ -574,6 +606,7 @@ SORTUTROM:
 	PHASE	07400H
 
 CONST:	EQU	6     	;—ˆ‘‹Ž Žƒ€ŒŒ 
+
 M0:	LD	HL,SO1 	; ‚›‚…‘’ˆ Š€’€‹Žƒ 
 M1:	CALL	PrintString 	;ROM-DISK/32K 
 	CALL    InputSymbol    	; ‚›Ž Œ…ž. 
