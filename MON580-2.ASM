@@ -705,7 +705,7 @@ DirectiveStart:
 	IF	(DirectiveStart & 0FF00H) <> (DirectiveFill & 0FF00H)
 		ERROR	"DirectiveStart and DirectiveFill must be in same page"
 	ENDIF
-	JP	BASE-0200H
+	JP	BASE-03H
 
 ; 컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
 
