@@ -51,7 +51,7 @@ INV_MG	EQU	BASE+1FH		; 1 флаг инверсии магнитофона
 KNS_RD	EQU	BASE+2FH		; 1 FIXED Константа чтения
 KNS_WR	EQU	BASE+30H		; 1 FIXED константа записи
 
-; Эти три переменные должны подряд для совместимости с CP/M
+; Эти три переменные должны подряд для совместимости с CP/M. 
 BUFSIZ	EQU	BASE+31H		; 1 FIXED Размер буфера ввода
 BUFCNT	EQU	BASE+32H		; 1 FIXED Число введенных символов в буфер ввода
 COMBUF	EQU	BASE+33H		; COMBUFMAX FIXED буфер ввода директивы
