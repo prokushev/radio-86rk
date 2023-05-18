@@ -341,7 +341,7 @@ InputNextSymbol:
 	LD	(HL), A
 	CALL	PrintCharFromA
 	CP	13
-	JP	Z,L00B2H		;AF91A
+	JP	Z,Enter		;AF91A
 	CP	03
 	JP	Z,WarmBoot
 	INC	B
@@ -349,7 +349,10 @@ InputNextSymbol:
 	CP	B
 	JP	NZ, InputNextSymbol;	SyntaxError
 	LD	B, C
-L00B2H:	INC	DE
+Enter:	NOP
+	NOP
+	NOP	;CALL	PrintCR
+	INC	DE
 	EX	DE, HL
 	LD	(HL), B
 	RET
@@ -359,9 +362,6 @@ L00B2H:	INC	DE
 
 TABK2:	DB	09,0AH,0DH,7FH,08H,19H,18H,1AH	; 8 bytes
 
-	NOP
-	NOP
-	NOP
 	NOP
 	NOP
 

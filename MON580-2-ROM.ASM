@@ -560,7 +560,7 @@ FILE	MACRO name, start, size
 	DB	(0fff0h-$) & 0fh dup (0)	; ¢ëà ¢­¨¢ ­¨¥ ¯® £à ­¨æ¥ 16
 s	SET	$
 	DB	name
-	DB	$-s DUP (20H)
+	DB	8-($-s) DUP (20H)
 	DW	start
 	DW	size
 	DB	080H
@@ -572,22 +572,92 @@ ENDOFFILES	MACRO
 	DB	0FFH
 	ENDM
 
-	FILE "BASIC", 0, 02000H
+	FILE "BASIC$", 0, 02000H
 BASICROM:
 	BINCLUDE "basic.rom"
 
-	FILE "ASM", 0, 01000H
+	FILE "ASM$", 0, 01000H
 EDASMROM:
 	BINCLUDE "edasm.rom"
 
-	FILE "DDT", 6400H, 01000H
+	FILE "DDT$", 6400H, 01000H
 DPDDTROM:
 	BINCLUDE "dpddt.rom"
 	
-	FILE "SORT", 0, 0E96H
+	FILE "SORT$", 0, 0E96H
 SORTUTROM:
 	BINCLUDE "sortut.rom"
-	
+
+	FILE "LOAD$", 07400H, ENDLOADROM-LOADROM
+; Ž„Žƒ€ŒŒ€ ‘—ˆ’›‚€ˆŸ ”€‰‹€ ˆ‡ ‚…Œ…ŽƒŽ “”…€ 
+;‚ ’…Š‘’Ž‚›‰ “”… …„€Š’Ž€ "ŒˆŠŽ". 
+LOADROM:
+	PHASE	07400H
+	LD     HL,4A00H	;€—€‹œ›‰ €„…‘ 
+	LD     DE,2100H	;BPEMEHHOƒO “”…€. 
+	LD     BC,28FFH	;OšEM ”€‰‹€. 
+RD1:	LD     A,(HL)   	;……‘‹€’œ
+	LD	(DE),A     	;”€‰‹ 
+	INC     HL     	;ˆ3
+	INC     DE     	;‚…Œ…ŽƒŽ “”…€ 
+	DEC     BC     	;B ’…Š‘’Ž‚›‰ “”… 
+	LD     A,B   	;‘ €„…‘€ 2100. 
+	OR     C     	; 
+	JP	NZ,     RD1   	; 
+	JP	WarmBoot
+	DEPHASE
+ENDLOADROM:
+
+	FILE "SAVE$", 07400H, ENDSAVEROM-SAVEROM
+;Ž„Žƒ€ŒŒ€ ‘Ž•€…ˆŸ ”€‰‹€ ‚Ž ‚…Œ…ŽŒ 
+; “”……. …‘‹ˆ Žš…Œ ”€‰‹€ …‚›˜€…’ 28FFH, ’Ž 
+; Ž…€–ˆŸ Ž •€…ˆž … ‚›Ž‹Ÿ…’‘Ÿ. 
+
+SAVEROM:
+	PHASE	07400H
+	LD     HL, 2100H
+S1:	LD     A,(HL)   	;Ž‚…ˆ’œ €‡Œ…
+	CP     0FFH  	; ”€‰‹€. 
+	JP	Z, S2    	;…‘‹ˆ ”€‰‹ HE “Œ…™€…’‘Ÿ 
+	INC     HL     	;‚Ž ‚…Œ…ŽŒ 
+	LD     A, H   	; “”……, ’Ž 
+	CP     4AH   	; 
+	JP	NZ,     S1    	;
+	LD     HL,SO6 	;‘ŽŽ™ˆ’œ, € ……‘›‹Š“ 
+	CALL	PrintString
+	JP     WarmBoot    	;HE Žˆ‡‚Ž„ˆ’œ.
+S2:	LD 	HL,2100H	;‚Ž ‚…Œ…›‰ “”….
+	LD 	DE,4A00H ;
+	LD     BC,28FFH	;OšEM ”€‰‹€. 
+S3:	LD     A,(HL)   	;……‘‹€’œ
+	LD	(DE),A     	;”€‰‹ 
+	INC     HL     	;ˆ3
+	INC     DE     	;‚…Œ…ŽƒŽ “”…€ 
+	DEC     BC     	;B ’…Š‘’Ž‚›‰ “”… 
+	LD     A,B   	;‘ €„…‘€ 2100. 
+	OR     C     	; 
+	JP	NZ, S3
+	JP	WarmBoot
+SO6:	DB 	0DH,"OUT OF BUFFER",0
+	DEPHASE
+ENDSAVEROM:
+
+	FILE "ZERO$", 07400H, ENDZEROROM-ZEROROM
+;Ž„Žƒ€ŒŒ€ Ž—ˆ‘’Šˆ €ŒŸ’ˆ (‡€ˆ‘œ "0")
+;BO ‚‘… „Ž‘’“›… Ž‹œ‡Ž‚€’…‹ž Ÿ—…‰Šˆ Ž‡“,
+; ŠŽŒ… Ÿ—……Š, €—ˆ€Ÿ ‘ 7400).
+ZEROROM:
+	PHASE	07400H
+	LD 	HL,0 	;
+Z1:	LD 	(HL),0 	;Ž—ˆ‘’ˆ’œ
+	INC 	HL 	; €ŒŸ’œ.
+	LD 	A,H 	;
+	CP 	74H 	;…‘‹ˆ €„…‘ Ž‹œ˜…
+	JP	NZ, 	Z1 	; 7400, ’Ž ‚›‰’ˆ
+	JP 	WarmBoot 	;‚ Œ…ž.
+	DEPHASE
+ENDZEROROM:
+
 	ENDOFFILES
 
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
@@ -607,7 +677,8 @@ SORTUTROM:
 
 CONST:	EQU	6     	;—ˆ‘‹Ž Žƒ€ŒŒ 
 
-	if 0
+	LD	HL, SO1
+	CALL	PrintString
 	LD	HL, 0800H		;  ç «® ROM-¤¨áª 
 	LD	B, 7			; LD B, 08H
 LOP:	PUSH	HL
@@ -618,47 +689,58 @@ LOP:	PUSH	HL
 	POP	BC
 	LD	A, (T)			; à®¢¥àï¥¬ ¬ àª¥à ª®­æ  ¤¨áª 
 	CP	0FFH
-	JP	Z, EODIR
+	JP	Z, WarmBoot
 	LD	C, A
 	CALL	PrintCharFromC
 	INC	HL
 	DEC	B
 	JP	NZ, LOP
-EODIR:	CALL	PrintCR
+	
+	INC	HL
 	INC	HL
 	INC	HL
 
 	PUSH	HL
 	POP	DE
 	INC	DE
-	PUSH	BC
 	LD	BC, T
 	CALL	ReadROM
-	POP	BC
-	LD	HL, (T)
+	LD	HL, (T)			;  §¬¥à ä ©« 
+	
+	LD	C, ' '			; ¥ç â ¥¬ à §¬¥à
+	CALL	PrintCharFromC
+	LD	A, H
+	CALL	PrintHexByte
+	LD	A, L
+	CALL	PrintHexByte
+
+	LD	A, L			; ¢ëáç¨âë¢ ¥¬ ­ ç «® á«¥¤ãîé¥© § ¯¨á¨
+	OR	A			; ®ª ­ç¨¢ ¥âáï ­  ­®«ì
+	JP	Z, SKIP
+	OR	0fh
+	LD	L, A
+	INC	HL
+SKIP:
+
+	PUSH	HL
+	CALL	PrintCR
+	POP	HL
+
 	ADD	HL, DE
 	INC	HL
 	INC	HL
 	INC	HL
+	INC	HL
+	INC	HL
+	LD	B, 7			; LD B, 08H
 	JP	LOP
 
-	CALL	InputSymbol
-	JP	WarmBoot
-
 T:	DW	0
-	endif
-	
-M0:	LD	HL,SO1 	; ‚›‚…‘’ˆ Š€’€‹Žƒ 
-M1:	CALL	PrintString 	;ROM-DISK/32K 
-	CALL    InputSymbol    	; ‚›Ž Œ…ž. 
-	CP	'Z'   	;“‘’€Ž‚Š€ €ŒŸ’ˆ ‚ 0?
- 	JP	Z, ZERO	;…’,
-	CP     'S'   	; ‡€ˆ‘œ ‚Ž ‚…Œ…›‰ 
-	JP	Z, SAVE  	; “”…?- …’,
- 	CP     'L'   	;‘—ˆ’›‚€ˆ… ‚ ’…Š‘’Ž‚›‰ 
-	JP	Z, LOAD	; “”…?-…’, 
- 	CP     'M'   	;
-	JP	Z, WarmBoot	;
+
+
+M0:	CALL    InputSymbol    	; ‚›Ž Œ…ž. 
+
+
 	SUB     30H   	; ‚•Ž„ˆ’ ‹ˆ €†€’€Ÿ 
 	JP	M, M0  	; –ˆ”€ ‚ „ˆ€€‡Ž 
 	CP     CONST 	; “ Š€‡€›• ‡€—…ˆ‰? 
@@ -669,7 +751,7 @@ M1:	CALL	PrintString 	;ROM-DISK/32K
 	XOR     A     	;„€, Ž—ˆ‘’ˆ’œ ‘‹“†…“ž 
 	LD	(2117H),A 	;Ÿ—…‰Š“ €ŒŸ’ˆ BASIC. 
 M2:	LD      DE,6   	;˜€ƒ Žˆ‘Š€ Ž ’€‹ˆ–…. 
-	LD      HL,TABL	; €‡Ž‚›‰ €„…‘ ’€‹ˆ–›. 
+;	LD      HL,TABL	; €‡Ž‚›‰ €„…‘ ’€‹ˆ–›. 
 	XOR     A     	; ‘Ž„…†ˆŒŽ… €ŠŠ“Œ“‹Ÿ’Ž€ 
 M3:	CP     B     	; €‚Ž •€ˆŒŽŒ“ ŠŽ„“? 
 	JP	Z, M4    	;„€, ‚‡Ÿ’œ €„…‘€ Žƒ€ŒŒ›. 
@@ -690,86 +772,8 @@ M4:	LD	SP, HL  ;ˆ‘Ž‹œ‡“Ÿ ‘’…Š,
 	POP     HL     	; ‚‡Ÿ’œ €„…‘ 
 	JP	(HL)          	;ˆ ‡€“‘’ˆ’œ Žƒ€ŒŒ“.
 
-; Ž„Žƒ€ŒŒ€ ‘—ˆ’›‚€ˆŸ ”€‰‹€ ˆ‡ ‚…Œ…ŽƒŽ “”…€ 
-;‚ ’…Š‘’Ž‚›‰ “”… …„€Š’Ž€ "ŒˆŠŽ". 
-LOAD:	LD     HL, SO4 	; Ž„’‚…„ˆ’œ 
-	CALL    PrintString 	;‚›Ž ‘—ˆ’›‚€ˆŸ. 
-	LD     HL,4A00H	;€—€‹œ›‰ €„…‘ 
-	LD     DE,2100H	;BPEMEHHOƒO “”…€. 
-RD0:	LD     BC,28FFH	;OšEM ”€‰‹€. 
-RD1:	LD     A,(HL)   	;……‘‹€’œ
-	LD	(DE),A     	;”€‰‹ 
-	INC     HL     	;ˆ3
-	INC     DE     	;‚…Œ…ŽƒŽ “”…€ 
-	DEC     BC     	;B ’…Š‘’Ž‚›‰ “”… 
-	LD     A,B   	;‘ €„…‘€ 2100. 
-	OR     C     	; 
-	JP	NZ,     RD1   	; 
-	JP     M0    	;‚›‰’ˆ ‚ Œ…ž.
-
-;Ž„Žƒ€ŒŒ€ ‘Ž•€…ˆŸ ”€‰‹€ ‚Ž ‚…Œ…ŽŒ 
-; “”……. …‘‹ˆ Žš…Œ ”€‰‹€ …‚›˜€…’ 28FFH, ’Ž 
-; Ž…€–ˆŸ Ž •€…ˆž … ‚›Ž‹Ÿ…’‘Ÿ. 
-SAVE:	LD     HL, 2100H
-S1:	LD     A,(HL)   	;Ž‚…ˆ’œ €‡Œ…
-	CP     0FFH  	; ”€‰‹€. 
-	JP	Z, S2    	;…‘‹ˆ ”€‰‹ HE “Œ…™€…’‘Ÿ 
-	INC     HL     	;‚Ž ‚…Œ…ŽŒ 
-	LD     A, H   	; “”……, ’Ž 
-	CP     4AH   	; 
-	JP	NZ,     S1    	;
-	LD     HL,SO6 	;‘ŽŽ™ˆ’œ, € ……‘›‹Š“ 
-	JP     M1    	;HE Žˆ‡‚Ž„ˆ’œ.
-S2:	LD 	HL,SO5 	; ˆ€—…
-	CALL 	PrintString 	;Ž„’‚…„ˆ’œ ‡€ˆ‘œ
-	LD 	HL,2100H	;‚Ž ‚…Œ…›‰ “”….
-	LD 	DE,4A00H ;
-	JP 	RD0 	;“©’ˆ € ‡€ˆ‘œ.
-
-;Ž„Žƒ€ŒŒ€ Ž—ˆ‘’Šˆ €ŒŸ’ˆ (‡€ˆ‘œ "0")
-;BO ‚‘… „Ž‘’“›… Ž‹œ‡Ž‚€’…‹ž Ÿ—…‰Šˆ Ž‡“,
-; ŠŽŒ… Ÿ—……Š, €—ˆ€Ÿ ‘ 7400).
-ZERO:	LD 	HL,SO5 	;Ž„’‚…„ˆ’œ ˆ…Œ
-	CALL 	PrintString 	; Ž…€–ˆˆ ‘Ž‘€ RAM.
-	LD 	HL,0 	;
-Z1:	LD 	(HL),0 	;Ž—ˆ‘’ˆ’œ
-	INC 	HL 	; €ŒŸ’œ.
-	LD 	A,H 	;
-	CP 	74H 	;…‘‹ˆ €„…‘ Ž‹œ˜…
-	JP	NZ, 	Z1 	; 7400, ’Ž ‚›‰’ˆ
-	JP 	M0 	;‚ Œ…ž.
-
-SO1:	DB 	1FH
-	DB	0CH,"*ROM-DISK/32K* V2.1-23";
-	DB 	0AH,0AH,0DH,"DIR:";
-	DB 	0DH,0AH,"<0>-BASIC";
-	DB 	0DH,0AH,"<1>-ED/ASSM";
-	DB 	0DH,0AH,"<2>-DP/DDT";
-	DB 	0DH,0AH,"<3>-SORT UT";
-	DB 	0DH,0AH,"<4>-DRIV/260";
-	DB 	0DH,0AH,"<5>-PROGR" ;
-	DB 	0AH,0DH
-	DB 	0AH,0DH," <S>-SAVE TO BUFFER";
-	DB 	0AH,0DH," <L>-READ FROM BUFFER" ;
-	DB 	0AH,0DH," <Z>-FILL RAM WITH ZERO" ;
-	DB 	0AH,0DH," <M>-MONITOR" ;
-	DB 	0DH,0AH,0
-SO3:	DB 	19H		;
-SO4:	DB 	19H		;
-SO5:	DB 	19H,19H,7FH,08H,0
-SO6:	DB 	0DH,"OUT OF BUFFER",0
-
-;’€‹ˆ–€ €„…‘Ž‚ ”€‰‹Ž‚ ROM-DISK/32K.
-;Ž‘‹…„Ž‚€’…‹œŽ Ž Š€’€‹Žƒ“ “Š€‡€›;
-;€—€‹œ›‰, ŠŽ…—›‰ €„…‘€ ”€‰‹€ ‚ ‡“.
-;€—€‹œ›‰ €„…‘ ’ŽƒŽ †… ”€‰‹€ ‚ Ž‡“.
-TABL:	DW	BASICROM, BASICROM+1FFFH,0 	; BASIC
-	DW 	EDASMROM, EDASMROM+0FFFH,0	; RED/ASSM
-	DW 	DPDDTROM, DPDDTROM+0FFFH,6400H	; DP/DDT
-	; TODO ‚ ®¡à §¥ ª ª-â® ­¥ ®ç¥­ì ¯®­ïâ­®. ‘¢¥à¨âìáï á ¯ã¡«¨ª æ¨¥©.
-	DW 	SORTUTROM+800H, SORTUTROM+0E95H,000H	; SORT/UT
-	DW 	74E4H,7A94H,800H		; DRIV/260
-	DW 	7A95H,7DFFH,0			; PROGR
+SO1:	DB 	0AH,0DH,"*ROM-DISK/32K* V3.0-23"
+	DB 	0AH,0AH,0DH,"DIRECTORY:",0AH,0DH,0
 
 	ORG	07FFFH
 	NOP

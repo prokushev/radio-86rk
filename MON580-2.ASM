@@ -182,7 +182,6 @@ RST_18:	EX	(SP),HL			; 6 bytes
 	EX	(SP),HL
 	RET
 
-;	ORG	0F86CH
 ; ──────────────────────────────────────────────
 ; "Теплый" старт МОНИТОРа
 ; ВХОД:
@@ -350,7 +349,6 @@ skip:
 ;	AF, DE, HL, BC
 ; ──────────────────────────────────────────────
 
-;	ORG	0F8EEH
 	CHK	0F8EEH, "* Internal subroutine InputDirective shifted ! *"
 
 InputDirective:
@@ -393,7 +391,10 @@ InputNextSymbol:
 	CP	B
 	JP	NZ, InputNextSymbol;	SyntaxError
 	LD	B, C
-Enter:	INC	DE
+Enter:	NOP
+	NOP
+	NOP ;CALL	PrintCR
+	INC	DE
 	EX	DE, HL
 	LD	(HL), B
 	RET
@@ -438,9 +439,6 @@ DirectiveList:
 
 	FJMP	3, DirectiveListROM
 
-	NOP
-	NOP
-	NOP
 
 ; ──────────────────────────────────────────────
 ; Читает аргументы со второй позиции буфера команды в регистры HL, DE, BC
@@ -689,6 +687,7 @@ DirectiveU:			; 15 bytes
 	LD	DE, 07FFFH
 	LD	BC, BASE-0200H
 	CALL	DirectiveReadROM
+	JP	BASE-0200H
 
 ; ──────────────────────────────────────────────
 ; Выполняет переход по адресу 07400H
@@ -824,10 +823,6 @@ ReadKeyCodeChkBrk:
 	RET	NZ
 	CALL	InitVideo
 	JP	SyntaxError
-
-	NOP
-	NOP
-	NOP
 
 	CHK	0FA68H, "* Internal subroutine ReadROM shifted ! *"
 ReadROM:
