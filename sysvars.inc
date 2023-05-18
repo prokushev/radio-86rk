@@ -43,23 +43,26 @@ PAR_DE  EQU	BASE+1BH		; 2
 PAR_BC  EQU	BASE+1DH		; 2
 FLG_P2	EQU	BASE+1FH		; 1 флаг, что есть параметры 2 или 2,3
 INV_MG	EQU	BASE+20H		; 1 флаг инверсии магнитофона
-KNS_RD	EQU	BASE+21H		; 1 Константа чтения
-BUFSIZ	EQU	BASE+22H		; 1 Размер буфера ввода
-BUFCNT	EQU	BASE+23H		; 1 Число введенных символов в буфер ввода
-COMBUF	EQU	BASE+24H		; COMBUFMAX буфер ввода директивы
-COMBUFMAX	EQU	28		; Максимальный размер буфера ввода команд
-STACK	EQU	BASE+0D0H		; стек монитора
+KNS_RD	EQU	BASE+2FH		; 2 Константы чтения/записи
 
-ROMBUF	EQU	BASE+40H		; ROMBUFMAX буфер подкачки кода из ROM-диска (только для МОНИТОРа 2.0)
-ROMBUFMAX	EQU	128		; размер буфера подкачки из ROM-диск
+; Эти три переменные должны подряд для совместимости с CP/M
+BUFSIZ	EQU	BASE+31H		; 1 Размер буфера ввода
+BUFCNT	EQU	BASE+32H		; 1 Число введенных символов в буфер ввода
+COMBUF	EQU	BASE+33H		; COMBUFMAX буфер ввода директивы
+COMBUFMAX	EQU	10H		; Максимальный размер буфера ввода команд
+
+ROMBUF	EQU	COMBUF+COMBUFMAX		; ROMBUFMAX буфер подкачки кода из ROM-диска (только для МОНИТОРа 2.0)
+ROMBUFMAX	EQU	80H		; размер буфера подкачки из ROM-диск
+
+STACK	EQU	BASE+0D0H		; стек монитора
 
 SA	EQU	BASE+0D0H		; 76D0 начало экранной области
 SCBASE  EQU	BASE+01C2H		; 77C2 ЛЕВ.ВЕРХН.УГОЛ ЭКР.
 
 MARGIN_TOP	EQU	3
-MARGIN_BOTTOM	EQU	3		;?
+MARGIN_BOTTOM	EQU	3
 MARGIN_LEFT	EQU	8
-MARGIN_RIGHT	EQU	8		;?
+MARGIN_RIGHT	EQU	8
 SC_WIDTH	EQU	78
 
 VG_75   EQU	0C000H
