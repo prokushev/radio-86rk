@@ -679,41 +679,58 @@ CONST:	EQU	6     	;—‘‹ ƒ€
 
 	LD	HL, SO1
 	CALL	PrintString
+	LD	B, 0FFH
+	CALL	SEARCHS
+
+	;LD	C, '>'
+	;CALL	PrintCharFromC
+	CALL	InputSymbol
+	;LD	C, A
+	;CALL	PrintCharFromC
+	;CP	03h
+	;JP	Z,WarmBoot
+	SUB	30H
+	LD	B, A
+	LD	HL, FUNC+1
+	LD	(HL), EXECN & 0ffh
+	INC	HL
+	LD	(HL), EXECN >> 8
+	CALL	SEARCHS
+	JP	WarmBoot
+
+SEARCHS:
 	LD	HL, 0800H		;  η «® ROM-¤¨αª 
-	LD	B, 7			; LD B, 08H
-LOP:	PUSH	HL
-	POP	DE
-	PUSH	BC
+	LD	C, L			; LD C, 0
+SEARCH:
+	PUSH	HL			; (1)
+	LD	DE, (8+2+2)-1
+	ADD	HL, DE
+	EX	HL, DE
+	POP	HL			; (1)
+
+	PUSH	HL			; (2)
+	
+	PUSH	BC			; (3)
+
 	LD	BC, T
+	PUSH	BC			; (4)
 	CALL	ReadROM
-	POP	BC
-	LD	A, (T)			; ΰ®Ά¥ΰο¥¬ ¬ ΰª¥ΰ ª®­ζ  ¤¨αª 
+	POP	HL			; (4)
+
+	POP	BC			; (3)
+
+	LD	A, (HL)
 	CP	0FFH
-	JP	Z, WarmBoot
-	LD	C, A
-	CALL	PrintCharFromC
-	INC	HL
-	DEC	B
-	JP	NZ, LOP
-	
-	INC	HL
-	INC	HL
-	INC	HL
 
-	PUSH	HL
-	POP	DE
-	INC	DE
-	LD	BC, T
-	CALL	ReadROM
-	LD	HL, (T)			;  §¬¥ΰ δ ©« 
+	POP	DE			; (2)
 	
-	LD	C, ' '			; ¥η β ¥¬ ΰ §¬¥ΰ
-	CALL	PrintCharFromC
-	LD	A, H
-	CALL	PrintHexByte
-	LD	A, L
-	CALL	PrintHexByte
+	RET	Z
 
+FUNC:	CALL	PRINTN
+
+	PUSH	DE			; (5)
+;---------------------
+	LD	HL, (T+8+2)
 	LD	A, L			; Άλαη¨βλΆ ¥¬ ­ η «® α«¥¤γξι¥© § ―¨α¨
 	OR	A			; ®ª ­η¨Ά ¥βαο ­  ­®«μ
 	JP	Z, SKIP
@@ -721,63 +738,89 @@ LOP:	PUSH	HL
 	LD	L, A
 	INC	HL
 SKIP:
+	LD	DE, 10h
+	ADD	HL, DE
+;---------------------
+	POP	DE			; (5)
+	
+	ADD	HL, DE
+	INC	C
+	JP	SEARCH
 
+PRINTN:
 	PUSH	HL
+	PUSH	BC
+
+	LD	A, C			; ¥η β ¥¬ ―®ΰο¤ª®Άλ© ­®¬¥ΰ
+	ADD	A, 30H
+	LD	C, A
+	CALL	PrintCharFromC
+	LD	C, ' '
+	CALL	PrintCharFromC
+
+	LD	B, 8
+	LD	HL, T
+PLOOP:	LD	A, (HL)			; ¥η β ¥¬ ¨¬ο
+	LD	C, A
+	CALL	PrintCharFromC
+	INC	HL
+	DEC	B
+	JP	NZ, PLOOP
+
+	INC	HL
+	LD	C, ' '			; ¥η β ¥¬ αβ ΰβ®Άλ©  ¤ΰ¥α
+	CALL	PrintCharFromC
+	LD	A, (HL)
+	CALL	PrintHexByte
+	DEC	HL
+	LD	A, (HL)
+	CALL	PrintHexByte
+
+	INC	HL
+	INC	HL
+	INC	HL
+	LD	C, ' '			; ¥η β ¥¬ ΰ §¬¥ΰ
+	CALL	PrintCharFromC
+	LD	A, (HL)
+	CALL	PrintHexByte
+	DEC	HL
+	LD	A, (HL)
+	CALL	PrintHexByte
+
 	CALL	PrintCR
+	POP	BC
 	POP	HL
+	RET
+
+EXECN:
+	LD	A, C
+	SUB	B
+	RET	NZ
+	
+	LD	HL, 010H
+	ADD	HL, DE		; DE - νβ®  ¤ΰ¥α ­  ROM-¤¨αª¥
+	EX	DE, HL
+	
+	LD	SP, T+8		; ‘‹‡“ ‘’…,
+	POP	BC		; start
+	POP	HL		; size
 
 	ADD	HL, DE
-	INC	HL
-	INC	HL
-	INC	HL
-	INC	HL
-	INC	HL
-	LD	B, 7			; LD B, 08H
-	JP	LOP
+	EX	DE, HL
 
-T:	DW	0
+	PUSH	BC		; —¨β ¥¬ Ά ‡“
+	CALL    ReadROM
+	POP	HL
 
-
-M0:	CALL    InputSymbol    	; ‚› …. 
-
-
-	SUB     30H   	; ‚•„’ ‹ €†€’€ 
-	JP	M, M0  	; –”€ ‚ „€€‡ 
-	CP     CONST 	; “ €‡€›• ‡€—…‰? 
-	JP	NC, M0 	;…’, ‚’’ ‚‚„. 
-	LD	B,A   	;„€, „ ‘•€’. 
-	OR	A     	;’ 0?   
-	JP	NZ, M2 	;…’, € ‚›—‘‹…… €„…‘‚. 
-	XOR     A     	;„€, —‘’’ ‘‹“†…“ 
-	LD	(2117H),A 	;—…‰“ €’ BASIC. 
-M2:	LD      DE,6   	;€ƒ ‘€  ’€‹–…. 
-;	LD      HL,TABL	; €‡‚›‰ €„…‘ ’€‹–›. 
-	XOR     A     	; ‘„…†… €““‹’€ 
-M3:	CP     B     	; €‚ •€“ „“? 
-	JP	Z, M4    	;„€, ‚‡’ €„…‘€ ƒ€›. 
-	ADD     HL, DE     	;…’, ……‰’ € ‘‹…„“™“ 
-	INC     A     	; ‘’“ ’€‹–›, “‚…‹—’ „€›…
-	JP     M3    	;€““‹’€  ‚‚ ‘€‚’ 
-M4:	LD	SP, HL  ;‘‹‡“ ‘’…,
-	POP     HL     	; ‚‡’ 
-	POP     DE     	; €„…‘€ 
-	POP     BC     	; ƒ€›. 
-	DEC     SP    	; ‘‹…„‰ €„…‘ 
-	DEC     SP    	; -‘’€’‚›‰ .
-
-; „ƒ€€ MONITORA, …‘…—‚€™€ ‚€… 
-; „€›• ‡ €„…‘“…‰ ‹€‘’ ‡“ ‚ €„…‘“…“ 
-; ‹€‘’ ‡“ ‹‡‚€’…‹. 
-	CALL    ReadROM	;0FA68H	; ……‘›‹€ ƒ€›. 
-	POP     HL     	; ‚‡’ €„…‘ 
 	JP	(HL)          	; ‡€“‘’’ ƒ€“.
+
+T:	DB	8+2+2 DUP 0			;
 
 SO1:	DB 	0AH,0DH,"*ROM-DISK/32K* V3.0-23"
 	DB 	0AH,0AH,0DH,"DIRECTORY:",0AH,0DH,0
 
-	ORG	07FFFH
-	NOP
 	DEPHASE
+
 	CHK	08000H, "* Block overflow ! *"
 	END 				;
 
