@@ -1,10 +1,10 @@
 ; mon580-2-rom.asm-Include File for Assembler Program
-INITBDOS equ 7672H
-BDOSENTRY equ 7640H
-DirectiveModifyROM equ 7640H
-DirectiveDumpROM equ 7656H
-DirectiveListROM equ 7668H
-DirectiveTransferROM equ 7686H
-DirectiveSearchROM equ 768FH
-DirectiveCompareROM equ 769AH
+INITBDOS equ 3675H
+BDOSENTRY equ 3643H
+DirectiveModifyROM equ 3643H
+DirectiveDumpROM equ 3659H
+DirectiveListROM equ 366BH
+DirectiveTransferROM equ 3689H
+DirectiveSearchROM equ 3692H
+DirectiveCompareROM equ 369DH
 ; Ende Include File for Assembler Program
