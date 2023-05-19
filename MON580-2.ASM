@@ -345,6 +345,7 @@ skip:
 ;	Нет
 ; ВЫХОД:
 ;	COMBUF	- введенная строка
+;	CY	- 1 - есть данные, 0 - пустая строка
 ; ИЗМЕНЯЕТ:
 ;	AF, DE, HL, BC
 ; ──────────────────────────────────────────────
@@ -360,8 +361,13 @@ InputDirective:
 ; Ввод строки в буфер DE (CP/M совместимо)
 ; ВХОД:
 ;	DE	- адрес буфера
+;	Буффер содержит структуру:
+;		DB	?			; Размер буфера
+;		DB	?			; Количество введенных символов
+;		DB	(Размер буфера) DUP (?)	; Введенные данные
 ; ВЫХОД:
 ;	COMBUF	- введенная строка
+;	CY	- 1 - есть данные, 0 - пустая строка
 ; ИЗМЕНЯЕТ:
 ;	AF, DE, HL, BC
 ; ──────────────────────────────────────────────
@@ -391,14 +397,16 @@ InputNextSymbol:
 	CP	B
 	JP	NZ, InputNextSymbol	; SyntaxError
 	LD	B, C			; Буфер кончился
-Enter:	
+Enter:
 	INC	DE			; Адрес байта длины буфера
 	EX	DE, HL
 	LD	(HL), B
+	INC	HL
+	EX	DE, HL			; DE на выходе содержит адрес буфера
 	LD	A, 0FFH			;
 	ADD	A, B			; Установить флаг переполнения, если что-то ввели
-	RET
 
+	RET
 
 
 ; ──────────────────────────────────────────────
@@ -420,25 +428,9 @@ DirectiveTransfer:
 ;	ENDIF
 	FJMP	3, DirectiveTransferROM
 
-; ──────────────────────────────────────────────
-; Вывод текста области памяти с HL по DE
-; ВХОД:
-;	HL	- начальный адрес
-;	DE	- конечный адрес
-; ВЫХОД:
-;	HL	- конечный адрес источника
-; ИЗМЕНЯЕТ:
-;	AF, HL		!!TODO!! проверить подпрограммы на изменение
-; ──────────────────────────────────────────────
-
-DirectiveList:
-
-	IF	(DirectiveTransfer & 0FF00H) <> (DirectiveList & 0FF00H)
-		ERROR	"DirectiveTransfer and DirectiveList must be in same page"
-	ENDIF
-
-	FJMP	3, DirectiveListROM
-
+	NOP
+	NOP
+	NOP
 
 ; ──────────────────────────────────────────────
 ; Читает аргументы со второй позиции буфера команды в регистры HL, DE, BC
@@ -479,6 +471,24 @@ ParseParameters:
 	RET	C
 	JP	SyntaxError
 
+; ──────────────────────────────────────────────
+; Вывод текста области памяти с HL по DE
+; ВХОД:
+;	HL	- начальный адрес
+;	DE	- конечный адрес
+; ВЫХОД:
+;	HL	- конечный адрес источника
+; ИЗМЕНЯЕТ:
+;	AF, HL		!!TODO!! проверить подпрограммы на изменение
+; ──────────────────────────────────────────────
+
+DirectiveList:
+
+	IF	(DirectiveTransfer & 0FF00H) <> (DirectiveList & 0FF00H)
+		ERROR	"DirectiveTransfer and DirectiveList must be in same page"
+	ENDIF
+
+	FJMP	3, DirectiveListROM
 
 ; ──────────────────────────────────────────────
 ; Заполняет память с HL по DE байтом C
@@ -550,14 +560,11 @@ DirectiveGoto:
 
 ; ──────────────────────────────────────────────
 
-TOBACK:					; 6 bytes
-	CALL	SetCursorPos
-	JP	POPREGA
+	NOP
+	NOP
+	NOP
+	NOP
 
-	NOP
-	NOP
-	NOP
-	
 ; ──────────────────────────────────────────────
 ; Сравнение значений HL и DE
 ; ВХОД:
@@ -2302,6 +2309,12 @@ ColdBoot:
 	JP	NZ, WarmBoot
 
 	FJMP	0, INITBDOS
+
+; ──────────────────────────────────────────────
+
+TOBACK:					; 6 bytes
+	CALL	SetCursorPos
+	JP	POPREGA
 
 ; ──────────────────────────────────────────────
 ; BC bytes DE->HL
