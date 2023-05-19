@@ -385,13 +385,13 @@ InputNextSymbol:
 	CALL	InputSymbol
 	CP	7FH
 	JP	Z,ProcessBackspace
+	CP	03H
+	JP	Z,WarmBoot
 	INC	HL
 	LD	(HL), A
 	CALL	PrintCharFromA
 	CP	0DH
 	JP	Z,Enter
-	CP	03H
-	JP	Z,WarmBoot
 	INC	B			; Увеличим счетчик символов
 	LD	A, C
 	CP	B

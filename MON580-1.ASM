@@ -343,13 +343,13 @@ InputNextSymbol:
 	CALL	InputSymbol		; используется в DirectiveModify
 	CP	7FH
 	JP	Z,ProcessBackspace
+	CP	03
+	JP	Z,WarmBoot
 	INC	HL
 	LD	(HL), A
 	CALL	PrintCharFromA
 	CP	13
 	JP	Z,Enter		;AF91A
-	CP	03
-	JP	Z,WarmBoot
 	INC	B
 	LD	A, C
 	CP	B
