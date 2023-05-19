@@ -349,12 +349,11 @@ InputNextSymbol:
 	CP	B
 	JP	NZ, InputNextSymbol;	SyntaxError
 	LD	B, C
-Enter:	NOP
-	NOP
-	NOP	;CALL	PrintCR
-	INC	DE
+Enter:	INC	DE
 	EX	DE, HL
 	LD	(HL), B
+	LD	A, 0FFH			;
+	ADD	A, B			; Установить флаг переполнения, если что-то ввели
 	RET
 
 

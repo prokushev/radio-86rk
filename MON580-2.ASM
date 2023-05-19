@@ -131,7 +131,7 @@ Version:
 ; ВЫХОД:
 ;	HL	- адрес последнего напечатанного символа
 ; ИЗМЕНЯЕТ:
-;	AF, BC, HL
+;	AF, HL
 ; ПРИМЕЧАНИЯ:
 ; 	Код в ROM-диске ожидает именно такие 4 первые
 ;	команды. При их изменении нужно править в ROM-диске
@@ -139,7 +139,7 @@ Version:
 
 PrintString:
 	PUSH	BC
-	LD	B, 0
+	LD	B, 0			; Эта команда важна, т.к. воспринимается как NOP при вызове из ROM-диска
 	LD	A,(HL)
 	CP	B			; CP 0 или CP '$'
 	POP	BC
@@ -327,7 +327,7 @@ ReadBlock:
 	LD	BC, ROMBUF
 	LD	L, 0
 	LD	E, 080h
-	NOP						; SCF,CCF	; CF=0
+	OR	A					; SCF,CCF	; CY=0
 	RRA						; A/2
 	LD	H, A
 	LD	D, A
@@ -373,7 +373,7 @@ GETLIN2:
 	INC	HL
 GotoCmdLineBegin:
 	XOR	A
-	LD	B, A
+	LD	B, A			; B - счетчик введенных символов
 	CALL	SET_RL			; Включить латинский регистр
 InputNextSymbol:
 	CALL	InputSymbol
@@ -382,21 +382,21 @@ InputNextSymbol:
 	INC	HL
 	LD	(HL), A
 	CALL	PrintCharFromA
-	CP	13
+	CP	0DH
 	JP	Z,Enter
-	CP	03
+	CP	03H
 	JP	Z,WarmBoot
-	INC	B
+	INC	B			; Увеличим счетчик символов
 	LD	A, C
 	CP	B
-	JP	NZ, InputNextSymbol;	SyntaxError
-	LD	B, C
-Enter:	NOP
-	NOP
-	NOP ;CALL	PrintCR
-	INC	DE
+	JP	NZ, InputNextSymbol	; SyntaxError
+	LD	B, C			; Буфер кончился
+Enter:	
+	INC	DE			; Адрес байта длины буфера
 	EX	DE, HL
 	LD	(HL), B
+	LD	A, 0FFH			;
+	ADD	A, B			; Установить флаг переполнения, если что-то ввели
 	RET
 
 

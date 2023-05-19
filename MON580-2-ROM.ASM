@@ -287,13 +287,14 @@ DirectiveModifyROM:
 	PUSH	HL
 	CALL	InputDirective
 	POP	HL
-	JP	NC,AFA3B
+	JP	NC,EmptyString
 	PUSH	HL
 	CALL	GET_HL
 	LD	A,L
 	POP	HL
 	LD	(HL),A
-AFA3B:	INC	HL
+EmptyString:
+	INC	HL
 	JP	DirectiveModifyROM
 
 ; 컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
