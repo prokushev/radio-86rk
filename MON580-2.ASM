@@ -322,12 +322,16 @@ skip:
 	JP	DirectiveReadROM			; HL-­ ç «ì­ë©, DE-ª®­¥ç­ë©, BC-æ¥«¥¢®©
 
 
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
+	; SETSEC
+	;	Set Sector.  Saves sector number from <BC>
+	;		in @sect for further operations.
+
+SetSec:							; 6 bytes
+	ld l,c
+	ld h,b
+	ld (SECT), HL
+	ret
+
 	NOP
 	NOP
 	NOP
@@ -792,7 +796,25 @@ ReadKeyCodeChkBrk:
 TapeWriteBlock:
 	FJMP	4, TapeWriteBlockROM
 
-	DB	37H DUP (0)
+SetDMA:						; 6 bytes
+	ld l,c
+	ld h,b
+	ld (DMA), HL
+	ret
+
+SecTran:					; 11 bytes
+	ld l,c
+	ld h,b
+	ld a,d
+	or e
+	ret z
+	ex hl, de
+	add hl,bc
+	ld l,(hl)
+	ld h,0
+	ret
+
+	DB	26H DUP (0)
 
 	CHK	0FA68H, "* Internal subroutine ReadROM shifted ! *"
 ReadROM:
@@ -885,9 +907,6 @@ ReadKeyCode:
 	DEC	A
 	RET
 
-;	NOP
-;	NOP
-;	NOP
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 
 TapeReadBlock:
@@ -1132,8 +1151,6 @@ KEY_FE:	LD	A,(PC)			; 17 bytes
 	JP	AFE1A
 
 
-;	NOP
-;	NOP
 	NOP
 	NOP
 
@@ -2285,16 +2302,6 @@ SetTrk:
 	ret
 
 
-	; SETSEC
-	;	Set Sector.  Saves sector number from <BC>
-	;		in @sect for further operations.
-
-SetSec:
-	ld l,c
-	ld h,b
-	ld (SECT), HL
-	ret
-
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 ; «®ª í¬ã«ïæ¨¨ â®ç¥ª ¢å®¤  BIOS ¨ BDOS
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
@@ -2318,7 +2325,7 @@ BIOSENTRY:
 	JP	0			; WRITE		;39: Write a sector
 	LD	A,0FFH			; LISTST	;42: Status of list device
 	RET
-	JP	0			; SECTRAN	;45: Sector translation for skewing
+	JP	SecTran			; SECTRAN	;45: Sector translation for skewing
 	DB	0,0,0			; CONOST	;48: Status of console output
 	DB	0,0,0			; AUXIST	;51: Status of auxiliary input
 	LD	A,0FFH			; AUXOST	;54: Status of auxiliary output
