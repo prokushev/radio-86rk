@@ -299,23 +299,6 @@ TapeReadWord:
 	RET
 
 ; ──────────────────────────────────────────────
-; Запись блока с HL по DE на магнитофон
-; ВХОД:
-;	HL	- начало блока
-;	DE	- конец блока
-; ВЫХОД:
-;	HL	- конец блока
-; ИЗМЕНЯЕТ:
-;	AF, C, HL
-; ──────────────────────────────────────────────
-
-TapeWriteFromHLtoDE:
-	LD	C,(HL)			; 10 bytes
-	CALL	TapeWriteByte
-	CALL	IncHLAndRetIfEqDE
-	JP	TapeWriteFromHLtoDE
-
-; ──────────────────────────────────────────────
 ; Чтение блока из ROM-диск в буфер
 ; ВХОД:
 ;	A	- номер блока (0-15)
@@ -338,6 +321,17 @@ skip:
 	DEC	DE
 	JP	DirectiveReadROM			; HL-начальный, DE-конечный, BC-целевой
 
+
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
 
 ; ──────────────────────────────────────────────
 ; Ввод строки в буфер COMBUF
@@ -604,12 +598,18 @@ DirectiveReadROM:					; 19 bytes
 	IF	(DirectiveInputTape & 0FF00H) <> (DirectiveReadROM & 0FF00H)
 		ERROR	"DirectiveInputTape and DirectiveReadROM must be in same page"
 	ENDIF
+; TODO Пустая директива R
+;	JP	C, skipdefs
+;	LD	HL, 0
+;	LD	DE, 07ffh
+;	LD	BC, BASE-0800H
+skipdefs:
 	LD	(PDB),HL
 	LD	A,(PDA)
 	LD	(BC),A
 	INC	BC
 	CALL	IncHLAndRetIfEqDE
-	JP	DirectiveReadROM
+	JP	skipdefs
 
 ; ──────────────────────────────────────────────
 ; Ищет байт C в области памяти с HL по DE
@@ -720,50 +720,8 @@ DirectiveOutputTape:
 	IF	(DIRTABLE & 0FF00H) <> (DirectiveOutputTape & 0FF00H)
 		ERROR	"DirectiveOutputTape and DIRTABLE must be in same page"
 	ENDIF
+	FJMP	3, DirectiveOutputTapeROM
 
-	LD	A,C
-	OR	A
-	JP	Z,AFB35
-	LD	(KNS_WR),A
-AFB35:	PUSH	HL
-	CALL	CalcChecksum
-	POP	HL
-	
-	CALL	PrintCRAndHexWordAndSpaceAndCRAndHexWordAndSpace
-	EX	DE,HL
-	
-	PUSH	HL
-	CALL	PrintCRAndHexWordBCAndSpace
-	POP	HL
-
-TapeWriteBlock:
-	PUSH	BC		; КС
-
-	LD	BC,0		; выводим 256 байтов 00 (пилотон)
-AFB4D:	CALL	TapeWriteByte
-	EX	(SP),HL 	; это задержка 38 тактов
-	EX	(SP),HL
-	DEC	B
-	JP	NZ,AFB4D
-
-	CALL	TapeWriteSync
-
-	CALL	TapeWriteWord		; выводим НА
-	EX	DE,HL
-	CALL	TapeWriteWord		; выводим КА
-
-	EX	DE,HL
-	CALL	TapeWriteFromHLtoDE		; выводим блок
-
-	LD	HL,0
-	CALL	TapeWriteWord		; выводим 2 байта 00
-
-	CALL	TapeWriteSync
-
-	POP	HL
-	CALL	TapeWriteWord		; выводим КС
-
-	JP	InitVideo
 
 ; ──────────────────────────────────────────────
 
@@ -830,6 +788,11 @@ ReadKeyCodeChkBrk:
 	RET	NZ
 	CALL	InitVideo
 	JP	SyntaxError
+
+TapeWriteBlock:
+	FJMP	4, TapeWriteBlockROM
+
+	DB	37H DUP (0)
 
 	CHK	0FA68H, "* Internal subroutine ReadROM shifted ! *"
 ReadROM:
@@ -1092,6 +1055,7 @@ AFEF3:	LD	A,H			; 7 bytes
 ;	AF, B, DE, HL
 ; ──────────────────────────────────────────────
 
+	SHARED	PrintCRAndHexWordAndSpaceAndCRAndHexWordAndSpace
 PrintCRAndHexWordAndSpaceAndCRAndHexWordAndSpace:
 	CALL	PrintCRAndHexWordAndSpace
 
@@ -1105,6 +1069,7 @@ PrintCRAndHexWordAndSpaceAndCRAndHexWordAndSpace:
 ;	AF, B, DE, HL
 ; ──────────────────────────────────────────────
 
+	SHARED	PrintCRAndHexWordBCAndSpace
 PrintCRAndHexWordBCAndSpace:
 	LD	D,B
 	LD	E,C
@@ -1292,35 +1257,6 @@ AFC0B:	DEC	D
 	LD	A,(INV_MG)
 	XOR	C			; with Tape Inverse flag
 	JP	POPREG
-
-; ──────────────────────────────────────────────
-; Запись слова
-; ВХОД:
-;	HL	- слово для записи
-; ВЫХОД:
-;	Нет
-; ИЗМЕНЯЕТ:
-;	BC
-; ──────────────────────────────────────────────
-
-TapeWriteWord:
-	LD	C,H
-	CALL	TapeWriteByte
-	LD	C,L
-	DB	06H		; LD B,..
-
-; ──────────────────────────────────────────────
-; Запись синхробайта
-; ВХОД:
-;	Нет
-; ВЫХОД:
-;	Нет
-; ИЗМЕНЯЕТ:
-;	C
-; ──────────────────────────────────────────────
-
-TapeWriteSync:
-	LD	C, 0E6H
 
 ; ──────────────────────────────────────────────
 ; Запись байта C
@@ -2337,7 +2273,7 @@ TABK2:	DB	09,0AH,0DH,7FH,08H,19H,18H,1AH	; 8 bytes
 ; ──────────────────────────────────────────────
 ; Блок эмуляции точек входа BIOS и BDOS
 ; ──────────────────────────────────────────────
-	ORG	0FF76H
+	ORG	0FF70H
 	SHARED	BIOSENTRY
 BIOSENTRY:
 	JP	ColdBoot		; CBOOT Холодный старт
@@ -2348,14 +2284,15 @@ BIOSENTRY:
 	JP	PrintCharFromC		; LIST Печать на принтер. это д.быть PRINT
 	JP	TapeWriteByte		; PUNCH/AUXOUT Вывод не перфоратор/магнитофон
 	JP	TapeReadByte		; READER/AUXIN Ввод данных с перволенты/магнитофона
-	JP	0			; HOME	;21: Move disc head to track 0
-	JP	0			; SELDSK	;24: Select disc drive
-	JP	0			; SETTRK	;27: Set track number
-	JP	0			; SETSEC	;30: Set sector number
+	JP	0			; HOME		;21: Перемещение головки на позицию 0
+	JP	0			; SELDSK	;24: Выбор привода
+	JP	0			; SETTRK	;27: Выбор дорожки
+	JP	0			; SETSEC	;30: Выбор сектора
 	JP	0			; SETDMA	;33: Set DMA address
-	JP	0			; READ	;36: Read a sector
-	JP	0			; WRITE	;39: Write a sector
-	JP	0			; LISTST	;42: Status of list device
+	JP	0			; READ		;36: Read a sector
+	JP	0			; WRITE		;39: Write a sector
+	LD	A,0FFH			; LISTST	;42: Status of list device
+	RET
 	JP	0			; SECTRAN	;45: Sector translation for skewing
 	DB	0,0,0			; CONOST	;48: Status of console output
 	DB	0,0,0			; AUXIST	;51: Status of auxiliary input
@@ -2366,13 +2303,13 @@ BIOSENTRY:
 	RET
 	JP	0			; DRVTBL	;63: Address of discs table
 	JP	0			; MULTIO	;66: Read/write multiple sectors
-	JP	0			; FLUSH	;69: Flush host buffers
-	JP	MoveBlock		; MOVE	;72: Move a block of memory
-	JP	0			; TIME	;75: Real time clock
+	JP	0			; FLUSH		;69: Flush host buffers
+	JP	MoveBlock		; MOVE		;72: Move a block of memory
+	JP	0			; TIME		;75: Real time clock
 	DB	0,0,0			; SELMEM	;78: Select memory bank
 	DB	0,0,0			; SETBNK	;81: Select bank for DMA operation
-	DB	0,0,0			; XMOVE	;84: Preload banks for MOVE
-	DB	0,0			; USERF	;87: System-depedent functions
+	DB	0,0,0			; XMOVE		;84: Preload banks for MOVE
+	DB	0,0			; USERF		;87: System-depedent functions
 	RET
 	JP	0			; RESERV1	;90: Reserved
 	JP	0			; RESERV2	;93: Reserved
@@ -2388,19 +2325,23 @@ FARJZ:	EX	(SP), HL
 	DEC	HL
 	DEC	HL
 	EX	(SP), HL
+
+	SHARED	FARJMP
 FARJMP:	EX	(SP), HL		; Сохраняем HL в стек, а в HL адрес возврата
-	LD	A, (HL)
-	PUSH	HL
+	PUSH	AF
+	LD	(PAR_HL),HL		; т.к. размера стека не хватает, сохраняем в переменную
 	PUSH	BC
 	PUSH	DE
+	LD	A, (HL)
 	CALL	ReadBlock		; Считываем блок c ROM-диска
 	POP	DE
 	POP	BC
-	POP	HL
+	LD	HL, (PAR_HL)
 	INC	HL
 	LD	A, (HL)
 	LD 	H, ROMBUF>>8
 	LD 	L, A
+	POP	AF
 	EX	(SP), HL		; Восстанавливаем значение HL, а адрес вызова помещеам в стек
 	RET				; Вызываем считанную функцию
 

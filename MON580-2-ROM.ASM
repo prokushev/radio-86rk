@@ -14,7 +14,7 @@
 ; рован для выполнения по адресу ROMBUF. Вызов кода в блоке осуществляется
 ; с помощью макроса
 ;
-; FCALL block, label
+; FJMP block, label
 ; 
 ; здесь block - номер блока, начиная с 0, а label - метка кода;
 ; ───────────────────────────────────────────────────────────────────────
@@ -37,11 +37,19 @@
 	INCLUDE	"sysvars.inc"
 
 
-FCALL	MACRO	block, adr
-		CALL	CALLROM
+; ──────────────────────────────────────────────
+; Дальняя JMP block, label
+; ──────────────────────────────────────────────
+
+FJMP	MACRO	block, adr
+		CALL	FARJMP
 		DB	block
-		DB	LOW adr
+		DB	(adr & 0FFH)
 	ENDM
+
+; ──────────────────────────────────────────────
+; Дальняя JP Z, block, label
+; ──────────────────────────────────────────────
 
 FJPZ	MACRO	block, adr
 		RST	8
@@ -398,17 +406,114 @@ AF9E6:	INC	BC
 	CALL	IncHLAndRetIfEqDEWithBrk
 	JP	DirectiveCompareROM
 
+	SHARED	DirectiveOutputTapeROM
+DirectiveOutputTapeROM:
+	LD	A,C
+	OR	A
+	JP	Z,DefaultConstant
+	LD	(KNS_WR),A
+DefaultConstant:
+	PUSH	HL
+	CALL	CalcChecksum
+	POP	HL
+
+	FJMP	4, DirectiveOutputTapeROM2
+
 	CHK	ROMBUF+ROMBUFMAX, "* Block overflow ! *"
 	DEPHASE
 
 ; ───────────────────────────────────────────────────────────────────────
-; Блок 4
+; Блок 4 Внешние директивы МОНИТОРа
 ; ───────────────────────────────────────────────────────────────────────
 
 	ORG	0200H
 	PHASE	ROMBUF
 
-	DB	80H dup 0ffH
+DirectiveOutputTapeROM2:
+	CALL	PrintCRAndHexWordAndSpaceAndCRAndHexWordAndSpace
+	EX	DE,HL
+	
+
+	PUSH	HL
+	CALL	PrintCRAndHexWordBCAndSpace
+	POP	HL
+
+	SHARED	TapeWriteBlockROM
+TapeWriteBlockROM:
+	PUSH	BC		; КС
+
+	LD	BC,0		; выводим 256 байтов 00 (пилотон)
+AFB4D:	CALL	TapeWriteByte
+	EX	(SP),HL 	; это задержка 38 тактов
+	EX	(SP),HL
+	DEC	B
+	JP	NZ,AFB4D
+
+	CALL	TapeWriteSync
+
+	CALL	TapeWriteWord		; выводим НА
+	EX	DE,HL
+	CALL	TapeWriteWord		; выводим КА
+
+	EX	DE,HL
+	CALL	TapeWriteFromHLtoDE		; выводим блок
+
+	LD	HL,0
+	CALL	TapeWriteWord		; выводим 2 байта 00
+
+	CALL	TapeWriteSync
+
+	POP	HL
+	CALL	TapeWriteWord		; выводим КС
+
+	JP	InitVideo
+
+; ──────────────────────────────────────────────
+; Запись слова
+; ВХОД:
+;	HL	- слово для записи
+; ВЫХОД:
+;	Нет
+; ИЗМЕНЯЕТ:
+;	BC
+; ──────────────────────────────────────────────
+
+TapeWriteWord:
+	LD	C,H
+	CALL	TapeWriteByte
+	LD	C,L
+	DB	06H		; LD B,..
+
+; ──────────────────────────────────────────────
+; Запись синхробайта
+; ВХОД:
+;	Нет
+; ВЫХОД:
+;	Нет
+; ИЗМЕНЯЕТ:
+;	C
+; ──────────────────────────────────────────────
+
+TapeWriteSync:
+	LD	C, 0E6H
+	JP	TapeWriteByte
+
+; ──────────────────────────────────────────────
+; Запись блока с HL по DE на магнитофон
+; ВХОД:
+;	HL	- начало блока
+;	DE	- конец блока
+; ВЫХОД:
+;	HL	- конец блока
+; ИЗМЕНЯЕТ:
+;	AF, C, HL
+; ──────────────────────────────────────────────
+
+TapeWriteFromHLtoDE:
+	LD	C,(HL)			; 10 bytes
+	CALL	TapeWriteByte
+	CALL	IncHLAndRetIfEqDE
+	JP	TapeWriteFromHLtoDE
 
 	CHK	ROMBUF+ROMBUFMAX, "* Block overflow ! *"
 	DEPHASE

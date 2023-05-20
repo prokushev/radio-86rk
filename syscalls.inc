@@ -7,10 +7,12 @@
 
 InputSymbol			EQU	0F803H
 PrintCharFromC		EQU	0F809H
+TapeWriteByte		EQU	0F80CH
 GetKeyboardStatus	EQU	0F812H
 PrintString			EQU	0F818H
 PrintHexByte		EQU	0F815H
 ReadKeyCode			EQU	0F81BH
+CalcChecksum		EQU	0F82AH
 InitVideo			EQU	0F82Dh
 GetFreeMemAddr		EQU	0F830H
 WarmBoot			EQU	0F86CH
