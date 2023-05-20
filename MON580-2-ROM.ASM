@@ -768,12 +768,12 @@ ENDZEROROM:
 
 ; ƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒ
 ; èêéÉêÄååÄ ìèêÄÇãÖçàü ROM-DISK/32K Ñãü äéåèúûíÖêÄ 
-;"êÄÑàé-86êä" ë OÅöEMOM éáì èéãúáéÇÄíÖãü 16ä/32ä.
-;èêéÉêÄååÄ ìèêÄÇãÖçàü áÄîàäëàêéÇÄçÄ Ç èáì 
-;èé ÄÑêÖëÄå 7E00H-7FFFH. ìäÄáÄççìû éÅãÄëíú èáì 
-;áÄèêÖôÖçé àëèéãúáéÇÄíú èéÑ ROM-DISK. 
-;èêéÉêÄååÄ àá èáì Ç éáì èÖêÖçéëàíëü áÄÉêìáóàäéå, 
-;(Ç MONITORE) èé ÑàêÖäíàÇÖ "U" à áÄçàåÄÖí 
+; "êÄÑàé-86êä" ë OÅöEMOM éáì èéãúáéÇÄíÖãü 16ä/32ä.
+; èêéÉêÄååÄ ìèêÄÇãÖçàü áÄîàäëàêéÇÄçÄ Ç èáì 
+; èé ÄÑêÖëÄå 7E00H-7FFFH. ìäÄáÄççìû éÅãÄëíú èáì 
+; áÄèêÖôÖçé àëèéãúáéÇÄíú èéÑ ROM-DISK. 
+; èêéÉêÄååÄ àá èáì Ç éáì èÖêÖçéëàíëü áÄÉêìáóàäéå, 
+; (Ç MONITORE) èé ÑàêÖäíàÇÖ "U" à áÄçàåÄÖí 
 ; ÇÖêïçàÖ ÄÑêÖëÄ éáì, çÄóàçÄü ë 7400ç.
 ; ƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒ
 
@@ -781,20 +781,18 @@ ENDZEROROM:
 	
 	PHASE	BASE-0200H
 
-CONST:	EQU	6     	;óàëãé èêéÉêÄåå 
-
 	LD	HL, SO1
 	CALL	PrintString
 	LD	B, 0FFH
 	CALL	SEARCHS
 
-	;LD	C, '>'
-	;CALL	PrintCharFromC
+	LD	C, '>'
+	CALL	PrintCharFromC
 	CALL	InputSymbol
-	;LD	C, A
-	;CALL	PrintCharFromC
-	;CP	03h
-	;JP	Z,WarmBoot
+	LD	C, A
+	CALL	PrintCharFromC
+	CP	03h
+	JP	Z,WarmBoot
 	SUB	30H
 	LD	B, A
 	LD	HL, FUNC+1
@@ -893,7 +891,8 @@ PLOOP:	LD	A, (HL)			; è•Á†‚†•¨ ®¨Ô
 	LD	A, (HL)
 	CALL	PrintHexByte
 
-	CALL	PrintCR
+	LD	HL, SO2
+	CALL	PrintString
 	POP	BC
 	POP	HL
 	RET
@@ -923,10 +922,12 @@ EXECN:
 T:	DB	8+2+2 DUP 0			;
 
 SO1:	DB 	0AH,0DH,"*ROM-DISK/32K* V3.0-23"
-	DB 	0AH,0AH,0DH,"DIRECTORY:",0AH,0DH,0
+	DB 	0AH,0AH,0DH,"DIRECTORY:"
+SO2:	DB	0AH,0DH,0
 
 	DEPHASE
 
+	DB	08000H-$ DUP (0FFH)
 	CHK	08000H, "* Block overflow ! *"
 	END 				;
 
