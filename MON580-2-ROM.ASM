@@ -854,6 +854,7 @@ SKIP:
 PRINTN:
 	PUSH	HL
 	PUSH	BC
+	PUSH	DE
 
 	LD	A, C			; Печатаем порядковый номер
 	ADD	A, 30H
@@ -891,8 +892,9 @@ PLOOP:	LD	A, (HL)			; Печатаем имя
 	LD	A, (HL)
 	CALL	PrintHexByte
 
-	LD	HL, SO2
+	LD	HL, SO2			; Печатаем перевод строки
 	CALL	PrintString
+	POP	DE
 	POP	BC
 	POP	HL
 	RET
