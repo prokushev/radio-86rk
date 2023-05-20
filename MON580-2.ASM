@@ -2270,6 +2270,31 @@ MoveBlock:				; 11 bytes
 
 TABK2:	DB	09,0AH,0DH,7FH,08H,19H,18H,1AH	; 8 bytes
 
+Home:
+	ld bc,0		; same as set track zero
+
+
+	; SETTRK
+	;	Set Track. Saves track address from <BC> 
+	;		in @TRK for further operations.
+
+SetTrk:
+	ld l,c
+	ld h,b
+	ld (TRK), HL
+	ret
+
+
+	; SETSEC
+	;	Set Sector.  Saves sector number from <BC>
+	;		in @sect for further operations.
+
+SetSec:
+	ld l,c
+	ld h,b
+	ld (SECT), HL
+	ret
+
 ; ──────────────────────────────────────────────
 ; Блок эмуляции точек входа BIOS и BDOS
 ; ──────────────────────────────────────────────
@@ -2284,10 +2309,10 @@ BIOSENTRY:
 	JP	PrintCharFromC		; LIST Печать на принтер. это д.быть PRINT
 	JP	TapeWriteByte		; PUNCH/AUXOUT Вывод не перфоратор/магнитофон
 	JP	TapeReadByte		; READER/AUXIN Ввод данных с перволенты/магнитофона
-	JP	0			; HOME		;21: Перемещение головки на позицию 0
+	JP	Home			; HOME		;21: Перемещение головки на позицию 0
 	JP	0			; SELDSK	;24: Выбор привода
-	JP	0			; SETTRK	;27: Выбор дорожки
-	JP	0			; SETSEC	;30: Выбор сектора
+	JP	SetTrk			; SETTRK	;27: Выбор дорожки
+	JP	SetSec			; SETSEC	;30: Выбор сектора
 	JP	0			; SETDMA	;33: Set DMA address
 	JP	0			; READ		;36: Read a sector
 	JP	0			; WRITE		;39: Write a sector
