@@ -2365,7 +2365,7 @@ ColdBoot:
 	LD	HL, BASE-1
 	LD	(RAMTOP),HL
 
-	LD	A, 0A9H
+	LD	A, 099H
 	LD	(CURST), A
 	CALL	InitVideo
 

@@ -943,7 +943,7 @@ InitVideo:			; 1001.0011
 
 	LD	(HL),A		; 1001.1001  9 +1 линия подчерк.
 				; 9+1 линий в знакоместе
-	if	K_ORIG
+	if	K_ORIG		;
 	LD	(HL),093H
 	else
 	LD	(HL),0C3H
@@ -2243,7 +2243,7 @@ ColdBoot:
 	LD	HL, BASE-1
 	LD	(RAMTOP),HL
 
-	LD	A, 0A9H
+	LD	A, 099H
 	LD	(CURST), A
 	CALL	InitVideo
 
