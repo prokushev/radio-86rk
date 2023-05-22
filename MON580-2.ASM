@@ -2032,7 +2032,7 @@ skip_ESC_K:
 ClearEOS:
 	PUSH	HL
 	PUSH	DE
-	LD	H, 0
+	LD	H, A		;LD	H, 0
 	CALL	CLSLOO
 	POP	DE
 	POP	HL
