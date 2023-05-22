@@ -2251,6 +2251,8 @@ ColdBoot:
 	LD	(KNS_RD),HL
 
 	; Проверяем наличие ROM-диска (4-ый байт содержит CDH)
+	LD	A,90H
+	LD	(PDU),A
 	LD	HL, 3
 	LD	(PDB),HL
 	LD	A,(PDA)
