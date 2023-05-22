@@ -651,16 +651,9 @@ TapeWriteFromHLtoDE:
 	DEPHASE
 
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
-; ¥©á¨ª
+; ” ©«®¢ ï á¨áâ¥¬  ¢ ä®à¬ â¥ ORDOS
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
-
 	ORG 0800H
-
-;0-7 - ˆŒŸ ”€‰‹€. ŒŽ†…’ ‘Ž„…†€’œ … Ž‹…… 8 ‘ˆŒ‚Ž‹Ž‚. …‘‹ˆ ˆŒŸ ‘Ž„…†ˆ’ Œ…œ˜… ‘ˆŒ‚Ž‹Ž‚, ‘‚ŽŽ„›… Ÿ—…‰Šˆ ‡€Ž‹Ÿž’‘Ÿ Ž…‹€Œˆ.
-;8-9 - €—€‹œ›‰ €„…‘ €‡Œ…™…ˆŸ Žƒ€ŒŒ› ˆ ‘—ˆ’›‚€ˆˆ …… ˆ‡ „ˆ‘Š€ ‚ Ž‡“ - €„…‘ "Ž‘€„Šˆ".
-;€-‚ - €‡Œ… ”€‰‹€. ‚ ’Ž’ €€Œ…’ Žƒ‹€‚‹…ˆ… ”€‰‹€(16 €‰’) … ‚•Ž„ˆ’.
-;‘ - €‰’ ”‹€ƒŽ‚. ‚ "ORDOS" V2.X ˆ‘Ž‹œ‡“…’‘Ÿ ’Ž‹œŠŽ ˆ’ D7. ‘Ž‘’ŽŸˆ… "1" “Š€‡›‚€…’ € ’Ž, —’Ž ”€‰‹ ‡€™ˆ™… Ž’ “ˆ—’Ž†…ˆŸ. Ž‘’€‹œ›… ˆ’› ‡€…‡…‚ˆŽ‚€› „‹Ÿ €‘˜ˆ…ˆŸ. ˆ‡Œ……ˆ… ‘Ž‘’ŽŸˆŸ ˆ’€ D7 Žˆ‡‚Ž„Ÿ’ ‚…˜ˆ… ‡€ƒ“†€…Œ›… „ˆ…Š’ˆ‚› Ž…€–ˆŽŽ‰ ‘ˆ‘’…Œ›.
-;D-F - ‘‹“†…›… Ÿ—…‰Šˆ ‘ˆ‘’…Œ›.
 
 FILE	MACRO name, start, size
 	DB	(0fff0h-$) & 0fh dup (0)	; ¢ëà ¢­¨¢ ­¨¥ ¯® £à ­¨æ¥ 16
@@ -695,8 +688,8 @@ SORTUTROM:
 	BINCLUDE "sortut.rom"
 
 	FILE "LOAD$", 07400H, ENDLOADROM-LOADROM
-; Ž„Žƒ€ŒŒ€ ‘—ˆ’›‚€ˆŸ ”€‰‹€ ˆ‡ ‚…Œ…ŽƒŽ “”…€ 
-;‚ ’…Š‘’Ž‚›‰ “”… …„€Š’Ž€ "ŒˆŠŽ". 
+; Žƒ€ŒŒ€ ‘—ˆ’›‚€ˆŸ ”€‰‹€ ˆ‡ ‚…Œ…ŽƒŽ “”…€ 
+; ‚ ’…Š‘’Ž‚›‰ “”… …„€Š’Ž€ "ŒˆŠŽ". 
 LOADROM:
 	PHASE	07400H
 	LD     HL,4A00H	;€—€‹œ›‰ €„…‘ 
@@ -715,7 +708,7 @@ RD1:	LD     A,(HL)   	;……‘‹€’œ
 ENDLOADROM:
 
 	FILE "SAVE$", 07400H, ENDSAVEROM-SAVEROM
-;Ž„Žƒ€ŒŒ€ ‘Ž•€…ˆŸ ”€‰‹€ ‚Ž ‚…Œ…ŽŒ 
+; Žƒ€ŒŒ€ ‘Ž•€…ˆŸ ”€‰‹€ ‚Ž ‚…Œ…ŽŒ 
 ; “”……. …‘‹ˆ Žš…Œ ”€‰‹€ …‚›˜€…’ 28FFH, ’Ž 
 ; Ž…€–ˆŸ Ž •€…ˆž … ‚›Ž‹Ÿ…’‘Ÿ. 
 
@@ -764,10 +757,10 @@ Z1:	LD 	(HL),0 	;Ž—ˆ‘’ˆ’œ
 	DEPHASE
 ENDZEROROM:
 
-	FILE "TEST$", 00000H, ENDTESTROM-TESTROM
+	FILE "TEST$", 00100H, ENDTESTROM-TESTROM
 
 TESTROM:
-	PHASE	00000H
+	PHASE	00100H
 	JP	WarmBoot
 	DEPHASE
 ENDTESTROM:

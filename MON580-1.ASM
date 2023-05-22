@@ -242,7 +242,8 @@ TapeReadWord:
 ;	AF, HL, DE
 ; ──────────────────────────────────────────────
 
-MSGCPM:	EX	DE, HL
+C_WRITESTR:
+	EX	DE, HL
 	PUSH	BC
 	LD	B, '$'
 	DB	11H			; LD DE, xx, 
@@ -260,7 +261,7 @@ MSGCPM:	EX	DE, HL
 
 PrintString:
 	PUSH	BC
-	LD	B, 0			; NOP, если пришли из MSGCPM
+	LD	B, 0			; NOP, если пришли из C_WRITESTR
 	LD	A,(HL)
 	CP	B			; CP 0 или CP '$'
 	POP	BC
@@ -320,7 +321,7 @@ InputDirective:
 ;	AF, DE, HL, BC
 ; ──────────────────────────────────────────────
 
-GETLIN2:
+C_READSTR:
 	PUSH	DE
 	POP	HL
 	LD	C, (HL)
@@ -839,6 +840,7 @@ TapeReadBlock:
 	IF	(RUSLAT & 0FFH) <> 6
 		ERROR	"RUSLAT low byte must be 06h"
 	ENDIF
+
 SET_RL:	LD	(RUSLAT),A		; Т.к. адрес RUSLAT xx06h, то предыдущий трюк с LD B, .. повторится..
 
 ; ──────────────────────────────────────────────
@@ -1708,7 +1710,8 @@ POPAF:	POP	AF
 ; ones, since certain buffers may be bypassed. Do not mix them.
 ; ──────────────────────────────────────────────
 
-FUNC06:	INC	E		; Test for 0FFH
+C_RAWIO:
+	INC	E		; Test for 0FFH
 	JP	NZ,PrintCharFromC
 	CALL	GetKeyboardStatus
 	RET	Z
@@ -2178,11 +2181,11 @@ BDOS:	LD	HL, 0000H	; Сохраняем стек
 	DEC	A
 	JP	Z, PrintCharFromC	; Функция 2 C_WRITE
 	SUB	4
-	JP	Z, FUNC06	; Функция 6 C_RAWIO
+	JP	Z, C_RAWIO	; Функция 6 C_RAWIO
 	SUB	3
-	JP	Z, MSGCPM	; Функция 9 C_WRITESTR
+	JP	Z, C_WRITESTR	; Функция 9 C_WRITESTR
 	DEC	A
-	JP	Z, GETLIN2	; Функция 10 C_READSTR
+	JP	Z, C_READSTR	; Функция 10 C_READSTR
 	DEC	A
 	JP	Z, GetKeyboardStatus	; Функция 11 C_STAT
 	DEC	A
