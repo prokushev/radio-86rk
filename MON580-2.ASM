@@ -808,7 +808,25 @@ SecTran:					; 11 bytes
 	ld h,0
 	ret
 
-	DB	26H DUP (0)
+; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+TABK2:	DB	09,0AH,0DH,7FH,08H,19H,18H,1AH	; 8 bytes
+
+Home:
+	ld	bc, 0				; same as set track zero
+
+
+	; SETTRK
+	;	Set Track. Saves track address from <BC> 
+	;		in @TRK for further operations.
+
+SetTrk:
+	ld	l,c
+	ld	h,b
+	LD	(TRK), HL
+	RET
+
+	DB	15H DUP (0)
 
 	CHK	0FA68H, "* Internal subroutine ReadROM shifted ! *"
 ReadROM:
@@ -1883,6 +1901,7 @@ skip_ESC_j:
 CursorDisable:
 	LD	A, 0A9H
 	LD	(CURST), A
+	CALL	InitVideo
 
 skip_ESC_f:
 	INC	A		;CP	'e'
@@ -1902,6 +1921,7 @@ CursorEnable:
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 	LD	A, 099H
 	LD	(CURST), A
+	CALL	InitVideo
 
 skip_ESC_e:
 	ADD	A, 'e'-'b'	;CP	'b'
@@ -2281,25 +2301,6 @@ MoveBlock:				; 11 bytes
 	OR	C
 	JP	NZ, MoveBlock
 	RET
-
-; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
-
-TABK2:	DB	09,0AH,0DH,7FH,08H,19H,18H,1AH	; 8 bytes
-
-Home:
-	ld bc,0		; same as set track zero
-
-
-	; SETTRK
-	;	Set Track. Saves track address from <BC> 
-	;		in @TRK for further operations.
-
-SetTrk:
-	ld l,c
-	ld h,b
-	ld (TRK), HL
-	ret
-
 
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 ; «®ª í¬ã«ïæ¨¨ â®ç¥ª ¢å®¤  BIOS ¨ BDOS

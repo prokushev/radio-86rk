@@ -1882,6 +1882,7 @@ skip_ESC_j:
 CursorDisable:
 	LD	A, 0A9H
 	LD	(CURST), A
+	CALL	InitVideo
 
 skip_ESC_f:
 	INC	A		;CP	'e'
@@ -1901,6 +1902,7 @@ CursorEnable:
 ; 컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
 	LD	A, 099H
 	LD	(CURST), A
+	CALL	InitVideo
 
 skip_ESC_e:
 	ADD	A, 'e'-'b'	;CP	'b'
@@ -2391,13 +2393,7 @@ RST_18:	EX	(SP),HL			; 6 bytes
 	RET
 
 
-	NOP				; 16 bytes
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
+	NOP				; 10 bytes
 	NOP
 	NOP
 	NOP
