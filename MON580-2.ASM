@@ -18,21 +18,15 @@ FJMP	MACRO	block, adr
 		DB	(adr & 0FFH)
 	ENDM
 
+; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+; à®¢¥àª  ª®­âà®«ì­®© â®çª¨
+; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
 CHK	MACRO	adr, msg
 		IF	adr-$
 			ERROR	msg
 		ENDIF
 	ENDM
-
-; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
-
-LOOP	MACRO	ADDR
-	DEC	BC
-	LD	A,B
-	OR	C
-	JP	NZ,ADDR
-	ENDM
-
 
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 ; ‘¨áâ¥¬­ë¥ ¯¥à¥¬¥­­ë¥ ŒŽˆ’Ž 
@@ -1525,7 +1519,10 @@ MOVLOO:	LD	A,(HL)		; ¯¥à¥áë«ª  ¡«®ª  à §¬¥à®¬ [BC]
 	LD	(DE),A		; (HL) --> (DE)
 	INC	HL
 	INC	DE
-	LOOP	MOVLOO
+	DEC	BC
+	LD	A,B
+	OR	C
+	JP	NZ,MOVLOO
 	POP	DE
 	POP	HL
 	RET
@@ -2393,5 +2390,7 @@ BDOSRET:				; ’®çª  ¢®§¢à â  ¨§ äã­ªæ¨¨ BDOS
 	LD	L, A
 	LD	H, B
 	RET
+
+	CHK	10000H, "* Size not 2K ! *"
 
 	END

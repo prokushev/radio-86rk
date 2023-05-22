@@ -22,19 +22,21 @@ BDOSST	EQU	BASE		; Начало BDOS
 ; ──────────────────────────────────────────────
 
 ; Первых три байта занимает точка вызова BDOS
-ESC_FL	EQU	BASE+04H		; 1 Флаг текущего статуса обработки Esc-последовательности (0,1,2)
-KBDFLG	EQU	BASE+05H		; 1 если =0, то есть символ в SYMBUF
-RUSLAT	EQU	BASE+06H		; 1 допустимо только 0 или FF  !! Адрес должен быть xx06h иначе править SET_RL !!
+RAMTOP	EQU	BASE+03H		; 2 FIXED Верхняя граница ОЗУ
+CURST	EQU	BASE+05H		; 1 FIXED Отображать/прятать курсор
+RUSLAT	EQU	BASE+06H		; 1 FIXED допустимо только 0 или FF  !! Адрес должен быть xx06h иначе править SET_RL !!
 ; Эти две переменные должны следовать подряд
-LAST_K	EQU	BASE+07H		; 1 
 COUNT	EQU	BASE+08H		; 1 счётчик опросов (вначале 15)
 APVFLG	EQU	BASE+09H		; 1 флаг автоповтора
 TMPSTK	EQU	BASE+0AH		; 2 временно храним стек при МГ п/п-ммах
 XYSTOR	EQU	BASE+0CH		; 2 Сохраненные координаты курсора
 SASTOR	EQU	BASE+0EH		; 2 Сохраненный адрес курсора
-CURST	EQU	BASE+10H		; 1 Отображать/прятать курсор
+LAST_K	EQU	BASE+10H		; 1 
 WRPFLG	EQU	BASE+11H		; 1 Автоперенос строк
-RAMTOP	EQU	BASE+12H		; 2 Верхняя граница ОЗУ
+
+ESC_FL	EQU	BASE+12H		; 1 Флаг текущего статуса обработки Esc-последовательности (0,1,2)
+KBDFLG	EQU	BASE+13H		; 1 если =0, то есть символ в SYMBUF
+
 EK_ADR  EQU	BASE+14H		; 2 текущий адрес на экране
 ; Эти две переменные должны идти подряд
 POSX	EQU	BASE+16H		; 1 Координаты курсора

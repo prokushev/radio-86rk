@@ -15,12 +15,6 @@ CHK	MACRO	adr, msg
 
 ; ──────────────────────────────────────────────
 
-LOOP	MACRO	ADDR
-	DEC	BC
-	LD	A,B
-	OR	C
-	JP	NZ,ADDR
-	ENDM
 
 	INCLUDE	"SYSVARS.INC"
 
@@ -86,7 +80,7 @@ SetFreeMemAddr:				; F833
 ;	Курсор перемещается в начало текущей строки.
 ; ──────────────────────────────────────────────
 
-COD_0D:	LD	L, MARGIN_LEFT		; 3 bytes
+COD_0D:	LD	L, MARGIN_LEFT
 
 ; ──────────────────────────────────────────────
 
@@ -101,10 +95,10 @@ Version:
 	DB	"V5.x"
 
 ; ──────────────────────────────────────────────
-; Блок эмуляции точек входа BIOS и BDOS
+; Блок эмуляции точек входа BIOS
 ; ──────────────────────────────────────────────
 
-BIOSENTRY:
+BIOSENTRY:				; 24 bytes
 	JP	ColdBoot		; CBOOT Холодный старт
 	JP	WarmBoot		; WBOOT Теплый старт
 	JP	GetKeyboardStatus	; CONST Статус консоли
@@ -117,13 +111,9 @@ BIOSENTRYEND:
 
 ; ──────────────────────────────────────────────
 
-
-INIT2:	
-	LD	(0006H), HL			; BDOSST
-	LD	A, 0C3H				; JMP opcode
-	LD	(0), A
-	LD	(5), A
-	LD	(BDOSST), A
+INIT2:					; 15 bytes
+	CALL	RST_18
+	DB	1Fh,"radio-86r",'k' + 80H
 
 ; ──────────────────────────────────────────────
 ; "Теплый" старт МОНИТОРа
@@ -349,7 +339,7 @@ InputNextSymbol:
 	LD	(HL), A
 	CALL	PrintCharFromA
 	CP	13
-	JP	Z,Enter		;AF91A
+	JP	Z,Enter
 	INC	B
 	LD	A, C
 	CP	B
@@ -368,7 +358,6 @@ Enter:	INC	DE
 ; ──────────────────────────────────────────────
 
 TABK2:	DB	09,0AH,0DH,7FH,08H,19H,18H,1AH	; 8 bytes
-
 
 ; ──────────────────────────────────────────────
 ; Читает аргументы со второй позиции буфера команды в регистры HL, DE, BC
@@ -534,7 +523,7 @@ Compare_HL_DE:
 ;	AF, HL, BC
 ; ──────────────────────────────────────────────
 
-DirectiveReadROM:					; 19 bytes
+DirectiveReadROM:					; 14 bytes
 	IF	(DirectiveInputTape & 0FF00H) <> (DirectiveReadROM & 0FF00H)
 		ERROR	"DirectiveInputTape and DirectiveReadROM must be in same page"
 	ENDIF
@@ -769,8 +758,6 @@ ReadROM:
 ; ──────────────────────────────────────────────
 
 TABK1:	DB	0CH,1FH,1BH,0,1,2,3,4,5	  ; 9 bytes
-	NOP
-	NOP
 
 ; ──────────────────────────────────────────────
 ; Расчет контрольной суммы блока памяти с HL по DE
@@ -824,10 +811,13 @@ AFD77:	DEC	C
 
 ; ──────────────────────────────────────────────
 
-RST_18:	EX	(SP),HL			; 6 bytes
-	CALL	PrintString
-	EX	(SP),HL
-	RET
+AFEF3:	LD	A,H			; 7 bytes
+	LD	HL,TABK1
+	JP	AFEFE
+
+; ──────────────────────────────────────────────
+
+	NOP				; 1 byte
 
 ; ──────────────────────────────────────────────
 
@@ -977,7 +967,7 @@ TAB:	LD	A, L
 
 ; ──────────────────────────────────────────────
 
-FUNC01:	CALL	InputSymbol	; 6 bytes
+C_READ:	CALL	InputSymbol	; 6 bytes
 	JP	PrintCharFromA
 
 ; ──────────────────────────────────────────────
@@ -1060,12 +1050,6 @@ PrintHexWordAndSpace:
 	CALL	PrintHexByte
 	LD	A,L
 	JP	PrintHexByteAndSpace
-
-; ──────────────────────────────────────────────
-
-AFEF3:	LD	A,H			; 7 bytes
-	LD	HL,TABK1
-	JP	AFEFE
 
 ; ──────────────────────────────────────────────
 
@@ -1479,7 +1463,10 @@ MOVLOO:	LD	A,(HL)		; пересылка блока размером [BC]
 	LD	(DE),A		; (HL) --> (DE)
 	INC	HL
 	INC	DE
-	LOOP	MOVLOO
+	DEC	BC
+	LD	A,B
+	OR	C
+	JP	NZ, MOVLOO
 	POP	DE
 	POP	HL
 	RET
@@ -1749,10 +1736,9 @@ InputSymbol:
 
 ; ──────────────────────────────────────────────
 
-TOBACK:	
+TOBACK:					; 6 bytes
 	CALL	SetCursorPos
 	JP	POPREGA
-
 
 ; ──────────────────────────────────────────────
 ; Обработчик ESC-последовательности
@@ -2186,7 +2172,7 @@ BDOS:	LD	HL, 0000H	; Сохраняем стек
 	PUSH	HL
 	LD	A, C
 	LD	C, E
-	JP	Z, FUNC01	; Функция 1 C_READ
+	JP	Z, C_READ	; Функция 1 C_READ
 	DEC	A
 	JP	Z, PrintCharFromC	; Функция 2 C_WRITE
 	SUB	4
@@ -2199,8 +2185,8 @@ BDOS:	LD	HL, 0000H	; Сохраняем стек
 	JP	Z, GetKeyboardStatus	; Функция 11 C_STAT
 	DEC	A
 	JP	NZ, WarmBoot	; Функции 13 и выше не поддерживается
+	LD	B, A		; LD	B, 00H
 	LD	A, 20H		; Функция 12 S_BDOSVER
-	LD	B, 00H
 	RET
 
 ; ──────────────────────────────────────────────
@@ -2355,37 +2341,73 @@ ColdBoot:
 	LD	HL,BASE
 	LD	SP,HL
 
-	LD	A,8AH
-	LD	(PU),A
-
-	LD	C,L			; LD C, 0
-	LD	DE,COMBUF+COMBUFMAX-1
-	CALL	DirectiveFill
-
-	LD	HL, BASE-1
-	LD	(RAMTOP),HL
-
-	LD	A, 099H
-	LD	(CURST), A
-	CALL	InitVideo
-
-	CALL	RST_18
-	DB	1Fh,"radio-86r",'k' + 80H
-
-	LD	HL,1D2AH
-	LD	(KNS_RD),HL
-
 ; ──────────────────────────────────────────────
 ; Инициализация симулятора CP/M
 ; Размещает точки входа в BIOS и BDOS
 ; ──────────────────────────────────────────────
 
+	LD	A, 0C3H			; JMP opcode
+	LD	(HL), A			; LD (BDOSST), A
+	LD	(5), A
+	LD	(0006H), HL		; HL = BDOSST
+
+	LD	C,L			; LD C, 0
+	LD	B,L			; LD B, 0
+
+	LD	(BC), A			; LD (0), A
+
+	DEC	HL
+	LD	(RAMTOP),HL
+
+	LD	HL, CURST
+	LD	(HL), 099H
+	CALL	InitVideo
+
+	INC	HL			; LD	HL, RUSLAT
+	LD	DE, COMBUF+COMBUFMAX-1
+	CALL	DirectiveFill
+
+	LD	HL, BIOSENTRY+3		; WBOOT
+	LD	(0001H), HL
+
 	LD	HL, BDOS
 	LD	(BDOSST+1), HL
-	LD	HL, BIOSENTRY+3	; WBOOT
-	LD	(0001H), HL
-	LD	HL, BDOSST
+
+	LD	A,8AH
+	LD	(PU),A
+
+; ──────────────────────────────────────────────
+; Инициализация констант чтения/записи
+; ──────────────────────────────────────────────
+
+	LD	HL,1D2AH
+	LD	(KNS_RD),HL
+
 	JP	INIT2
+
+RST_18:	EX	(SP),HL			; 6 bytes
+	CALL	PrintString
+	EX	(SP),HL
+	RET
+
+
+	NOP				; 15 bytes
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	
+	CHK	10000H, "* Size not 2K ! *"
 
 	END
 
