@@ -1656,7 +1656,7 @@ PrintHexByteAndSpace:
 ; ──────────────────────────────────────────────
 
 PrintSpace:
-	LD	A,20H
+	LD	A, ' '
 	JP	PrintCharFromA
 
 ; ──────────────────────────────────────────────
@@ -2031,7 +2031,7 @@ skip_ESC_K:
 ClearEOS:
 	PUSH	HL
 	PUSH	DE
-	LD	H, 0
+	LD	H, A		; LD	H, 0
 	CALL	CLSLOO
 	POP	DE
 	POP	HL
@@ -2057,7 +2057,7 @@ skip_ESC_J:
 ; ──────────────────────────────────────────────
 
 RLF:	LD	A,L
-	CP	3		; это первая строка ?
+	CP	MARGIN_TOP		; это первая строка ?
 	JP	NZ,CursorUp	; если не на первой строке
 
 	PUSH	HL		; РОЛИК ЭКРАНА
@@ -2152,7 +2152,7 @@ skip_ESC_B:
 ; ──────────────────────────────────────────────
 
 CursorUp:
-	LD	A,H		; 10 bytes
+	LD	A, H		; 10 bytes
 	CP	MARGIN_TOP	; это первая строка ?
 	RET	Z
 	DEC	H		; POSY--
@@ -2391,7 +2391,7 @@ RST_18:	EX	(SP),HL			; 6 bytes
 	RET
 
 
-	NOP				; 15 bytes
+	NOP				; 16 bytes
 	NOP
 	NOP
 	NOP
@@ -2406,7 +2406,8 @@ RST_18:	EX	(SP),HL			; 6 bytes
 	NOP
 	NOP
 	NOP
-	
+	NOP
+
 	CHK	10000H, "* Size not 2K ! *"
 
 	END
