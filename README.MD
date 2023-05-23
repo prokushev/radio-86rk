@@ -38,3 +38,4 @@
 ## Документация
 
 [Руководство по МОНИТОРу](docs/README.md)
+[Руководство пользователя DECscope VT-5x](docs/EK-VT5X-OP-001_DECscope_Users_Manual_Mar77.pdf)
