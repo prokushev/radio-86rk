@@ -1,4 +1,7 @@
 @echo off
+
+SET PATH=tools;%PATH%
+
 echo MONITOR 1.20 32KB
 asw -lU -D BASE=07600H mon580-1.asm > mon580-1-32.lst
 p2bin mon580-1.p roms\1.20-32\b2m\bios.rom
