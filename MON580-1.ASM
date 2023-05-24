@@ -1421,15 +1421,14 @@ skip_BEEP:
 ; ──────────────────────────────────────────────
 
 CursorRight:
-	LD	A, (WRPFLG)	;
+	LD	A, (WRPFLG);
 	INC	A
+	LD	A, MARGIN_LEFT+64
 	JP	NZ, WRP
-	LD	A,L		; POSX
-	CP	MARGIN_LEFT+64	; последняя колонка ?
+	CP	L		; последняя колонка ?
 	RET	Z
 WRP:	INC	L		; POSX ++
-	LD	A,L		; POSX
-	CP	MARGIN_LEFT+64	; последняя колонка ?
+	CP	L		; последняя колонка ?
 	RET	NZ
 	LD	L,MARGIN_LEFT	; нач.позиция по X на новой строке
 
@@ -1455,8 +1454,8 @@ LF:	LD	A,H
 
 	PUSH	HL		; РОЛИК ЭКРАНА
 	LD	HL, SCBASE+78
-	LD	DE, SCBASE+26*78
 	LD	BC, SCBASE
+	LD	DE, SCBASE+26*78
 	CALL	DirectiveTransfer
 	POP	HL
 	RET
@@ -2409,8 +2408,8 @@ RST_18:	EX	(SP),HL			; 6 bytes
 
 	NOP				; 3 bytes
 	NOP
-;	NOP
-;	NOP
+	NOP
+	NOP
 	;NOP
 	;NOP
 ;	NOP

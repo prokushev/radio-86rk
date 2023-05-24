@@ -1496,15 +1496,14 @@ skip_BEEP:
 ; ──────────────────────────────────────────────
 
 CursorRight:
-	LD	A, (WRPFLG)	;
+	LD	A, (WRPFLG);
 	INC	A
+	LD	A, MARGIN_LEFT+64
 	JP	NZ, WRP
-	LD	A,L		; POSX
-	CP	MARGIN_LEFT+64	; последняя колонка ?
+	CP	L		; последняя колонка ?
 	RET	Z
 WRP:	INC	L		; POSX ++
-	LD	A,L		; POSX
-	CP	MARGIN_LEFT+64	; последняя колонка ?
+	CP	L		; последняя колонка ?
 	RET	NZ
 	LD	L,MARGIN_LEFT	; нач.позиция по X на новой строке
 
