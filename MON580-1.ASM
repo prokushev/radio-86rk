@@ -1455,25 +1455,10 @@ LF:	LD	A,H
 	PUSH	HL		; РОЛИК ЭКРАНА
 
 	LD	HL, SCBASE+78
-	LD	DE, SCBASE+78+25*78
+	LD	DE, SCBASE+26*78
 	LD	BC, SCBASE
 MOVLOO0:
 	CALL	DirectiveTransfer
-
-	if 0
-	LD	HL,SCBASE+78
-	LD	DE,SCBASE
-MOVLOO0:LD	BC,25*78
-MOVLOO:	LD	A,(HL)		; пересылка блока размером [BC]
-	LD	(DE),A		; (HL) --> (DE)
-	INC	HL
-	INC	DE
-	DEC	BC
-	LD	A,B
-	OR	C
-	JP	NZ, MOVLOO
-	endif
-;	POP	DE
 	POP	HL
 	RET
 
