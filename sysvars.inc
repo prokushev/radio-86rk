@@ -7,11 +7,11 @@
 
 ; ──────────────────────────────────────────────
 RABADR	EQU	0F800H		; Адрес начала ПЗУ
+PPA		EQU	08000H		; Адрес основного ППА
 DOPPPA	EQU	0A000H		; Адрес дополнительного ППА
-PPA	EQU	08000H		; Адрес основного ППА
-K_ORIG	EQU	1		; если 0, то измененный курсор
+K_ORIG	EQU	1			; если 0, то измененный курсор
 	IFNDEF BASE
-BASE    EQU	7600H		; размер ОЗУ
+BASE	EQU	7600H		; размер ОЗУ
 	ENDIF
 BDOSST	EQU	BASE		; Начало BDOS
 
@@ -22,13 +22,15 @@ BDOSST	EQU	BASE		; Начало BDOS
 ; ──────────────────────────────────────────────
 
 ; Первых три байта занимает точка вызова BDOS
+
+; Следующие 3 переменные должны иметь указанный порядок, иначе править ColdBoot
 RAMTOP	EQU	BASE+03H		; 2 FIXED Верхняя граница ОЗУ
 CURST	EQU	BASE+05H		; 1 FIXED Отображать/прятать курсор
 RUSLAT	EQU	BASE+06H		; 1 FIXED допустимо только 0 или FF  !! Адрес должен быть xx06h иначе править SET_RL !!
 ; Эти две переменные должны следовать подряд
 COUNT	EQU	BASE+08H		; 1 счётчик опросов (вначале 15)
 APVFLG	EQU	BASE+09H		; 1 флаг автоповтора
-TMPSTK	EQU	BASE+0AH		; 2 временно храним стек при МГ п/п-ммах
+TMPSTK	EQU	BASE+0AH		; 2 временно храним стек при МГ п/п-ммах и функциях BDOS
 XYSTOR	EQU	BASE+0CH		; 2 Сохраненные координаты курсора
 SASTOR	EQU	BASE+0EH		; 2 Сохраненный адрес курсора
 LAST_K	EQU	BASE+10H		; 1 
@@ -41,34 +43,36 @@ EK_ADR  EQU	BASE+14H		; 2 текущий адрес на экране
 ; Эти две переменные должны идти подряд
 POSX	EQU	BASE+16H		; 1 Координаты курсора
 POSY	EQU	BASE+17H		; 1
-PAR_HL  EQU	BASE+18H		; 2
-PAR_DE  EQU	BASE+1AH		; 2
-PAR_BC  EQU	BASE+1CH		; 2
+PAR_HL	EQU	BASE+18H		; 2 Первый параметр
+PAR_DE	EQU	BASE+1AH		; 2 Второй параметр
+PAR_BC	EQU	BASE+1CH		; 2 Третий параметр
 FLG_P2	EQU	BASE+1EH		; 1 флаг, что есть параметры 2 или 2,3
 INV_MG	EQU	BASE+1FH		; 1 флаг инверсии магнитофона
-TRK	EQU	BASE+20H		; 2 Номер трека
+TRK		EQU	BASE+20H		; 2 Номер трека
 SECT	EQU	BASE+22H		; 2 Номер сектора
-DMA	EQU	BASE+24H		; 2 Адрес буфера рбмена с диском
+DMA		EQU	BASE+24H		; 2 Адрес буфера рбмена с диском
 
 ; Тут зазор в 10 байт
 
-; Эти две переменные должны идти подряд
+; Эти две переменные должны идти подряд. Адреса переменных документированы,
+; менять нельзя
 KNS_RD	EQU	BASE+2FH		; 1 FIXED Константа чтения
 KNS_WR	EQU	BASE+30H		; 1 FIXED константа записи
 
 ; Эти три переменные должны подряд для совместимости с CP/M. 
+; Адрес COMBUF менять нельзя
 BUFSIZ	EQU	BASE+31H		; 1 FIXED Размер буфера ввода
 BUFCNT	EQU	BASE+32H		; 1 FIXED Число введенных символов в буфер ввода
 COMBUF	EQU	BASE+33H		; COMBUFMAX FIXED буфер ввода директивы
 
-COMBUFMAX	EQU	10H		; Максимальный размер буфера ввода команд
+COMBUFMAX	EQU	10H			; Максимальный размер буфера ввода команд
 
 ROMBUF	EQU	COMBUF+COMBUFMAX		; ROMBUFMAX буфер подкачки кода из ROM-диска (только для МОНИТОРа 2.0)
-ROMBUFMAX	EQU	80H		; размер буфера подкачки из ROM-диск
+ROMBUFMAX	EQU	80H			; размер буфера подкачки из ROM-диск
 
 STACK	EQU	BASE+0D0H		; стек монитора (стек небольшой, 8 слов глубиной)
 
-SA	EQU	BASE+0D0H		; 76D0 начало экранной области
+SA		EQU	BASE+0D0H		; 76D0 начало экранной области
 SCBASE  EQU	BASE+01C2H		; 77C2 ЛЕВ.ВЕРХН.УГОЛ ЭКР.
 
 MARGIN_TOP	EQU	3

@@ -382,11 +382,7 @@ ParseParameters:
 	LD	C,0
 	CALL	DirectiveFill
 
-;if	high (BASE+34H) eq high BASE
-	LD	E, (COMBUF+1) & 0FFH; 34H
-;    else
-;	.printx *      Wrong BASE (Low BASE need be < 0E0H) !
-;endif
+	LD	E, (COMBUF+1) & 0FFH
 	CALL	GET_HL
 	LD	(PAR_HL),HL
 	LD	(PAR_DE),HL
@@ -1454,10 +1450,17 @@ WRP:	INC	L		; POSX ++
 
 LF:	LD	A,H
 	CP	MARGIN_TOP+24	; ¬ë ­  ¯®á«¥¤­¥© áâà®ª¥ ?
-	JP	NZ,CursorDown		; ¥á«¨ ­¥ ­  ¯®á«¥¤­¥© áâà®ª¥
+	JP	NZ, CursorDown	; ¥á«¨ ­¥ ­  ¯®á«¥¤­¥© áâà®ª¥
 
 	PUSH	HL		; Ž‹ˆŠ Š€€
-	PUSH	DE
+
+	LD	HL, SCBASE+78
+	LD	DE, SCBASE+78+25*78
+	LD	BC, SCBASE
+MOVLOO0:
+	CALL	DirectiveTransfer
+
+	if 0
 	LD	HL,SCBASE+78
 	LD	DE,SCBASE
 MOVLOO0:LD	BC,25*78
@@ -1469,7 +1472,8 @@ MOVLOO:	LD	A,(HL)		; ¯¥à¥áë«ª  ¡«®ª  à §¬¥à®¬ [BC]
 	LD	A,B
 	OR	C
 	JP	NZ, MOVLOO
-	POP	DE
+	endif
+;	POP	DE
 	POP	HL
 	RET
 
@@ -2061,15 +2065,15 @@ skip_ESC_J:
 ;	¯ãáâ ï áâà®ª .
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 
-RLF:	LD	A,L
-	CP	MARGIN_TOP		; íâ® ¯¥à¢ ï áâà®ª  ?
+RLF:	LD	A,H
+	CP	MARGIN_TOP	; íâ® ¯¥à¢ ï áâà®ª  ?
 	JP	NZ,CursorUp	; ¥á«¨ ­¥ ­  ¯¥à¢®© áâà®ª¥
 
 	PUSH	HL		; Ž‹ˆŠ Š€€
-	PUSH	DE
-	LD	HL,SCBASE+25*78
-	LD	DE,SCBASE+78+25*78
-	JP	MOVLOO0		; BUG - ‚¥à­¥âáï ä¨£ §­ ¥â ªã¤ 
+	LD	HL,SCBASE
+	LD	DE,SCBASE+24*78
+	LD	BC,SCBASE+78
+	JP	MOVLOO0
 
 skip_ESC_I:
 	INC	A		;CP	'H'
@@ -2343,7 +2347,9 @@ AFF50:	POP	HL
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 
 ColdBoot:
-	LD	HL,BASE
+	LD	HL,BASE-1
+	LD	(RAMTOP),HL
+	INC	HL
 	LD	SP,HL
 
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
@@ -2361,10 +2367,7 @@ ColdBoot:
 
 	LD	(BC), A			; LD (0), A
 
-	DEC	HL
-	LD	(RAMTOP),HL
-
-	LD	HL, CURST
+	LD	L, CURST & 0FFH
 	LD	(HL), 099H
 	CALL	InitVideo
 
@@ -2396,7 +2399,15 @@ RST_18:	EX	(SP),HL			; 6 bytes
 	RET
 
 
-	NOP				; 12 bytes
+	NOP				; 20 bytes
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
 	NOP
 	NOP
 	NOP
