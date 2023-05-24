@@ -1824,7 +1824,7 @@ EscapeHandler:
 ;	HL, DE, AF, BC
 ; ЋЏ€‘ЂЌ€…:
 ; ДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДД
-WrapOn:	XOR	A
+WrapOn:	; XOR	A ’гв г¦Ґ 0
 	LD	(WRPFLG), A
 
 skip_ESC_w:
@@ -1844,7 +1844,7 @@ skip_ESC_w:
 ; ЋЏ€‘ЂЌ€…:
 ; ДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДД
 WrapOff:
-	LD	A, 0FFh
+	DEC	A		; LD A, 0FFh ’гв 0 ­  ўе®¤Ґ
 	LD	(WRPFLG), A
 
 skip_ESC_v:
