@@ -432,11 +432,12 @@ DirectiveTransfer:
 	IF	(DirectiveFill & 0FF00H) <> (DirectiveTransfer & 0FF00H)
 		ERROR	"DirectiveGoto and DirectiveTransfer must be in same page"
 	ENDIF
+DirectiveTransferLoop:	
 	LD	A,(HL)			; 9 bytes
 	LD	(BC),A
 	INC	BC
 	CALL	IncHLAndRetIfEqDE
-	JP	DirectiveTransfer
+	JP	DirectiveTransferLoop
 
 ; ──────────────────────────────────────────────
 
@@ -1453,11 +1454,10 @@ LF:	LD	A,H
 	JP	NZ, CursorDown	; если не на последней строке
 
 	PUSH	HL		; РОЛИК ЭКРАНА
-
 	LD	HL, SCBASE+78
 	LD	DE, SCBASE+26*78
 	LD	BC, SCBASE
-MOVLOO0:
+	LD	BC, SCBASE
 	CALL	DirectiveTransfer
 	POP	HL
 	RET
@@ -2055,10 +2055,20 @@ RLF:	LD	A,H
 	JP	NZ,CursorUp	; если не на первой строке
 
 	PUSH	HL		; РОЛИК ЭКРАНА
-	LD	HL,SCBASE
-	LD	DE,SCBASE+24*78
-	LD	BC,SCBASE+78
-	JP	MOVLOO0
+	LD	DE,SCBASE+24*78-1
+	LD	HL,SCBASE+25*78-1
+	LD	BC,25*78
+RLFLOOP:
+	LD	A,(DE)
+	LD	(HL),A
+	DEC	HL
+	DEC	DE
+	DEC	BC
+	LD	A,B
+	OR	C
+	JP	NZ, RLFLOOP
+	POP	HL
+	RET
 
 skip_ESC_I:
 	INC	A		;CP	'H'
@@ -2384,19 +2394,7 @@ RST_18:	EX	(SP),HL			; 6 bytes
 	RET
 
 
-	NOP				; 20 bytes
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
+	NOP				; 8 bytes
 	NOP
 	NOP
 	NOP

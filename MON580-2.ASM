@@ -1532,7 +1532,6 @@ LF:	LD	A,H
 	LD	HL, SCBASE+78
 	LD	DE, SCBASE+26*78
 	LD	BC, SCBASE
-MOVLOO0:
 	CALL	DirectiveTransfer	
 	POP	HL
 	RET
@@ -2074,10 +2073,20 @@ RLF:	LD	A,H
 	JP	NZ,CursorUp	; если не на первой строке
 
 	PUSH	HL		; РОЛИК ЭКРАНА
-	PUSH	DE
-	LD	HL,SCBASE+25*78
-	LD	DE,SCBASE+78+25*78
-	JP	MOVLOO0		; BUG - Вернется фиг знает куда
+	LD	DE,SCBASE+24*78-1
+	LD	HL,SCBASE+25*78-1
+	LD	BC,25*78
+RLFLOOP:
+	LD	A,(DE)
+	LD	(HL),A
+	DEC	HL
+	DEC	DE
+	DEC	BC
+	LD	A,B
+	OR	C
+	JP	NZ, RLFLOOP
+	POP	HL
+	RET
 
 skip_ESC_I:
 	INC	A		;CP	'H'
