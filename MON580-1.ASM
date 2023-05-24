@@ -734,7 +734,7 @@ AFB4D:	CALL	TapeWriteByte
 
 ReadVideoRAM:
 	PUSH	HL			; 7 bytes
-	LD	HL,(EK_ADR)
+	CALL	SetCursorPos
 	LD	A,(HL)
 	POP	HL
 	RET
@@ -1971,7 +1971,7 @@ DeleteLine:
 
 skip_ESC_M:
 	INC	A		;CP	'L'
-	JP	NZ, skip_ESC_L
+;	JP	NZ, skip_ESC_L
 
 ; ──────────────────────────────────────────────
 ; Вставить строку
@@ -1984,7 +1984,7 @@ skip_ESC_M:
 ; ОПИСАНИЕ:
 ; ──────────────────────────────────────────────
 InsertLine:
-
+	JP	Z, RLDN
 
 skip_ESC_L:
 	INC	A		;CP	'K'
@@ -2055,21 +2055,24 @@ RLF:	LD	A, H
 	CP	MARGIN_TOP	; это первая строка ?
 	JP	NZ, CursorUp	; если не на первой строке
 
-	LD	BC, 25*78
-RLDN:	PUSH	HL		; РОЛИК ЭКРАНА
+RLDN:
+	PUSH	HL
+	LD	A, 27
+	SUB	H
+	CALL	CALC
 	LD	DE, SCBASE+24*78-1
-	LD	HL, SCBASE+25*78-1
+	LD	BC, SCBASE+25*78-1
 RLFLOOP:
 	LD	A, (DE)
-	LD	(HL), A
-	DEC	HL
-	DEC	DE
+	LD	(BC), A
 	DEC	BC
-	LD	A, B
-	OR	C
+	DEC	DE
+	DEC	HL
+	LD	A, H
+	OR	L
 	JP	NZ, RLFLOOP
-	POP	HL
-	RET
+	LD	(POSX), A
+	JP	KLOOP
 
 skip_ESC_I:
 	INC	A		;CP	'H'
@@ -2284,9 +2287,11 @@ GetCursorPos:
 
 SetCursorPos:
 	LD	(POSX),HL
+
+	PUSH	AF
 	PUSH	DE		;ЗАПОМНИТЬ 
 	PUSH	BC		;РЕГИСТРЫ 
-	PUSH	AF
+
 	; Выставляем курсор
 	LD	A,80H
 	LD	(VG_75+1),A
@@ -2294,25 +2299,31 @@ SetCursorPos:
 	LD	(VG_75),A
 	LD	A,H
 	LD	(VG_75),A
+
 	; Вычисляем адрес видеопамяти
-	LD	C, L		;ВС КООРДИНАТУ X 
-	LD	A, H		;В А КООРДИНАТУ Y 
-	LD	DE, 78		;В DE ДЛИНУ СТРОКИ 
-	LD	HL, 0		;ВЫЧИСЛЕНИЕ
-	OR	A 		;АДРЕСА ПО
-S1:	JP	Z, PROD		;ФОРМУЛЕ:
-	ADD	HL, DE		;АДРЕС=78*Y
-	DEC	A
-	JP	S1
+	LD	C, L		;ВС КООРДИНАТУ X
+	LD	A, H		;В А КООРДИНАТУ Y
+	CALL	CALC
 PROD:	LD	DE, SA		; ЗАГРУЗИТЬ АДРЕС
 	ADD	HL, DE		; КООРДИНАТ 0. 0.
 	LD	B, 0		; СЛОЖИТЬ С АДРЕСОМ НАЧАЛА
 	ADD	HL, BC		; И ПРИБАВИТЬ X
-	LD	(EK_ADR), HL
-	POP	AF
 	POP	BC		; ВОССТАНОВИТЬ
 	POP	DE		; РЕГИСТРЫ
+	POP	AF
 	RET
+
+CALC:
+	INC	A
+	LD	DE, 78		;В DE ДЛИНУ СТРОКИ
+	LD	HL, -78;0	;ВЫЧИСЛЕНИЕ
+;	OR	A 		;АДРЕСА ПО
+S1:;	RET	Z		;ФОРМУЛЕ:
+	ADD	HL, DE		;АДРЕС=78*Y
+	DEC	A
+	JP	NZ,S1
+	RET
+
 
 ; ──────────────────────────────────────────────
 
@@ -2396,13 +2407,13 @@ RST_18:	EX	(SP),HL			; 6 bytes
 	RET
 
 
-	NOP				; 8 bytes
+	NOP				; 3 bytes
 	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
+;	NOP
+;	NOP
+	;NOP
+	;NOP
+;	NOP
 ;	NOP
 	;NOP
 	;NOP
