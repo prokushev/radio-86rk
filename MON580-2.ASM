@@ -2021,6 +2021,7 @@ skip_ESC_L:
 ClearEOL:
 	PUSH	HL
 KLOOP:	CALL	PrintSpace
+	CALL	GetCursorPos
 	LD	A, L
 	CP	MARGIN_LEFT+63		; последняя колонка
 	JP	NZ, KLOOP
@@ -2192,7 +2193,8 @@ CursorUp:
 ; ──────────────────────────────────────────────
 
 GetCursorPos:
-	LD	HL,(POSX)		; 3 bytes
+	LD	HL,(POSX)		; 4 bytes
+	RET
 
 ; ──────────────────────────────────────────────
 ; Устанавливает курсор в заданные координаты

@@ -1457,7 +1457,6 @@ LF:	LD	A,H
 	LD	HL, SCBASE+78
 	LD	DE, SCBASE+26*78
 	LD	BC, SCBASE
-	LD	BC, SCBASE
 	CALL	DirectiveTransfer
 	POP	HL
 	RET
@@ -1986,6 +1985,7 @@ skip_ESC_M:
 ; ──────────────────────────────────────────────
 InsertLine:
 
+
 skip_ESC_L:
 	INC	A		;CP	'K'
 	JP	NZ, skip_ESC_K
@@ -2003,6 +2003,7 @@ skip_ESC_L:
 ClearEOL:
 	PUSH	HL
 KLOOP:	CALL	PrintSpace
+	CALL	GetCursorPos
 	LD	A, L
 	CP	MARGIN_LEFT+63		; последняя колонка
 	JP	NZ, KLOOP
@@ -2050,21 +2051,21 @@ skip_ESC_J:
 ;	пустая строка.
 ; ──────────────────────────────────────────────
 
-RLF:	LD	A,H
+RLF:	LD	A, H
 	CP	MARGIN_TOP	; это первая строка ?
-	JP	NZ,CursorUp	; если не на первой строке
+	JP	NZ, CursorUp	; если не на первой строке
 
-	PUSH	HL		; РОЛИК ЭКРАНА
-	LD	DE,SCBASE+24*78-1
-	LD	HL,SCBASE+25*78-1
-	LD	BC,25*78
+	LD	BC, 25*78
+RLDN:	PUSH	HL		; РОЛИК ЭКРАНА
+	LD	DE, SCBASE+24*78-1
+	LD	HL, SCBASE+25*78-1
 RLFLOOP:
-	LD	A,(DE)
-	LD	(HL),A
+	LD	A, (DE)
+	LD	(HL), A
 	DEC	HL
 	DEC	DE
 	DEC	BC
-	LD	A,B
+	LD	A, B
 	OR	C
 	JP	NZ, RLFLOOP
 	POP	HL
@@ -2267,7 +2268,8 @@ ProcessBackspace:
 ; ──────────────────────────────────────────────
 
 GetCursorPos:
-	LD	HL,(POSX)		; 3 bytes
+	LD	HL,(POSX)		; 4 bytes
+	RET
 
 ; ──────────────────────────────────────────────
 ; Устанавливает курсор в заданные координаты
@@ -2401,7 +2403,10 @@ RST_18:	EX	(SP),HL			; 6 bytes
 	NOP
 	NOP
 	NOP
-	NOP
+;	NOP
+	;NOP
+	;NOP
+;	NOP
 
 	CHK	10000H, "* Size not 2K ! *"
 
