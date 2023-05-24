@@ -213,7 +213,7 @@
 ввода будет ожидать ввода контрольной суммы. Если не останавливать
 магнитофон и позволить ей читать начало следующей программы, то
 она будет воспринята как контрольная сумма и ввод будет окончен.
-Естественно, что такая <контрольная сумма> не совпадет с реальной,
+Естественно, что такая "контрольная сумма" не совпадет с реальной,
 и МОНИТОР ответит на эти действия вопросительным знаком,
  
 При наличии ROM-диска можно использовать директивы R и U.
@@ -225,7 +225,7 @@
 Директива U - запуск программы управления ROM-диском (только для МОНИТОР 2.00). 
 
 Директива U вызывает программу управления ROM-диском. Данная директива реализована
-совместимо с [Радио 1991 год №10].
+совместимо с [Радио 1991 год №10]((http://archive.radio.ru/web/1991/10/)).
 
 Программа управление ROM-диском отличается от опубликованной и рассчитана на работу
 с ROM-диском, совместимом по формату с Орион-128. При вызове директивы "U"
@@ -379,7 +379,6 @@
  +-----------------------------+--------+------------------------------+
  !  Холодный старт		!   -3	 ! ВХОДНЫЕ              	!
  !				! 	 ! ВЫХОДНЫЕ			!
- ! 				! 	 ! А - введенный код		!
  +-----------------------------+--------+------------------------------+
  !  Теплый старт		!   0	 ! ВХОДНЫЕ			!
  !				! 	 ! ВЫХОДНЫЕ			!
@@ -420,22 +419,39 @@
 ## НУЛЕВАЯ СТРАНИЦА
 
 ```
-! 00–02 ! Code  ! Exit program (jumps to the BIOS, and is also used to find BIOS entry points)
-!  03   ! Byte  ! I/O byte, an optional feature allowing device reassignment in CP/M 2.
-!  04   ! Byte  ! Current command processor drive (low 4 bits) and user number (high 4 bits).
-! 05–07 ! Code  ! Jump to CP/M BDOS entry - main system call entry point. This is also the address of the first byte of memory not usable by the program.[1]
-! 08–3A ! Code  ! 8080 restart/interrupt vectors.
-! 3B–4F ! Bytes ! Reserved
-!  50   ! Byte  ! The drive from which the program was loaded (CP/M 3)
-! 51–52 ! Word  ! Address of the password for the first FCB (CP/M 3)
-!  53   ! Byte  ! Length of the password for the first FCB (CP/M 3)
-! 54–55 ! Word  ! Address of the password for the second FCB (CP/M 3)
-!  56   ! Byte  ! Length of the password for the second FCB (CP/M 3)
-! 57–5B ! Bytes ! Reserved
-! 5C–6B !       ! Default FCB 1
-! 6C–7F !       ! Default FCB 2 (overwritten if FCB 1 is opened)
-!  80   ! Byte  ! Number of characters in command tail.
-! 81–FF ! Bytes ! Command tail (everything after the program name). 
++-------+-------+-----------------------------------------------------+
+! 00–02 ! Code  ! Exit program (also used to find BIOS entry points)  !
++-------+-------+-----------------------------------------------------+
+!  03   ! Byte  ! I/O byte (not implemented)                          !
++-------+-------+-----------------------------------------------------+
+!  04   ! Byte  ! Current CCP drive (low 4) and user (high 4)         !
++-------+-------+-----------------------------------------------------+
+! 05–07 ! Code  ! Call CP/M BDOS system call. Also RAMTOP.            !
++-------+-------+-----------------------------------------------------+
+! 08–3A ! Code  ! 8080 restart/interrupt vectors.                     !
++-------+-------+-----------------------------------------------------+
+! 3B–4F ! Bytes ! Reserved                                            !
++-------+-------+-----------------------------------------------------+
+!  50   ! Byte  ! The drive from which the program was loaded (CP/M 3)!
++-------+-------+-----------------------------------------------------+
+! 51–52 ! Word  ! Address of the password for the first FCB (CP/M 3)  !
++-------+-------+-----------------------------------------------------+
+!  53   ! Byte  ! Length of the password for the first FCB (CP/M 3)   !
++-------+-------+-----------------------------------------------------+
+! 54–55 ! Word  ! Address of the password for the second FCB (CP/M 3) !
++-------+-------+-----------------------------------------------------+
+!  56   ! Byte  ! Length of the password for the second FCB (CP/M 3)  !
++-------+-------+-----------------------------------------------------+
+! 57–5B ! Bytes ! Reserved                                            !
++-------+-------+-----------------------------------------------------+
+! 5C–6B !       ! Default FCB 1                                       !
++-------+-------+-----------------------------------------------------+
+! 6C–7F !       ! Default FCB 2 (overwritten if FCB 1 is opened)      !
++-------+-------+-----------------------------------------------------+
+!  80   ! Byte  ! Number of characters in command tail.               !
++-------+-------+-----------------------------------------------------+
+! 81–FF ! Bytes ! Command tail (everything after the program name).   !
++-------+-------+-----------------------------------------------------+
 ```
 
 ## УПРАВЛЯЮЩИЕ КОДЫ ДИСПЛЕЯ
