@@ -1529,19 +1529,11 @@ LF:	LD	A,H
 	JP	NZ,CursorDown		; если не на последней строке
 
 	PUSH	HL		; РОЛИК ЭКРАНА
-	PUSH	DE
-	LD	HL,SCBASE+78
-	LD	DE,SCBASE
-MOVLOO0:LD	BC,25*78
-MOVLOO:	LD	A,(HL)		; пересылка блока размером [BC]
-	LD	(DE),A		; (HL) --> (DE)
-	INC	HL
-	INC	DE
-	DEC	BC
-	LD	A,B
-	OR	C
-	JP	NZ,MOVLOO
-	POP	DE
+	LD	HL, SCBASE+78
+	LD	DE, SCBASE+78+25*78
+	LD	BC, SCBASE
+MOVLOO0:
+	CALL	DirectiveTransfer	
 	POP	HL
 	RET
 
