@@ -2024,10 +2024,15 @@ skip_ESC_K:
 ; 컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
 ClearEOS:
 	PUSH	HL
-	PUSH	DE
-	LD	H, A		; LD	H, 0
-	CALL	CLSLOO
-	POP	DE
+	;PUSH	DE
+	;LD	H, A		;LD	H, 0
+	CALL	SetCursorPos
+CLSLOO:	XOR	A
+	LD	(HL),A
+	INC	HL
+	OR	H
+	JP	P,CLSLOO
+	;POP	DE
 	POP	HL
 
 skip_ESC_J:
@@ -2082,12 +2087,9 @@ skip_ESC_I:
 ; 컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
 
 ClearScreen:
-	LD	HL,SA		; 17 bytes
-CLSLOO:	XOR	A
-	LD	(HL),A
-	INC	HL
-	OR	H
-	JP	P,CLSLOO
+	LD	H,A		; 17 bytes
+	LD	L,A
+	CALL	ClearEOS
 CursorHome:
 	LD	HL, MARGIN_TOP << 8 +MARGIN_LEFT
 skip_ESC_E:
@@ -2406,11 +2408,11 @@ RST_18:	EX	(SP),HL			; 6 bytes
 	RET
 
 
-	NOP				; 3 bytes
+	NOP				; 4 bytes
 	NOP
 	NOP
 	NOP
-	;NOP
+	NOP
 	;NOP
 ;	NOP
 ;	NOP

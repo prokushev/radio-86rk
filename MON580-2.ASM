@@ -2043,10 +2043,15 @@ skip_ESC_K:
 ; ──────────────────────────────────────────────
 ClearEOS:
 	PUSH	HL
-	PUSH	DE
-	LD	H, A		;LD	H, 0
-	CALL	CLSLOO
-	POP	DE
+	;PUSH	DE
+	;LD	H, A		;LD	H, 0
+	CALL	SetCursorPos
+CLSLOO:	XOR	A
+	LD	(HL),A
+	INC	HL
+	OR	H
+	JP	P,CLSLOO
+	;POP	DE
 	POP	HL
 
 skip_ESC_J:
@@ -2101,12 +2106,9 @@ skip_ESC_I:
 ; ──────────────────────────────────────────────
 
 ClearScreen:
-	LD	HL,SA		; 17 bytes
-CLSLOO:	XOR	A		; Метку не переносить! Используется ClearEOS
-	LD	(HL),A
-	INC	HL
-	OR	H
-	JP	P,CLSLOO
+	LD	H,A
+	LD	L,A
+	CALL	ClearEOS
 CursorHome:
 	LD	HL, MARGIN_TOP << 8 +MARGIN_LEFT
 skip_ESC_E:
