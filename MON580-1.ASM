@@ -1374,33 +1374,7 @@ skip_TAB:
 	INC	A		;CP	08H
 	JP	Z,CursorLeft
 	INC	A		;CP	07H
-	JP	NZ,skip_BEEP
-
-; ──────────────────────────────────────────────
-; Подача звукового сигнала
-; ВХОД:
-;	Нет
-; ВЫХОД:
-;	Нет
-; ИЗМЕНЯЕТ:
-;	AF, BC
-; ОПИСАНИЕ:
-; ──────────────────────────────────────────────
-
-Beep:	LD	BC,05F0H		; 20 bytes
-SND_BC:	LD	A,B
-BPLOO1:	EI
-	DEC	A
-	JP	NZ,BPLOO1
-	LD	A,B
-BPLOO2:	DI
-	DEC	A
-	JP	NZ,BPLOO2
-	DEC	C
-	JP	NZ,SND_BC
-	RET
-
-skip_BEEP:
+	JP	Z, Beep
 	CALL	SetCursorPos
 	LD	(HL),C		; Видимый на экране символ
 	LD	HL,(POSX)
@@ -1458,6 +1432,66 @@ LF:	LD	A,H
 	LD	DE, SCBASE+26*78
 	CALL	DirectiveTransfer
 	POP	HL
+	RET
+
+; ──────────────────────────────────────────────
+
+AFF3B:	LD	A,L			; 23 bytes
+	AND	2FH
+	LD	L,A
+AFF3F:	LD	A,L
+	CP	40H
+	POP	HL
+	RET	P
+	PUSH	HL
+	LD	L,A
+	AND	00FH
+	CP	00CH
+	LD	A,L
+	JP	M,AFF50
+	XOR	10H
+AFF50:	POP	HL
+	RET
+
+; ──────────────────────────────────────────────
+; Возвращает в HL координаты курсора
+; ВХОД:
+;	Нет
+; ВЫХОД:
+;	H - Y
+;	L - X
+; ИЗМЕНЯЕТ:
+;	HL
+; ──────────────────────────────────────────────
+
+GetCursorPos:
+	LD	HL,(POSX)		; 4 bytes
+	RET
+
+; ──────────────────────────────────────────────
+; Подача звукового сигнала
+; ВХОД:
+;	Нет
+; ВЫХОД:
+;	Нет
+; ИЗМЕНЯЕТ:
+;	AF, BC
+; ОПИСАНИЕ:
+; ──────────────────────────────────────────────
+
+	CHK	0FD27H, "* Standard subroutine Beep shifted ! *"
+
+Beep:	LD	BC,05F0H		; 20 bytes
+SND_BC:	LD	A,B
+BPLOO1:	EI
+	DEC	A
+	JP	NZ,BPLOO1
+	LD	A,B
+BPLOO2:	DI
+	DEC	A
+	JP	NZ,BPLOO2
+	DEC	C
+	JP	NZ,SND_BC
 	RET
 
 ; ──────────────────────────────────────────────
@@ -2259,22 +2293,6 @@ ProcessBackspace:
 	DB	8,' ',8+80H
 	JP	InputNextSymbol
 
-
-; ──────────────────────────────────────────────
-; Возвращает в HL координаты курсора
-; ВХОД:
-;	Нет
-; ВЫХОД:
-;	H - Y
-;	L - X
-; ИЗМЕНЯЕТ:
-;	HL
-; ──────────────────────────────────────────────
-
-GetCursorPos:
-	LD	HL,(POSX)		; 4 bytes
-	RET
-
 ; ──────────────────────────────────────────────
 ; Устанавливает курсор в заданные координаты
 ; ВХОД:
@@ -2314,7 +2332,7 @@ PROD:	LD	DE, SA		; ЗАГРУЗИТЬ АДРЕС
 	POP	AF
 	RET
 
-CALC:
+CALC:					; 13 bytes
 	INC	A
 	LD	DE, 78		;В DE ДЛИНУ СТРОКИ
 	LD	HL, -78;0	;ВЫЧИСЛЕНИЕ
@@ -2325,25 +2343,6 @@ S1:;	RET	Z		;ФОРМУЛЕ:
 	JP	NZ,S1
 	RET
 
-
-; ──────────────────────────────────────────────
-
-AFF3B:	LD	A,L			; 23 bytes
-	AND	2FH
-	LD	L,A
-AFF3F:	LD	A,L
-	CP	40H
-	POP	HL
-	RET	P
-	PUSH	HL
-	LD	L,A
-	AND	00FH
-	CP	00CH
-	LD	A,L
-	JP	M,AFF50
-	XOR	10H
-AFF50:	POP	HL
-	RET
 
 ; ──────────────────────────────────────────────
 ; Первичная инициализация МОНИТОРа
@@ -2408,7 +2407,7 @@ RST_18:	EX	(SP),HL			; 6 bytes
 	RET
 
 
-	NOP				; 4 bytes
+	NOP				; 5 bytes
 	NOP
 	NOP
 	NOP

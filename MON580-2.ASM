@@ -1449,33 +1449,7 @@ skip_TAB:
 	INC	A		;CP	08H
 	JP	Z,CursorLeft
 	INC	A		;CP	07H
-	JP	NZ,skip_BEEP
-
-; ДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДД
-; Џ®¤ з  §ўгЄ®ў®Ј® бЁЈ­ « 
-; ‚•Ћ„:
-;	ЌҐв
-; ‚›•Ћ„:
-;	ЌҐв
-; €‡Њ…Ќџ…’:
-;	AF, BC
-; ЋЏ€‘ЂЌ€…:
-; ДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДД
-
-Beep:	LD	BC,05F0H		; 20 bytes
-SND_BC:	LD	A,B
-BPLOO1:	EI
-	DEC	A
-	JP	NZ,BPLOO1
-	LD	A,B
-BPLOO2:	DI
-	DEC	A
-	JP	NZ,BPLOO2
-	DEC	C
-	JP	NZ,SND_BC
-	RET
-
-skip_BEEP:
+	JP	Z, Beep
 	CALL	SetCursorPos
 	LD	(HL),C		; ‚Ё¤Ё¬л© ­  нЄа ­Ґ бЁ¬ў®«
 	LD	HL,(POSX)
@@ -1533,6 +1507,59 @@ LF:	LD	A,H
 	LD	BC, SCBASE
 	CALL	DirectiveTransfer	
 	POP	HL
+	RET
+
+; ДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДД
+
+AFEFA:	LD	A,H			; 32 bytes
+	LD	HL,TABK2
+AFEFE:	ADD	A,L
+	LD	L,A
+	LD	A,(HL)
+	CP	40H
+	POP	HL
+AFF04:	RET	C
+	PUSH	HL
+AFF06:	LD	L,A
+	LD	A,(PC)
+	LD	H,A
+	AND	40H
+	JP	NZ,AFF1A
+	LD	A,L
+	CP	40H
+	JP	M,AFF3F
+	AND	1FH
+	POP	HL
+	RET
+
+	NOP
+	NOP
+	NOP
+
+	CHK	0FD27H, "* Standard subroutine Beep shifted ! *"
+
+; ДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДД
+; Џ®¤ з  §ўгЄ®ў®Ј® бЁЈ­ « 
+; ‚•Ћ„:
+;	ЌҐв
+; ‚›•Ћ„:
+;	ЌҐв
+; €‡Њ…Ќџ…’:
+;	AF, BC
+; ЋЏ€‘ЂЌ€…:
+; ДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДД
+
+Beep:	LD	BC,05F0H		; 20 bytes
+SND_BC:	LD	A,B
+BPLOO1:	EI
+	DEC	A
+	JP	NZ,BPLOO1
+	LD	A,B
+BPLOO2:	DI
+	DEC	A
+	JP	NZ,BPLOO2
+	DEC	C
+	JP	NZ,SND_BC
 	RET
 
 ; ДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДД
@@ -1635,28 +1662,6 @@ AFF2A:	LD	A,H
 	POP	HL
 	RET
 
-; ДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДД
-
-AFEFA:	LD	A,H			; 32 bytes
-	LD	HL,TABK2
-AFEFE:	ADD	A,L
-	LD	L,A
-	LD	A,(HL)
-	CP	40H
-	POP	HL
-AFF04:	RET	C
-	PUSH	HL
-AFF06:	LD	L,A
-	LD	A,(PC)
-	LD	H,A
-	AND	40H
-	JP	NZ,AFF1A
-	LD	A,L
-	CP	40H
-	JP	M,AFF3F
-	AND	1FH
-	POP	HL
-	RET
 
 ; ДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДД
 
