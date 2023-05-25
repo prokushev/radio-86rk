@@ -1502,13 +1502,13 @@ LF:	LD	A,H
 	JP	NZ, CursorDown	; если не на последней строке
 
 	PUSH	HL		; РОЛИК ЭКРАНА
-	LD	HL, SCBASE+78
-	LD	BC, SCBASE
-	LD	DE, SCBASE+26*78
-	CALL	DirectiveTransfer
+	LD	DE, SCBASE+78	; откуда
+	LD	HL, SCBASE	; куда
+	LD	BC, 26*78	; сколько
+	CALL	MoveBlock	; МОНИТОР-1.20 использует DirectiveTransfer
 	POP	HL
 	RET
-
+	
 ; ──────────────────────────────────────────────
 
 AFEFA:	LD	A,H			; 32 bytes
