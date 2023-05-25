@@ -1395,7 +1395,7 @@ skip_TAB:
 ; 컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
 
 CursorRight:
-	LD	A, (WRPFLG);
+	LD	A, (WRPFLG)	;
 	INC	A
 	LD	A, MARGIN_LEFT+64
 	JP	NZ, WRP

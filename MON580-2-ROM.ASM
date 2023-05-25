@@ -761,7 +761,12 @@ ENDZEROROM:
 
 TESTROM:
 	PHASE	00100H
+	LD	C, 9				; C_WRITESTR
+	LD	DE, WelcomeMsg
+	CALL	5
 	JP	WarmBoot
+WelcomeMsg:
+	DB	0dh,0ah,"analiz sowmestimosti monitora$"
 	DEPHASE
 ENDTESTROM:
 

@@ -1499,13 +1499,13 @@ WRP:	INC	L		; POSX ++
 
 LF:	LD	A,H
 	CP	MARGIN_TOP+24	; мы на последней строке ?
-	JP	NZ,CursorDown		; если не на последней строке
+	JP	NZ, CursorDown	; если не на последней строке
 
 	PUSH	HL		; РОЛИК ЭКРАНА
 	LD	HL, SCBASE+78
-	LD	DE, SCBASE+26*78
 	LD	BC, SCBASE
-	CALL	DirectiveTransfer	
+	LD	DE, SCBASE+26*78
+	CALL	DirectiveTransfer
 	POP	HL
 	RET
 
