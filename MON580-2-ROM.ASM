@@ -873,11 +873,76 @@ MTESTF803:
 	LD	HL, MTESTF803Msg
 	CALL	0F818H		; Вывод строки
 
+	PUSH	HL
+	PUSH	AF
+	PUSH	BC
+	PUSH	DE
+	CALL	DumpRegs
+	LD	HL, MTESTF803Msg2
+	CALL	0F818H		; Вывод строки
+	POP	DE
+	POP	BC
+	POP	AF
+	POP	HL
+
+	CALL	0F803H		; Ожидание ввода
+
+	CALL	DumpRegs
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
 	CALL	0F803H		; Ожидание ввода
 
 	POP	HL
 	POP	AF
 	RET
+
+DumpRegs:
+	LD	(RHL), HL
+	PUSH	AF
+	POP	HL
+	LD	(RAF), HL
+	PUSH	BC
+	POP	HL
+	LD	(RBC), HL
+	PUSH	DE
+	POP	HL
+	LD	(RDE), HL
+
+	LD	HL, RegistersListStr
+	CALL	0F818H		; Вывод строки
+
+	LD	HL, (RHL)
+	CALL	PrintHexWord
+
+	LD	HL, NextReg
+	CALL	0F818H		; Вывод строки
+
+	LD	HL, (RBC)
+	CALL	PrintHexWord
+
+	LD	HL, NextReg
+	CALL	0F818H		; Вывод строки
+
+	LD	HL, (RDE)
+	CALL	PrintHexWord
+
+	LD	HL, NextReg
+	CALL	0F818H		; Вывод строки
+
+	LD	HL, (RAF)
+	CALL	PrintHexWord
+
+	LD	HL, NextReg
+	CALL	0F818H		; Вывод строки
+
+	RET
+
+PrintHexWord:
+	LD	A,H
+	CALL	0F815H		; Печать hex-байта 
+	LD	A,L
+	JP	0F815H		; Печать hex-байта
 
 MTESTF806:
 	PUSH	AF
@@ -1151,7 +1216,13 @@ MTESTF800Msg:
 	DB	"osu}estwlqetsq polnyj perezapusk sistemy.", 0dh, 0ah
 	DB	"navmite l`bu` klawi{u dlq wyzowa.", 0dh, 0ah, '>', 0
 MTESTF803Msg:
-	DB	0dh, 0ah, "prowerka F803H", 0dh, 0ah, '>', 0
+	DB	0dh, 0ah, "prowerka F803H", 0dh, 0ah
+	DB	"wwod simwola s klawiatury. w registre A wozwra}aetsq kod", 0dh, 0ah
+	DB	"wwedennogo simwola.", 0dh, 0ah, 0
+MTESTF803Msg2:
+	DB	0dh, 0ah, "navmite kaku`-nibudx klawi{u.", 0dh, 0ah, '>', 0
+AnyKey:
+	DB	0dh, 0ah, "navmite kaku`-nibudx klawi{u dlq prodolveniq.", 0dh, 0ah, '>', 0
 MTESTF806Msg:
 	DB	0dh, 0ah, "prowerka F806H", 0dh, 0ah, '>', 0
 MTESTF809Msg:
@@ -1192,6 +1263,22 @@ MTESTF83CMsg:
 	DB	0dh, 0ah, "prowerka F83CH", 0dh, 0ah, '>', 0
 MTESTF83FMsg:
 	DB	0dh, 0ah, "prowerka F83FH", 0dh, 0ah, '>', 0
+
+RegistersListStr:
+	db 0Dh, 0Ah, "HL-"
+	db 0Dh, 0Ah, "BC-"
+	db 0Dh, 0Ah, "DE-"
+	db 0Dh, 0Ah, "AF-"
+	db 19h, 19h, 19h, 0
+
+NextReg:
+	DB 08h, 08h, 08h, 08h, 1AH,0
+
+RAF:	DW	?
+RHL:	DW	?
+RBC:	DW	?
+RDE:	DW	?
+RSP:	DW	?
 
 ; ───────────────────────────────────────────────────────────────────────
 ; Подпрограмма тестировани CP/M на совместимость
