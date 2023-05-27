@@ -117,6 +117,10 @@ COD_0D:	LD	L, MARGIN_LEFT		; 3 bytes
 Version:
 	DB	"V5.x"
 
+	NOP
+	NOP
+	NOP
+
 ; ──────────────────────────────────────────────
 ; Печать строки по адресу HL
 ; ВХОД:
@@ -132,11 +136,8 @@ Version:
 ; ──────────────────────────────────────────────
 
 PrintString:
-	PUSH	BC
-	LD	B, 0			; Эта команда важна, т.к. воспринимается как NOP при вызове из ROM-диска
 	LD	A,(HL)
-	CP	B			; CP 0 или CP '$'
-	POP	BC
+	CP	0
 	RET	Z
 	CALL	PrintCharFromA
 	INC	HL
@@ -2381,22 +2382,23 @@ FARJZ:	EX	(SP), HL
 	EX	(SP), HL
 
 	SHARED	FARJMP
-FARJMP:	EX	(SP), HL		; Сохраняем HL в стек, а в HL адрес возврата
+FARJMP:	
+	EX	(SP), HL		; Сохраняем HL в стек, а в HL адрес возврата
 	PUSH	AF
-	LD	(PAR_HL),HL		; т.к. размера стека не хватает, сохраняем в переменную
 	PUSH	BC
 	PUSH	DE
-	LD	A, (HL)
+	LD	A, (HL)			; Номер блока
+	INC	HL
+	LD	B, (HL)
+	LD 	H, ROMBUF>>8
+	LD 	L, B			; Адрес перехода
+	LD	(PAR_HL), HL
 	CALL	ReadBlock		; Считываем блок c ROM-диска
+	LD	HL, (PAR_HL)
 	POP	DE
 	POP	BC
-	LD	HL, (PAR_HL)
-	INC	HL
-	LD	A, (HL)
-	LD 	H, ROMBUF>>8
-	LD 	L, A
 	POP	AF
-	EX	(SP), HL		; Восстанавливаем значение HL, а адрес вызова помещеам в стек
+	EX	(SP), HL		; Восстанавливаем значение HL, а адрес перехода помещеам в стек
 	RET				; Вызываем считанную функцию
 
 ; ──────────────────────────────────────────────

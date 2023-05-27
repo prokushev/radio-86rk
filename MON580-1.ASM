@@ -232,21 +232,8 @@ TapeReadWord:
 	RET
 
 ; ──────────────────────────────────────────────
-; Печать строки по адресу DE
-; ВХОД:
-;	DE	- адрес строки. $ - признак конца
-;		  или символ больше 7Fh
-; ВЫХОД:
-;	HL	- адрес последнего напечатанного символа
-; ИЗМЕНЯЕТ:
-;	AF, HL, DE
-; ──────────────────────────────────────────────
 
-C_WRITESTR:
-	EX	DE, HL
-	PUSH	BC
-	LD	B, '$'
-	DB	11H			; LD DE, xx, 
+TABK2:	DB	09,0AH,0DH,7FH,08H,19H,18H,1AH	; 8 bytes
 
 ; ──────────────────────────────────────────────
 ; Печать строки по адресу HL
@@ -260,11 +247,8 @@ C_WRITESTR:
 ; ──────────────────────────────────────────────
 
 PrintString:
-	PUSH	BC
-	LD	B, 0			; NOP, если пришли из C_WRITESTR
 	LD	A,(HL)
-	CP	B			; CP 0 или CP '$'
-	POP	BC
+	CP	0			; CP 0 (не оптимизировать!)
 	RET	Z
 	CALL	PrintCharFromA
 	INC	HL
@@ -355,10 +339,40 @@ Enter:	INC	DE
 	EX	DE, HL			; DE на выходе содержит адрес буфера
 	RET
 
-
+; ──────────────────────────────────────────────
+; Заполняет память с HL по DE байтом C
+; ВХОД:
+;	HL	- начальный адрес
+;	DE	- конечный адрес
+;	C	- байт для записи
+; ВЫХОД:
+;	HL	- конечный адрес
+; ИЗМЕНЯЕТ:
+;	AF, HL
 ; ──────────────────────────────────────────────
 
-TABK2:	DB	09,0AH,0DH,7FH,08H,19H,18H,1AH	; 8 bytes
+DirectiveFill:					; 7 bytes
+	LD	(HL),C
+	CALL	IncHLAndRetIfEqDE
+	JP	DirectiveFill
+
+; ──────────────────────────────────────────────
+; Выполняет переход по адресу HL
+; ВХОД:
+;	HL	- адрес
+; ВЫХОД:
+;	НЕТ
+; ИЗМЕНЯЕТ:
+;	Не определено
+; ОПИСАНИЕ:
+;	В стеке содержится адрес WarmBoot
+; ──────────────────────────────────────────────
+
+DirectiveGoto:
+	IF	(DirectiveGoto & 0FF00H) <> (DirectiveFill & 0FF00H)
+		ERROR	"DirectiveGoto and DirectiveFill must be in same page"
+	ENDIF
+	JP	(HL)			; 1 bytes
 
 ; ──────────────────────────────────────────────
 ; Читает аргументы со второй позиции буфера команды в регистры HL, DE, BC
@@ -397,23 +411,6 @@ ParseParameters:
 	LD	(PAR_BC),HL
 	RET	C
 	JP	SyntaxError
-
-; ──────────────────────────────────────────────
-; Заполняет память с HL по DE байтом C
-; ВХОД:
-;	HL	- начальный адрес
-;	DE	- конечный адрес
-;	C	- байт для записи
-; ВЫХОД:
-;	HL	- конечный адрес
-; ИЗМЕНЯЕТ:
-;	AF, HL
-; ──────────────────────────────────────────────
-
-DirectiveFill:					; 7 bytes
-	LD	(HL),C
-	CALL	IncHLAndRetIfEqDE
-	JP	DirectiveFill
 
 ; ──────────────────────────────────────────────
 ; Перемещает область памяти с HL по DE в адреса BC
@@ -469,22 +466,24 @@ SyntaxError:
 	JP	WarmBoot
 
 ; ──────────────────────────────────────────────
-; Выполняет переход по адресу HL
-; ВХОД:
-;	HL	- адрес
-; ВЫХОД:
-;	НЕТ
-; ИЗМЕНЯЕТ:
-;	Не определено
-; ОПИСАНИЕ:
-;	В стеке содержится адрес WarmBoot
-; ──────────────────────────────────────────────
 
-DirectiveGoto:
-	IF	(DirectiveGoto & 0FF00H) <> (DirectiveFill & 0FF00H)
-		ERROR	"DirectiveGoto and DirectiveFill must be in same page"
+DirectiveOutputTape:
+
+	IF	(DirectiveTransfer & 0FF00H) <> (DirectiveOutputTape & 0FF00H)
+		ERROR	"DirectiveOutputTape and DirectiveTransfer must be in same page"
 	ENDIF
-	JP	(HL)			; 1 bytes
+
+	JP	DirectiveOutputTape_2
+
+DirectiveCompare:
+	IF	(DirectiveCompare & 0FF00H) <> (DirectiveFill & 0FF00H)
+		ERROR	"DirectiveCompare and DirectiveFill must be in same page"
+	ENDIF
+
+	JP	DirectiveCompare_2
+
+	NOP
+	NOP
 
 ; ──────────────────────────────────────────────
 ; Сравнение значений HL и DE
@@ -628,23 +627,6 @@ AFA3B:	INC	HL
 	JP	DirectiveModify
 
 ; ──────────────────────────────────────────────
-
-DirectiveOutputTape:
-
-	IF	(DIRTABLE & 0FF00H) <> (DirectiveOutputTape & 0FF00H)
-		ERROR	"DirectiveOutputTape and DIRTABLE must be in same page"
-	ENDIF
-
-	JP	DirectiveOutputTape_2
-
-DirectiveCompare:
-	IF	(DirectiveCompare & 0FF00H) <> (DirectiveFill & 0FF00H)
-		ERROR	"DirectiveCompare and DirectiveFill must be in same page"
-	ENDIF
-
-	JP	DirectiveCompare_2
-
-; ──────────────────────────────────────────────
 ; Вывод текста области памяти с HL по DE
 ; ВХОД:
 ;	HL	- начальный адрес
@@ -739,14 +721,17 @@ ReadVideoRAM:
 	POP	HL
 	RET
 
-
 ; ──────────────────────────────────────────────
 
-BDOSRET:				; Точка возврата из функции BDOS
-	LD	HL, (TMPSTK)		; 7 bytes
-	LD	SP, HL
-	LD	L, A
-	LD	H, B
+CALC:					; 13 bytes
+	INC	A
+	LD	DE, 78		;В DE ДЛИНУ СТРОКИ
+	LD	HL, -78;0	;ВЫЧИСЛЕНИЕ
+;	OR	A 		;АДРЕСА ПО
+S1:;	RET	Z		;ФОРМУЛЕ:
+	ADD	HL, DE		;АДРЕС=78*Y
+	DEC	A
+	JP	NZ,S1
 	RET
 
 	CHK	0FA68H, "* Internal subroutine ReadROM shifted ! *"
@@ -2332,18 +2317,6 @@ PROD:	LD	DE, SA		; ЗАГРУЗИТЬ АДРЕС
 	POP	AF
 	RET
 
-CALC:					; 13 bytes
-	INC	A
-	LD	DE, 78		;В DE ДЛИНУ СТРОКИ
-	LD	HL, -78;0	;ВЫЧИСЛЕНИЕ
-;	OR	A 		;АДРЕСА ПО
-S1:;	RET	Z		;ФОРМУЛЕ:
-	ADD	HL, DE		;АДРЕС=78*Y
-	DEC	A
-	JP	NZ,S1
-	RET
-
-
 ; ──────────────────────────────────────────────
 ; Первичная инициализация МОНИТОРа
 ; ВХОД:
@@ -2406,18 +2379,33 @@ RST_18:	EX	(SP),HL			; 6 bytes
 	EX	(SP),HL
 	RET
 
+; ──────────────────────────────────────────────
+; Печать строки по адресу DE
+; ВХОД:
+;	DE	- адрес строки. $ - признак конца
+; ВЫХОД:
+;	HL	- адрес последнего напечатанного символа
+; ИЗМЕНЯЕТ:
+;	AF, HL, DE
+; ──────────────────────────────────────────────
 
-	NOP				; 5 bytes
-	NOP
-	NOP
-	NOP
-	NOP
-	;NOP
-;	NOP
-;	NOP
-	;NOP
-	;NOP
-;	NOP
+C_WRITESTR:				; 11 bytes
+	LD	A,(DE)
+	CP	'$'
+	RET	Z
+	CALL	PrintCharFromA
+	INC	DE
+	JP	C_WRITESTR
+
+
+; ──────────────────────────────────────────────
+
+BDOSRET:				; Точка возврата из функции BDOS
+	LD	HL, (TMPSTK)		; 7 bytes
+	LD	SP, HL
+	LD	L, A
+	LD	H, B
+	RET
 
 	CHK	10000H, "* Size not 2K ! *"
 

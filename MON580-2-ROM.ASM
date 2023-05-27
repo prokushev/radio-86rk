@@ -146,11 +146,11 @@ BDOSENTRY:
 	LD	HL, 0000H		; Сохраняем стек
 	ADD	HL, SP
 	LD	(TMPSTK), HL
-	LD	SP, STACK
+	LD	SP, 080H
 	DEC	C
 	JP	M, WarmBoot		; Функция 0 P_TERMCPM
 	LD	HL, BDOSRET
-	PUSH	HL
+	PUSH	HL			; В стек кладем адрес возврата из BDOS
 	LD	A, C
 	LD	C, E
 	FJPZ	2, C_READ		; Функция 1 C_READ
@@ -184,21 +184,22 @@ BDOSENTRY:
 ; Печать строки по адресу DE
 ; ВХОД:
 ;	DE	- адрес строки. $ - признак конца
-;		  или символ больше 7Fh
 ; ВЫХОД:
 ;	HL	- адрес последнего напечатанного символа
 ; ИЗМЕНЯЕТ:
-;	AF, B, HL, DE
+;	AF, HL, DE
 ; ──────────────────────────────────────────────
 
 C_WRITESTR:
-	LD	HL, PrintString+1
-	INC	HL
-	INC	HL
-	PUSH	HL
 	EX	DE, HL
-	LD	B, '$'
-	RET			; JP PrintString+2, т.е. пропустили LD B, 0
+C_WRITESTR_LOOP:
+	LD	A,(HL)
+	CP	'$'
+	RET	Z
+	LD	C, A
+	CALL	PrintCharFromC
+	INC	HL
+	JP	C_WRITESTR_LOOP
 
 C_READ:	EX	(SP),HL		; восстанавливаем HL из стеке
 	CALL	InputSymbol	; 6 bytes
@@ -742,8 +743,8 @@ SO6:	DB 	0DH,"OUT OF BUFFER",0
 ENDSAVEROM:
 
 	FILE "ZERO$", 07400H, ENDZEROROM-ZEROROM
-;ПРОГРАММА ОЧИСТКИ ПАМЯТИ (ЗАПИСЬ "0")
-;BO ВСЕ ДОСТУПНЫЕ ПОЛЬЗОВАТЕЛЮ ЯЧЕЙКИ ОЗУ,
+; ПРОГРАММА ОЧИСТКИ ПАМЯТИ (ЗАПИСЬ "0")
+; BO ВСЕ ДОСТУПНЫЕ ПОЛЬЗОВАТЕЛЮ ЯЧЕЙКИ ОЗУ,
 ; КРОМЕ ЯЧЕЕК, НАЧИНАЯ С 7400Н).
 ZEROROM:
 	PHASE	07400H
@@ -763,10 +764,60 @@ TESTROM:
 	PHASE	00100H
 	LD	C, 9				; C_WRITESTR
 	LD	DE, WelcomeMsg
-	CALL	5
-	JP	WarmBoot
+	CALL	5				; BDOS
+
+	CALL	MONITORTest
+	CALL	CPMTest
+
+	RST	0				; Возврат в CP/M
 WelcomeMsg:
-	DB	0dh,0ah,"analiz sowmestimosti monitora$"
+	DB	0dh,0ah,"analiz sowmestimosti", 0dh, 0ah, "$"
+
+; ───────────────────────────────────────────────────────────────────────
+; Подпрограмма тестировани МОНИТОРа на совместимость
+; ───────────────────────────────────────────────────────────────────────
+MONITORTest:
+	LD	HL, MONITORMsg
+	CALL	0F818H
+	RET
+
+MONITORMsg:
+	DB	"monitor", 0dh, 0ah, "F803: ", 0dh, 0aH, 0
+
+; ───────────────────────────────────────────────────────────────────────
+; Подпрограмма тестировани CP/M на совместимость
+; ───────────────────────────────────────────────────────────────────────
+
+CPMTest:
+	LD	C, 9				; C_WRITESTR
+	LD	DE, CPMBDOSMsg
+	CALL	5				; BDOS
+
+	LD	C, 9				; C_WRITESTR
+	LD	DE, CPMBDOSMsg
+	CALL	5				; BDOS
+
+	RET
+
+CPMBIOSMsg:
+	DB	"CP/M BIOS", 0dh, 0ah, "CONOUT: ", 0dh, 0ah, "$"
+
+CPMBDOSMsg:
+	DB	"CP/M BDOS", 0dh, 0ah, "C_WRITE: ", 0dh, 0ah, "$"
+
+;CONST	EQU	BIOS+3
+;CONIN	EQU	BIOS+6
+;CONOUT	EQU	BIOS+9
+;LIST	EQU	BIOS+12
+;PUNCH	EQU	BIOS+15
+;AUXOUT	EQU	BIOS+15
+;READER	EQU	BIOS+18
+;AUXIN	EQU	BIOS+18
+
+; ───────────────────────────────────────────────────────────────────────
+; Подпрограмма вывода содержимого регистров
+; ───────────────────────────────────────────────────────────────────────
+
 	DEPHASE
 ENDTESTROM:
 
