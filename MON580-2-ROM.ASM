@@ -762,41 +762,459 @@ ENDZEROROM:
 
 TESTROM:
 	PHASE	00100H
+TESTLOOP:
 	LD	C, 9				; C_WRITESTR
 	LD	DE, WelcomeMsg
 	CALL	5				; BDOS
 
-	CALL	MONITORTest
-	CALL	CPMTest
+	LD	C, 1				; C_READ
+	CALL	5				; BDOS
+
+	CP	"A"
+	CALL	Z, MONITORTest
+	CP	"B"
+	CALL	Z, CPMTest
+	CP	"0"
+	JP	NZ, TESTLOOP
 
 	RST	0				; Возврат в CP/M
 WelcomeMsg:
-	DB	0dh,0ah,"analiz sowmestimosti", 0dh, 0ah, "$"
+	DB	0dh,0ah,"* analiz sowmestimosti *",0dh,0ah
+	DB	"wyberite komponent:", 0dh, 0ah
+	DB	"A monitor", 0dh,0ah
+	DB	"B CP/M", 0dh,0ah
+	DB	"0 wyhod iz programmy", 0dh,0ah
+	DB	">"
+	DB	"$"
 
 ; ───────────────────────────────────────────────────────────────────────
 ; Подпрограмма тестировани МОНИТОРа на совместимость
 ; ───────────────────────────────────────────────────────────────────────
 MONITORTest:
+	PUSH	AF
+	PUSH	HL
+
+MONITORTestLoop:
 	LD	HL, MONITORMsg
-	CALL	0F818H
+	CALL	0F818H		; Вывод строки
+
+	CALL	0F803H		; Ожидание ввода
+
+	CP	"A"
+	CALL	Z, MTESTF800
+	CP	"B"
+	CALL	Z, MTESTF803
+	CP	"C"
+	CALL	Z, MTESTF806
+	CP	"D"
+	CALL	Z, MTESTF809
+	CP	"E"
+	CALL	Z, MTESTF80C
+	CP	"F"
+	CALL	Z, MTESTF80F
+	CP	"G"
+	CALL	Z, MTESTF812
+	CP	"H"
+	CALL	Z, MTESTF815
+	CP	"I"
+	CALL	Z, MTESTF818
+	CP	"J"
+	CALL	Z, MTESTF81B
+	CP	"K"
+	CALL	Z, MTESTF81E
+	CP	"L"
+	CALL	Z, MTESTF821
+	CP	"M"
+	CALL	Z, MTESTF824
+	CP	"N"
+	CALL	Z, MTESTF827
+	CP	"O"
+	CALL	Z, MTESTF82A
+	CP	"P"
+	CALL	Z, MTESTF82D
+	CP	"Q"
+	CALL	Z, MTESTF830
+	CP	"R"
+	CALL	Z, MTESTF833
+	CP	"S"
+	CALL	Z, MTESTF836
+	CP	"T"
+	CALL	Z, MTESTF839
+	CP	"U"
+	CALL	Z, MTESTF83C
+	CP	"V"
+	CALL	Z, MTESTF83F
+	CP	"0"
+	JP	NZ, MONITORTestLoop
+	
+	POP	HL
+	POP	AF
+
+	RET
+
+
+MTESTF800:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF800Msg
+	CALL	0F818H		; Вывод строки
+
+	CALL	0F803H		; Ожидание ввода
+
+	CALL	0F800H		; "Холодный" старт системы
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF803:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF803Msg
+	CALL	0F818H		; Вывод строки
+
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF806:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF806Msg
+	CALL	0F818H		; Вывод строки
+
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF809:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF809Msg
+	CALL	0F818H		; Вывод строки
+
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF80C:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF80CMsg
+	CALL	0F818H		; Вывод строки
+
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF80F:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF80FMsg
+	CALL	0F818H		; Вывод строки
+
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF812:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF812Msg
+	CALL	0F818H		; Вывод строки
+
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF815:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF815Msg
+	CALL	0F818H		; Вывод строки
+
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF818:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF818Msg
+	CALL	0F818H		; Вывод строки
+
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF81B:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF81BMsg
+	CALL	0F818H		; Вывод строки
+
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF81E:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF81EMsg
+	CALL	0F818H		; Вывод строки
+
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF821:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF821Msg
+	CALL	0F818H		; Вывод строки
+
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF824:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF824Msg
+	CALL	0F818H		; Вывод строки
+
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF827:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF827Msg
+	CALL	0F818H		; Вывод строки
+
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF82A:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF82AMsg
+	CALL	0F818H		; Вывод строки
+
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF82D:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF82DMsg
+	CALL	0F818H		; Вывод строки
+
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF830:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF830Msg
+	CALL	0F818H		; Вывод строки
+
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF833:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF833Msg
+	CALL	0F818H		; Вывод строки
+
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF836:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF836Msg
+	CALL	0F818H		; Вывод строки
+
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF839:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF839Msg
+	CALL	0F818H		; Вывод строки
+
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF83C:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF83CMsg
+	CALL	0F818H		; Вывод строки
+
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF83F:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF83FMsg
+	CALL	0F818H		; Вывод строки
+
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
 	RET
 
 MONITORMsg:
-	DB	"monitor", 0dh, 0ah, "F803: ", 0dh, 0aH, 0
+	DB	0dh, 0ah, "* testirowanie monitora * wyberite podprogrammu: ", 0dh, 0ah
+	DB	"A F800", 0dh, 0ah
+	DB	"B F803", 0dh, 0ah
+	DB	"C F806", 0dh, 0ah
+	DB	"D F809", 0dh, 0ah
+	DB	"E F80C", 0dh, 0ah
+	DB	"F F80F", 0dh, 0ah
+	DB	"G F812", 0dh, 0ah
+	DB	"H F815", 0dh, 0ah
+	DB	"I F818", 0dh, 0ah
+	DB	"J F81B", 0dh, 0ah
+	DB	"K F81E", 0dh, 0ah
+	DB	"L F821", 0dh, 0ah
+	DB	"M F824", 0dh, 0ah
+	DB	"N F827", 0dh, 0ah
+	DB	"O F82A", 0dh, 0ah
+	DB	"P F82D", 0dh, 0ah
+	DB	"Q F830", 0dh, 0ah
+	DB	"R F833", 0dh, 0ah
+	DB	"S F836", 0dh, 0ah
+	DB	"T F839", 0dh, 0ah
+	DB	"U F83C", 0dh, 0ah
+	DB	"V F83F", 0dh, 0ah
+	DB	"0 nazad", 0dh, 0ah
+	DB	">", 0
+MTESTF800Msg:
+	DB	0dh, 0ah, "prowerka F800H", 0dh, 0ah
+	DB	"\"holodnyj\" zapusk monitora. pri wyzowe dannoj podprogrammy", 0dh, 0ah
+	DB	"osu}estwlqetsq polnyj perezapusk sistemy.", 0dh, 0ah
+	DB	"navmite l`bu` klawi{u dlq wyzowa.", 0dh, 0ah, '>', 0
+MTESTF803Msg:
+	DB	0dh, 0ah, "prowerka F803H", 0dh, 0ah, '>', 0
+MTESTF806Msg:
+	DB	0dh, 0ah, "prowerka F806H", 0dh, 0ah, '>', 0
+MTESTF809Msg:
+	DB	0dh, 0ah, "prowerka F809H", 0dh, 0ah, '>', 0
+MTESTF80CMsg:
+	DB	0dh, 0ah, "prowerka F80CH", 0dh, 0ah, '>', 0
+MTESTF80FMsg:
+	DB	0dh, 0ah, "prowerka F80FH", 0dh, 0ah, '>', 0
+MTESTF812Msg:
+	DB	0dh, 0ah, "prowerka F812H", 0dh, 0ah, '>', 0
+MTESTF815Msg:
+	DB	0dh, 0ah, "prowerka F815H", 0dh, 0ah, '>', 0
+MTESTF818Msg:
+	DB	0dh, 0ah, "prowerka F818H", 0dh, 0ah, '>', 0
+MTESTF81BMsg:
+	DB	0dh, 0ah, "prowerka F81BH", 0dh, 0ah, '>', 0
+MTESTF81EMsg:
+	DB	0dh, 0ah, "prowerka F81EH", 0dh, 0ah, '>', 0
+MTESTF821Msg:
+	DB	0dh, 0ah, "prowerka F821H", 0dh, 0ah, '>', 0
+MTESTF824Msg:
+	DB	0dh, 0ah, "prowerka F824H", 0dh, 0ah, '>', 0
+MTESTF827Msg:
+	DB	0dh, 0ah, "prowerka F827H", 0dh, 0ah, '>', 0
+MTESTF82AMsg:
+	DB	0dh, 0ah, "prowerka F82AH", 0dh, 0ah, '>', 0
+MTESTF82DMsg:
+	DB	0dh, 0ah, "prowerka F82DH", 0dh, 0ah, '>', 0
+MTESTF830Msg:
+	DB	0dh, 0ah, "prowerka F830H", 0dh, 0ah, '>', 0
+MTESTF833Msg:
+	DB	0dh, 0ah, "prowerka F833H", 0dh, 0ah, '>', 0
+MTESTF836Msg:
+	DB	0dh, 0ah, "prowerka F836H", 0dh, 0ah, '>', 0
+MTESTF839Msg:
+	DB	0dh, 0ah, "prowerka F839H", 0dh, 0ah, '>', 0
+MTESTF83CMsg:
+	DB	0dh, 0ah, "prowerka F83CH", 0dh, 0ah, '>', 0
+MTESTF83FMsg:
+	DB	0dh, 0ah, "prowerka F83FH", 0dh, 0ah, '>', 0
 
 ; ───────────────────────────────────────────────────────────────────────
 ; Подпрограмма тестировани CP/M на совместимость
 ; ───────────────────────────────────────────────────────────────────────
 
 CPMTest:
-	LD	C, 9				; C_WRITESTR
-	LD	DE, CPMBDOSMsg
-	CALL	5				; BDOS
+	PUSH	AF
+	PUSH	HL
+	PUSH	BC
+	PUSH	DE
 
 	LD	C, 9				; C_WRITESTR
 	LD	DE, CPMBDOSMsg
 	CALL	5				; BDOS
 
+	LD	C, 9				; C_WRITESTR
+	LD	DE, CPMBDOSMsg
+	CALL	5				; BDOS
+
+	POP	DE
+	POP	BC
+	POP	HL
+	POP	AF
 	RET
 
 CPMBIOSMsg:
