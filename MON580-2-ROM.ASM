@@ -873,11 +873,12 @@ MTESTF803:
 	LD	HL, MTESTF803Msg
 	CALL	0F818H		; Вывод строки
 
+	CALL	DumpRegs
+
 	PUSH	HL
 	PUSH	AF
 	PUSH	BC
 	PUSH	DE
-	CALL	DumpRegs
 	LD	HL, MTESTF803Msg2
 	CALL	0F818H		; Вывод строки
 	POP	DE
@@ -897,7 +898,314 @@ MTESTF803:
 	POP	AF
 	RET
 
+MTESTF806:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF806Msg
+	CALL	0F818H		; Вывод строки
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF809:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF809Msg
+	CALL	0F818H		; Вывод строки
+
+	LD	C, "*"
+
+	CALL	DumpRegs
+
+	CALL	0F809H		; Вывод символа на экран
+
+	CALL	DumpRegs
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF80C:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF80CMsg
+	CALL	0F818H		; Вывод строки
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF80F:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF80FMsg
+	CALL	0F818H		; Вывод строки
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF812:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF812Msg
+	CALL	0F818H		; Вывод строки
+
+	CALL	DumpRegs
+
+	CALL	0F812H		; Опрос состояния клавиатуры
+
+	CALL	DumpRegs
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF815:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF815Msg
+	CALL	0F818H		; Вывод строки
+
+	LD	A, "A"
+
+	CALL	DumpRegs
+
+	CALL	0F815H		; Вывод числа на экран в 16-ричном формате
+
+	CALL	DumpRegs
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF818:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF818Msg
+	CALL	0F818H		; Вывод строки
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF81B:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF81BMsg
+	CALL	0F818H		; Вывод строки
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF81E:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF81EMsg
+	CALL	0F818H		; Вывод строки
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF821:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF821Msg
+	CALL	0F818H		; Вывод строки
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF824:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF824Msg
+	CALL	0F818H		; Вывод строки
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF827:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF827Msg
+	CALL	0F818H		; Вывод строки
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF82A:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF82AMsg
+	CALL	0F818H		; Вывод строки
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF82D:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF82DMsg
+	CALL	0F818H		; Вывод строки
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF830:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF830Msg
+	CALL	0F818H		; Вывод строки
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF833:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF833Msg
+	CALL	0F818H		; Вывод строки
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF836:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF836Msg
+	CALL	0F818H		; Вывод строки
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF839:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF839Msg
+	CALL	0F818H		; Вывод строки
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF83C:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF83CMsg
+	CALL	0F818H		; Вывод строки
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF83F:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF83FMsg
+	CALL	0F818H		; Вывод строки
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
 DumpRegs:
+	PUSH	HL
+	PUSH	AF
+	PUSH	BC
+	PUSH	DE
+
 	LD	(RHL), HL
 	PUSH	AF
 	POP	HL
@@ -936,6 +1244,14 @@ DumpRegs:
 	LD	HL, NextReg
 	CALL	0F818H		; Вывод строки
 
+	LD	HL, CRLFMsg
+	CALL	0F818H		; Вывод строки
+
+	POP	DE
+	POP	BC
+	POP	AF
+	POP	HL
+
 	RET
 
 PrintHexWord:
@@ -943,246 +1259,6 @@ PrintHexWord:
 	CALL	0F815H		; Печать hex-байта 
 	LD	A,L
 	JP	0F815H		; Печать hex-байта
-
-MTESTF806:
-	PUSH	AF
-	PUSH	HL
-	LD	HL, MTESTF806Msg
-	CALL	0F818H		; Вывод строки
-
-	CALL	0F803H		; Ожидание ввода
-
-	POP	HL
-	POP	AF
-	RET
-
-MTESTF809:
-	PUSH	AF
-	PUSH	HL
-	LD	HL, MTESTF809Msg
-	CALL	0F818H		; Вывод строки
-
-	CALL	0F803H		; Ожидание ввода
-
-	POP	HL
-	POP	AF
-	RET
-
-MTESTF80C:
-	PUSH	AF
-	PUSH	HL
-	LD	HL, MTESTF80CMsg
-	CALL	0F818H		; Вывод строки
-
-	CALL	0F803H		; Ожидание ввода
-
-	POP	HL
-	POP	AF
-	RET
-
-MTESTF80F:
-	PUSH	AF
-	PUSH	HL
-	LD	HL, MTESTF80FMsg
-	CALL	0F818H		; Вывод строки
-
-	CALL	0F803H		; Ожидание ввода
-
-	POP	HL
-	POP	AF
-	RET
-
-MTESTF812:
-	PUSH	AF
-	PUSH	HL
-	LD	HL, MTESTF812Msg
-	CALL	0F818H		; Вывод строки
-
-	CALL	0F803H		; Ожидание ввода
-
-	POP	HL
-	POP	AF
-	RET
-
-MTESTF815:
-	PUSH	AF
-	PUSH	HL
-	LD	HL, MTESTF815Msg
-	CALL	0F818H		; Вывод строки
-
-	CALL	0F803H		; Ожидание ввода
-
-	POP	HL
-	POP	AF
-	RET
-
-MTESTF818:
-	PUSH	AF
-	PUSH	HL
-	LD	HL, MTESTF818Msg
-	CALL	0F818H		; Вывод строки
-
-	CALL	0F803H		; Ожидание ввода
-
-	POP	HL
-	POP	AF
-	RET
-
-MTESTF81B:
-	PUSH	AF
-	PUSH	HL
-	LD	HL, MTESTF81BMsg
-	CALL	0F818H		; Вывод строки
-
-	CALL	0F803H		; Ожидание ввода
-
-	POP	HL
-	POP	AF
-	RET
-
-MTESTF81E:
-	PUSH	AF
-	PUSH	HL
-	LD	HL, MTESTF81EMsg
-	CALL	0F818H		; Вывод строки
-
-	CALL	0F803H		; Ожидание ввода
-
-	POP	HL
-	POP	AF
-	RET
-
-MTESTF821:
-	PUSH	AF
-	PUSH	HL
-	LD	HL, MTESTF821Msg
-	CALL	0F818H		; Вывод строки
-
-	CALL	0F803H		; Ожидание ввода
-
-	POP	HL
-	POP	AF
-	RET
-
-MTESTF824:
-	PUSH	AF
-	PUSH	HL
-	LD	HL, MTESTF824Msg
-	CALL	0F818H		; Вывод строки
-
-	CALL	0F803H		; Ожидание ввода
-
-	POP	HL
-	POP	AF
-	RET
-
-MTESTF827:
-	PUSH	AF
-	PUSH	HL
-	LD	HL, MTESTF827Msg
-	CALL	0F818H		; Вывод строки
-
-	CALL	0F803H		; Ожидание ввода
-
-	POP	HL
-	POP	AF
-	RET
-
-MTESTF82A:
-	PUSH	AF
-	PUSH	HL
-	LD	HL, MTESTF82AMsg
-	CALL	0F818H		; Вывод строки
-
-	CALL	0F803H		; Ожидание ввода
-
-	POP	HL
-	POP	AF
-	RET
-
-MTESTF82D:
-	PUSH	AF
-	PUSH	HL
-	LD	HL, MTESTF82DMsg
-	CALL	0F818H		; Вывод строки
-
-	CALL	0F803H		; Ожидание ввода
-
-	POP	HL
-	POP	AF
-	RET
-
-MTESTF830:
-	PUSH	AF
-	PUSH	HL
-	LD	HL, MTESTF830Msg
-	CALL	0F818H		; Вывод строки
-
-	CALL	0F803H		; Ожидание ввода
-
-	POP	HL
-	POP	AF
-	RET
-
-MTESTF833:
-	PUSH	AF
-	PUSH	HL
-	LD	HL, MTESTF833Msg
-	CALL	0F818H		; Вывод строки
-
-	CALL	0F803H		; Ожидание ввода
-
-	POP	HL
-	POP	AF
-	RET
-
-MTESTF836:
-	PUSH	AF
-	PUSH	HL
-	LD	HL, MTESTF836Msg
-	CALL	0F818H		; Вывод строки
-
-	CALL	0F803H		; Ожидание ввода
-
-	POP	HL
-	POP	AF
-	RET
-
-MTESTF839:
-	PUSH	AF
-	PUSH	HL
-	LD	HL, MTESTF839Msg
-	CALL	0F818H		; Вывод строки
-
-	CALL	0F803H		; Ожидание ввода
-
-	POP	HL
-	POP	AF
-	RET
-
-MTESTF83C:
-	PUSH	AF
-	PUSH	HL
-	LD	HL, MTESTF83CMsg
-	CALL	0F818H		; Вывод строки
-
-	CALL	0F803H		; Ожидание ввода
-
-	POP	HL
-	POP	AF
-	RET
-
-MTESTF83F:
-	PUSH	AF
-	PUSH	HL
-	LD	HL, MTESTF83FMsg
-	CALL	0F818H		; Вывод строки
-
-	CALL	0F803H		; Ожидание ввода
-
-	POP	HL
-	POP	AF
-	RET
 
 MONITORMsg:
 	DB	0dh, 0ah, "* testirowanie monitora * wyberite podprogrammu: ", 0dh, 0ah
@@ -1208,8 +1284,8 @@ MONITORMsg:
 	DB	"T F839", 0dh, 0ah
 	DB	"U F83C", 0dh, 0ah
 	DB	"V F83F", 0dh, 0ah
-	DB	"0 nazad", 0dh, 0ah
-	DB	">", 0
+	DB	"0 nazad"
+	DB	0dh, 0ah,">", 0
 MTESTF800Msg:
 	DB	0dh, 0ah, "prowerka F800H", 0dh, 0ah
 	DB	"\"holodnyj\" zapusk monitora. pri wyzowe dannoj podprogrammy", 0dh, 0ah
@@ -1218,7 +1294,9 @@ MTESTF800Msg:
 MTESTF803Msg:
 	DB	0dh, 0ah, "prowerka F803H", 0dh, 0ah
 	DB	"wwod simwola s klawiatury. w registre A wozwra}aetsq kod", 0dh, 0ah
-	DB	"wwedennogo simwola.", 0dh, 0ah, 0
+	DB	"wwedennogo simwola."
+CRLFMsg:
+	DB	0dh, 0ah, 0
 MTESTF803Msg2:
 	DB	0dh, 0ah, "navmite kaku`-nibudx klawi{u.", 0dh, 0ah, '>', 0
 AnyKey:
@@ -1226,7 +1304,8 @@ AnyKey:
 MTESTF806Msg:
 	DB	0dh, 0ah, "prowerka F806H", 0dh, 0ah, '>', 0
 MTESTF809Msg:
-	DB	0dh, 0ah, "prowerka F809H", 0dh, 0ah, '>', 0
+	DB	0dh, 0ah, "prowerka F809H", 0dh, 0ah
+	DB	"wywod simwola iz registra C na |kran.", 0dh, 0ah, '>', 0
 MTESTF80CMsg:
 	DB	0dh, 0ah, "prowerka F80CH", 0dh, 0ah, '>', 0
 MTESTF80FMsg:
