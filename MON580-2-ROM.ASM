@@ -790,12 +790,40 @@ WelcomeMsg:
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 ; ®¤¯à®£à ¬¬  â¥áâ¨à®¢ ­¨ ŒŽˆ’Ž  ­  á®¢¬¥áâ¨¬®áâì
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
 MONITORTest:
 	PUSH	AF
 	PUSH	HL
 
 MONITORTestLoop:
 	LD	HL, MONITORMsg
+	CALL	0F818H		; ‚ë¢®¤ áâà®ª¨
+
+	CALL	0F803H		; Ž¦¨¤ ­¨¥ ¢¢®¤ 
+
+	CP	"A"
+	CALL	Z, MONITORStdTest
+	CP	"B"
+	CALL	Z, MONITORNonStdTest
+	CP	"0"
+	JP	NZ, MONITORTestLoop
+
+	POP	HL
+	POP	AF
+
+	RET
+
+
+; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+; ®¤¯à®£à ¬¬  â¥áâ¨à®¢ ­¨ áâ ­¤ àâ­ëå ¯®¤¯à®£à ¬¬ ŒŽˆ’Ž  ­  á®¢¬¥áâ¨¬®áâì
+; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+MONITORStdTest:
+	PUSH	AF
+	PUSH	HL
+
+MONITORStdTestLoop:
+	LD	HL, MONITORStdMsg
 	CALL	0F818H		; ‚ë¢®¤ áâà®ª¨
 
 	CALL	0F803H		; Ž¦¨¤ ­¨¥ ¢¢®¤ 
@@ -845,7 +873,7 @@ MONITORTestLoop:
 	CP	"V"
 	CALL	Z, MTESTF83F
 	CP	"0"
-	JP	NZ, MONITORTestLoop
+	JP	NZ, MONITORStdTestLoop
 	
 	POP	HL
 	POP	AF
@@ -1010,6 +1038,13 @@ MTESTF818:
 	LD	HL, MTESTF818Msg
 	CALL	0F818H		; ‚ë¢®¤ áâà®ª¨
 
+	LD	HL, TestMsg
+	CALL	DumpRegs
+
+	CALL	0F818H		; ‚ë¢®¤ áâà®ª¨
+
+	CALL	DumpRegs
+
 	LD	HL, AnyKey
 	CALL	0F818H		; ‚ë¢®¤ áâà®ª¨
 	CALL	0F803H		; Ž¦¨¤ ­¨¥ ¢¢®¤ 
@@ -1023,6 +1058,12 @@ MTESTF81B:
 	PUSH	HL
 	LD	HL, MTESTF81BMsg
 	CALL	0F818H		; ‚ë¢®¤ áâà®ª¨
+
+	CALL	DumpRegs
+
+	CALL	0F81BH		; Ž¯à®á ª« ¢¨ âãàë
+
+	CALL	DumpRegs
 
 	LD	HL, AnyKey
 	CALL	0F818H		; ‚ë¢®¤ áâà®ª¨
@@ -1200,6 +1241,9 @@ MTESTF83F:
 	POP	AF
 	RET
 
+MONITORNonStdTest:
+	RET
+
 DumpRegs:
 	PUSH	HL
 	PUSH	AF
@@ -1261,6 +1305,13 @@ PrintHexWord:
 	JP	0F815H		; ¥ç âì hex-¡ ©â 
 
 MONITORMsg:
+	DB	0dh, 0ah, "* testirowanie monitora * wyberite podprogrammy: ", 0dh, 0ah
+	DB	"A standartnye", 0dh, 0ah
+	DB	"B nestandartnye", 0dh, 0ah
+	DB	"0 nazad"
+	DB	0dh, 0ah,">", 0
+
+MONITORStdMsg:
 	DB	0dh, 0ah, "* testirowanie monitora * wyberite podprogrammu: ", 0dh, 0ah
 	DB	"A F800", 0dh, 0ah
 	DB	"B F803", 0dh, 0ah
@@ -1301,6 +1352,8 @@ MTESTF803Msg2:
 	DB	0dh, 0ah, "navmite kaku`-nibudx klawi{u.", 0dh, 0ah, '>', 0
 AnyKey:
 	DB	0dh, 0ah, "navmite kaku`-nibudx klawi{u dlq prodolveniq.", 0dh, 0ah, '>', 0
+TestMsg:
+	DB	0dh,0ah,"test",0dh,0ah,0
 MTESTF806Msg:
 	DB	0dh, 0ah, "prowerka F806H", 0dh, 0ah, '>', 0
 MTESTF809Msg:
