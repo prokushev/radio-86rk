@@ -1079,6 +1079,12 @@ MTESTF81E:
 	LD	HL, MTESTF81EMsg
 	CALL	0F818H		; Вывод строки
 
+	CALL	DumpRegs
+
+	CALL	0F81EH		; Запрос положения курсора
+
+	CALL	DumpRegs
+
 	LD	HL, AnyKey
 	CALL	0F818H		; Вывод строки
 	CALL	0F803H		; Ожидание ввода
@@ -1092,6 +1098,12 @@ MTESTF821:
 	PUSH	HL
 	LD	HL, MTESTF821Msg
 	CALL	0F818H		; Вывод строки
+
+	CALL	DumpRegs
+
+	CALL	0F821H		; Запрос текущего символа
+
+	CALL	DumpRegs
 
 	LD	HL, AnyKey
 	CALL	0F818H		; Вывод строки
@@ -1135,6 +1147,15 @@ MTESTF82A:
 	LD	HL, MTESTF82AMsg
 	CALL	0F818H		; Вывод строки
 
+	LD	HL, testdata
+	LD	DE, testdataend
+
+	CALL	DumpRegs
+
+	CALL	0F82AH		; Расчет контрольной суммы
+
+	CALL	DumpRegs
+
 	LD	HL, AnyKey
 	CALL	0F818H		; Вывод строки
 	CALL	0F803H		; Ожидание ввода
@@ -1143,11 +1164,21 @@ MTESTF82A:
 	POP	AF
 	RET
 
+testdata:
+	DB	0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,11,22,33,44,22,55,44,88,0EEH
+testdataend: EQU	$-1
+
 MTESTF82D:
 	PUSH	AF
 	PUSH	HL
 	LD	HL, MTESTF82DMsg
 	CALL	0F818H		; Вывод строки
+
+	CALL	DumpRegs
+
+	CALL	0F82DH		; Инициализация видеоподсистемы
+
+	CALL	DumpRegs
 
 	LD	HL, AnyKey
 	CALL	0F818H		; Вывод строки
@@ -1163,6 +1194,12 @@ MTESTF830:
 	LD	HL, MTESTF830Msg
 	CALL	0F818H		; Вывод строки
 
+	CALL	DumpRegs
+
+	CALL	0F830H		; Получить последний адрес памяти
+
+	CALL	DumpRegs
+
 	LD	HL, AnyKey
 	CALL	0F818H		; Вывод строки
 	CALL	0F803H		; Ожидание ввода
@@ -1176,6 +1213,20 @@ MTESTF833:
 	PUSH	HL
 	LD	HL, MTESTF833Msg
 	CALL	0F818H		; Вывод строки
+
+	CALL	0F830H		; Получить границу памяти
+	PUSH	HL
+
+	LD	HL, 02000H
+
+	CALL	DumpRegs
+
+	CALL	0F833H		; установить границу памяти
+
+	CALL	DumpRegs
+	
+	POP	HL		; Восстановить границу озу
+	CALL	0F833H		; установить границу памяти
 
 	LD	HL, AnyKey
 	CALL	0F818H		; Вывод строки
@@ -1191,6 +1242,16 @@ MTESTF836:
 	LD	HL, MTESTF836Msg
 	CALL	0F818H		; Вывод строки
 
+	LD	HL, 02000H
+	LD	A, 1
+
+	CALL	DumpRegs
+
+	CALL	0F836H		; считать из допстраницы
+
+	CALL	DumpRegs
+
+
 	LD	HL, AnyKey
 	CALL	0F818H		; Вывод строки
 	CALL	0F803H		; Ожидание ввода
@@ -1204,6 +1265,17 @@ MTESTF839:
 	PUSH	HL
 	LD	HL, MTESTF839Msg
 	CALL	0F818H		; Вывод строки
+
+	LD	HL, 02000H
+	LD	A, 1
+	LD	C, 077H
+
+	CALL	DumpRegs
+
+	CALL	0F839H		; записать в допстраницу
+
+	CALL	DumpRegs
+
 
 	LD	HL, AnyKey
 	CALL	0F818H		; Вывод строки
@@ -1219,6 +1291,13 @@ MTESTF83C:
 	LD	HL, MTESTF83CMsg
 	CALL	0F818H		; Вывод строки
 
+	LD	HL, 1010H
+	CALL	DumpRegs
+
+	CALL	0F83CH
+
+	CALL	DumpRegs
+
 	LD	HL, AnyKey
 	CALL	0F818H		; Вывод строки
 	CALL	0F803H		; Ожидание ввода
@@ -1232,6 +1311,12 @@ MTESTF83F:
 	PUSH	HL
 	LD	HL, MTESTF83FMsg
 	CALL	0F818H		; Вывод строки
+
+	CALL	DumpRegs
+
+	CALL	0F83FH		; Beep
+
+	CALL	DumpRegs
 
 	LD	HL, AnyKey
 	CALL	0F818H		; Вывод строки
