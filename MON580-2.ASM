@@ -845,6 +845,23 @@ ProcessBackspace:
 
 ; ──────────────────────────────────────────────
 
+BYTE3:	LD	A, C			; 9 bytes
+	SUB	20H-MARGIN_TOP
+	LD	H, A
+	LD	A, 3
+	JP	SETESC
+
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+
+	IF	0
 BYTE3:	LD	A,C			; 18 bytes
 	SUB	20H
 	LD	C,A
@@ -855,6 +872,7 @@ AFD77:	DEC	C
 	CALL	CursorDown
 	POP	BC
 	JP	AFD77
+	endif
 
 ; ──────────────────────────────────────────────
 ; Увеличивает HL и вызывает второй RET, если равен DE
@@ -1437,6 +1455,11 @@ PrintCharFromC:
 	DEC	A
 	JP	Z,BYTE3		; если третий байт
 	LD	A,C		; четвёртый байт
+	SUB	20H-MARGIN_LEFT
+	LD	L,A
+	JP	EscapeHandlerEnd
+	IF	0
+	LD	A,C		; четвёртый байт
 	SUB	20H
 	LD	C,A
 AFCDD:	DEC	C
@@ -1445,6 +1468,18 @@ AFCDD:	DEC	C
 	CALL	CursorRight
 	POP	BC
 	JP	AFCDD
+	endif
+
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+
 
 skip_TAB:
 	INC	A		;CP	08H
@@ -1930,7 +1965,10 @@ skip_ESC_e:
 	JP	NZ, skip_ESC_Y
 
 	;esc_Y
-	CALL	CursorHome
+;	CALL	CursorHome
+	NOP
+	NOP
+	POP	BC		; Убираем из стека EscapeHandlerEnd, возвращаемся только на TOBACK
 	INC	A		;LD	A,2; ПРИНЯТО 2 БАЙТА ESC,'Y'
 
 ; ──────────────────────────────────────────────

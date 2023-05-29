@@ -781,17 +781,24 @@ KEY_FE:	LD	A,(PC)			; 17 bytes
 
 ; ДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДД
 
-BYTE3:	LD	A,C			; 18 bytes
-	SUB	20H
+BYTE3:	LD	A, C			; 9 bytes
+	SUB	20H-MARGIN_TOP
+	LD	H, A
+	LD	A, 3
+	JP	SETESC
+
+	if 0
+BYTE3:	LD	A,C			; 16 bytes
+	SUB	20H			; MTOP+SHEIGHT-(C-20h)
 	LD	C,A
 AFD77:	DEC	C
 	LD	A,3
 	JP	M,SETESC
-	PUSH	BC
+	;PUSH	BC
 	CALL	CursorDown
-	POP	BC
+	;POP	BC
 	JP	AFD77
-
+	endif
 ; ДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДД
 
 AFEF3:	LD	A,H			; 7 bytes
@@ -800,7 +807,16 @@ AFEF3:	LD	A,H			; 7 bytes
 
 ; ДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДД
 
-	NOP				; 1 byte
+	NOP				; 10 bytes
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
 
 ; ДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДД
 
@@ -1346,14 +1362,26 @@ PrintCharFromC:
 	DEC	A
 	JP	Z,BYTE3		; Ґб«Ё ваҐвЁ© Ў ©в
 	LD	A,C		; зҐвўсавл© Ў ©в
-	SUB	20H
-	LD	C,A
+	SUB	20H-MARGIN_LEFT
+	LD	L,A
+	JP	EscapeHandlerEnd
+	IF	0
 AFCDD:	DEC	C
 	JP	M,EscapeHandlerEnd         ; ‘ЃђЋ‘ ESC_FL € ‚›•Ћ„
-	PUSH	BC
+	;PUSH	BC
 	CALL	CursorRight
-	POP	BC
+	;POP	BC
 	JP	AFCDD
+	endif
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
 
 skip_TAB:
 	INC	A		;CP	08H
@@ -1924,7 +1952,10 @@ skip_ESC_e:
 	JP	NZ, skip_ESC_Y
 
 	;esc_Y
-	CALL	CursorHome
+	;CALL	CursorHome
+	NOP
+	NOP
+	POP	BC		; “ЎЁа Ґ¬ Ё§ бвҐЄ  EscapeHandlerEnd, ў®§ўа й Ґ¬бп в®«мЄ® ­  TOBACK
 	INC	A		;LD	A,2; Џђ€Ќџ’Ћ 2 ЃЂ‰’Ђ ESC,'Y'
 
 ; ДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДД
@@ -1938,7 +1969,7 @@ skip_ESC_e:
 ; ДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДД
 
 EscapeHandlerStart:
-	INC	A		; LD A, 1 - ¤«п EscapeHandlerStart Ё LD A, 2 - ¤«п EscapeHAndler
+	INC	A		; LD A, 1 - ¤«п EscapeHandlerStart Ё LD A, 2 - ¤«п EscapeHandler
 	DB	06H		; LD B, ... дг­ЄжЁ®­ «м­® JP SETESC
 
 ; ДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДД
