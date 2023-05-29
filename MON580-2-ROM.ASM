@@ -1897,9 +1897,12 @@ SO1:	DB 	0AH,0DH,"*ROM-DISK/32K* V3.0-23"
 	DB 	0AH,0AH,0DH,"DIRECTORY:"
 SO2:	DB	0AH,0DH,0
 
+	DB	BASE-3-$ DUP (0FFH)
+
+	; Вход по директиве Z
+	JP	BASE-0200H
 	DEPHASE
 
-	DB	08000H-$ DUP (0FFH)
 	CHK	08000H, "* Block overflow ! *"
 	END 				;
 

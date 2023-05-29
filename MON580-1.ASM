@@ -2390,7 +2390,6 @@ C_WRITESTR:				; 11 bytes
 
 PrintString:				; 11 bytes
 	LD	A,(HL)
-	;CP	0			; CP 0 (не оптимизировать!)
 	OR	A
 	RET	Z
 	CALL	PrintCharFromA
