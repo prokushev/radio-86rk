@@ -789,25 +789,35 @@ AFEF3:	LD	A,H			; 7 bytes
 
 ; ──────────────────────────────────────────────
 
-	NOP				; 19 bytes
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
+; ──────────────────────────────────────────────
+; Ввод символа без ожидания с проверкой нажатия Ctrl-C. 
+; При нажатии Ctrl-C выход в МОНИТОР с переинцициализацией ВГ.
+; ВХОД:
+;	Нет
+; ВЫХОД:
+;	A=0FFH - не нажата
+;	A=0FEH - РУС/ЛАТ
+;	A - код клавиши
+; ИЗМЕНЯЕТ:
+;	AF		 TODO: проверить, что изменяет ReadKeyCode и InitVideo
+; ──────────────────────────────────────────────
+
+ReadKeyCodeChkBrk:
+	CALL	ReadKeyCode			; 12 bytes
+	CP	3
+	RET	NZ
+	CALL	InitVideo
+	JP	SyntaxError
+
+; ──────────────────────────────────────────────
+
+BDOSRET:				; Точка возврата из функции BDOS
+	LD	HL, (TMPSTK)		; 7 bytes
+	LD	SP, HL
+	LD	L, A
+	LD	H, B
+	RET
+
 
 ; ──────────────────────────────────────────────
 
@@ -2227,26 +2237,6 @@ BDOS:	LD	HL, 0000H	; Сохраняем стек
 	RET
 
 ; ──────────────────────────────────────────────
-; Ввод символа без ожидания с проверкой нажатия Ctrl-C. 
-; При нажатии Ctrl-C выход в МОНИТОР с переинцициализацией ВГ.
-; ВХОД:
-;	Нет
-; ВЫХОД:
-;	A=0FFH - не нажата
-;	A=0FEH - РУС/ЛАТ
-;	A - код клавиши
-; ИЗМЕНЯЕТ:
-;	AF		 TODO: проверить, что изменяет ReadKeyCode и InitVideo
-; ──────────────────────────────────────────────
-
-ReadKeyCodeChkBrk:
-	CALL	ReadKeyCode			; 12 bytes
-	CP	3
-	RET	NZ
-	CALL	InitVideo
-	JP	SyntaxError
-
-; ──────────────────────────────────────────────
 ; Ввод символа без ожидания. 
 ; ВХОД:
 ;	Нет
@@ -2406,16 +2396,25 @@ C_WRITESTR:				; 11 bytes
 	INC	DE
 	JP	C_WRITESTR
 
-
-; ──────────────────────────────────────────────
-
-BDOSRET:				; Точка возврата из функции BDOS
-	LD	HL, (TMPSTK)		; 7 bytes
-	LD	SP, HL
-	LD	L, A
-	LD	H, B
-	RET
-
+	NOP				; 21 bytes
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
 	NOP
 	NOP
 
