@@ -1327,7 +1327,167 @@ MTESTF83F:
 	RET
 
 MONITORNonStdTest:
+	PUSH	AF
+	PUSH	HL
+
+MONITORNonStdTestLoop:
+	LD	HL, MONITORNonStdMsg
+	CALL	0F818H		; Вывод строки
+
+	CALL	0F803H		; Ожидание ввода
+
+	CP	"A"
+	CALL	Z, MTESTF86C
+	CP	"B"
+	CALL	Z, MTESTF8EE
+	CP	"C"
+	CALL	Z, MTESTF92C
+	CP	"D"
+	CALL	Z, MTESTF990
+	CP	"E"
+	CALL	Z, MTESTF9B0
+	CP	"F"
+	CALL	Z, MTESTFA68
+	CP	"G"
+	CALL	Z, MTESTFACE
+	CP	"H"
+	CALL	Z, MTESTFB78
+	CP	"I"
+	CALL	Z, MTESTFD27
+	CP	"0"
+	JP	NZ, MONITORNonStdTestLoop
+	
+	POP	HL
+	POP	AF
+
 	RET
+
+MTESTF86C:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF86CMsg
+	CALL	0F818H		; Вывод строки
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF8EE:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF8EEMsg
+	CALL	0F818H		; Вывод строки
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF92C:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF8EEMsg
+	CALL	0F92CH		; Вывод строки
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF990:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF8EEMsg
+	CALL	0F990H		; Вывод строки
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF9B0:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF8EEMsg
+	CALL	0F9B0H		; Вывод строки
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTFA68:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF8EEMsg
+	CALL	0FA68H		; Вывод строки
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTFACE:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF8EEMsg
+	CALL	0FACEH		; Вывод строки
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTFB78:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTFB78Msg
+	CALL	0F818H		; Вывод строки
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTFD27:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTFD27Msg
+	CALL	0F818H		; Вывод строки
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
 
 DumpRegs:
 	PUSH	HL
@@ -1480,6 +1640,37 @@ MTESTF83CMsg:
 	DB	0dh, 0ah, "prowerka F83CH", 0dh, 0ah, '>', 0
 MTESTF83FMsg:
 	DB	0dh, 0ah, "prowerka F83FH", 0dh, 0ah, '>', 0
+MONITORNonStdMsg:
+	DB	0dh, 0ah, "* testirowanie monitora * wyberite podprogrammu: ", 0dh, 0ah
+	DB	"A F86C", 0dh, 0ah
+	DB	"B F8EE", 0dh, 0ah
+	DB	"C F92C", 0dh, 0ah
+	DB	"D F990", 0dh, 0ah
+	DB	"E F9B0", 0dh, 0ah
+	DB	"F FA68", 0dh, 0ah
+	DB	"G FACE", 0dh, 0ah
+	DB	"H FB78", 0dh, 0ah
+	DB	"I FD27", 0dh, 0ah
+	DB	"0 nazad"
+	DB	0dh, 0ah,">", 0
+MTESTF86CMsg:
+	DB	0dh, 0ah, "prowerka F86CH", 0dh, 0ah, '>', 0
+MTESTF8EEMsg:
+	DB	0dh, 0ah, "prowerka F8EEH", 0dh, 0ah, '>', 0
+MTESTF92CMsg:
+	DB	0dh, 0ah, "prowerka F92CH", 0dh, 0ah, '>', 0
+MTESTF990Msg:
+	DB	0dh, 0ah, "prowerka F990H", 0dh, 0ah, '>', 0
+MTESTF9B0Msg:
+	DB	0dh, 0ah, "prowerka F9B0H", 0dh, 0ah, '>', 0
+MTESTFA68Msg:
+	DB	0dh, 0ah, "prowerka FA68H", 0dh, 0ah, '>', 0
+MTESTFACEMsg:
+	DB	0dh, 0ah, "prowerka FACEH", 0dh, 0ah, '>', 0
+MTESTFB78Msg:
+	DB	0dh, 0ah, "prowerka FB78H", 0dh, 0ah, '>', 0
+MTESTFD27Msg:
+	DB	0dh, 0ah, "prowerka FD27H", 0dh, 0ah, '>', 0
 
 RegistersListStr:
 	db 0Dh, 0Ah, "HL-"
