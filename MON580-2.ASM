@@ -861,18 +861,6 @@ BYTE3:	LD	A, C			; 9 bytes
 	NOP
 	NOP
 
-	IF	0
-BYTE3:	LD	A,C			; 18 bytes
-	SUB	20H
-	LD	C,A
-AFD77:	DEC	C
-	LD	A,3
-	JP	M,SETESC
-	PUSH	BC
-	CALL	CursorDown
-	POP	BC
-	JP	AFD77
-	endif
 
 ; ──────────────────────────────────────────────
 ; Увеличивает HL и вызывает второй RET, если равен DE
@@ -1458,17 +1446,6 @@ PrintCharFromC:
 	SUB	20H-MARGIN_LEFT
 	LD	L,A
 	JP	EscapeHandlerEnd
-	IF	0
-	LD	A,C		; четвёртый байт
-	SUB	20H
-	LD	C,A
-AFCDD:	DEC	C
-	JP	M,EscapeHandlerEnd         ; СБРОС ESC_FL И ВЫХОД
-	PUSH	BC
-	CALL	CursorRight
-	POP	BC
-	JP	AFCDD
-	endif
 
 	NOP
 	NOP

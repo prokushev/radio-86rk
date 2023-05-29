@@ -246,15 +246,16 @@ TABK2:	DB	09,0AH,0DH,7FH,08H,19H,18H,1AH	; 8 bytes
 ;	AF, HL
 ; ──────────────────────────────────────────────
 
-PrintString:
+PrintString:				; 12 bytes
 	LD	A,(HL)
-	CP	0			; CP 0 (не оптимизировать!)
+	;CP	0			; CP 0 (не оптимизировать!)
+	OR	A
 	RET	Z
 	CALL	PrintCharFromA
 	INC	HL
 	RET	M			; RET if high bit set
 	JP	PrintString
-
+	NOP
 ; ──────────────────────────────────────────────
 ; Запись блока с HL по DE на магнитофон
 ; ВХОД:
@@ -543,11 +544,11 @@ DirectiveReadROM:					; 14 bytes
 ;	AF, HL
 ; ──────────────────────────────────────────────
 
-DirectiveSearch:
+DirectiveSearch:					; 11 bytes
 	IF	(DirectiveSearch & 0FF00H) <> (DirectiveReadROM & 0FF00H)
 		ERROR	"DirectiveReadROM and DirectiveSearch must be in same page"
 	ENDIF
-	LD	A,C			; 11 bytes
+	LD	A,C
 	CP	(HL)
 	CALL	Z,PrintCRAndHexWordAndSpace
 	CALL	IncHLAndRetIfEqDEWithBrk
@@ -726,9 +727,9 @@ ReadVideoRAM:
 CALC:					; 13 bytes
 	INC	A
 	LD	DE, 78		;В DE ДЛИНУ СТРОКИ
-	LD	HL, -78;0	;ВЫЧИСЛЕНИЕ
-;	OR	A 		;АДРЕСА ПО
-S1:;	RET	Z		;ФОРМУЛЕ:
+	LD	HL, -78		;ВЫЧИСЛЕНИЕ
+				;АДРЕСА ПО
+S1:;				;ФОРМУЛЕ:
 	ADD	HL, DE		;АДРЕС=78*Y
 	DEC	A
 	JP	NZ,S1
@@ -779,26 +780,7 @@ KEY_FE:	LD	A,(PC)			; 17 bytes
 	CALL	SET_RL
 	JP	AFE1A
 
-; ──────────────────────────────────────────────
 
-BYTE3:	LD	A, C			; 9 bytes
-	SUB	20H-MARGIN_TOP
-	LD	H, A
-	LD	A, 3
-	JP	SETESC
-
-	if 0
-BYTE3:	LD	A,C			; 16 bytes
-	SUB	20H			; MTOP+SHEIGHT-(C-20h)
-	LD	C,A
-AFD77:	DEC	C
-	LD	A,3
-	JP	M,SETESC
-	;PUSH	BC
-	CALL	CursorDown
-	;POP	BC
-	JP	AFD77
-	endif
 ; ──────────────────────────────────────────────
 
 AFEF3:	LD	A,H			; 7 bytes
@@ -807,7 +789,16 @@ AFEF3:	LD	A,H			; 7 bytes
 
 ; ──────────────────────────────────────────────
 
-	NOP				; 10 bytes
+	NOP				; 19 bytes
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
 	NOP
 	NOP
 	NOP
@@ -1360,28 +1351,20 @@ PrintCharFromC:
 	JP	M,NO_ESC	; BUG Для VT-52 факт обработки ESC-последовательности не значит, что он игнорирует контрольные коды
 	JP	Z,EscapeHandler	; если второй байт ('Y')
 	DEC	A
-	JP	Z,BYTE3		; если третий байт
-	LD	A,C		; четвёртый байт
+	JP	NZ, skip_BYTE3	; если третий байт
+; ──────────────────────────────────────────────
+BYTE3:				; 9 bytes
+	LD	A, C		; Третий байт Esc-Y
+	SUB	20H-MARGIN_TOP
+	LD	H, A
+	LD	A, 3
+	JP	SETESC
+; ──────────────────────────────────────────────
+skip_BYTE3:
+	LD	A,C		; Четвёртый байт Esc-Y
 	SUB	20H-MARGIN_LEFT
 	LD	L,A
 	JP	EscapeHandlerEnd
-	IF	0
-AFCDD:	DEC	C
-	JP	M,EscapeHandlerEnd         ; СБРОС ESC_FL И ВЫХОД
-	;PUSH	BC
-	CALL	CursorRight
-	;POP	BC
-	JP	AFCDD
-	endif
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
 
 skip_TAB:
 	INC	A		;CP	08H
@@ -1480,6 +1463,7 @@ AFF50:	POP	HL
 GetCursorPos:
 	LD	HL,(POSX)		; 4 bytes
 	RET
+
 
 ; ──────────────────────────────────────────────
 ; Подача звукового сигнала
@@ -1952,9 +1936,6 @@ skip_ESC_e:
 	JP	NZ, skip_ESC_Y
 
 	;esc_Y
-	;CALL	CursorHome
-	NOP
-	NOP
 	POP	BC		; Убираем из стека EscapeHandlerEnd, возвращаемся только на TOBACK
 	INC	A		;LD	A,2; ПРИНЯТО 2 БАЙТА ESC,'Y'
 
@@ -2074,15 +2055,12 @@ skip_ESC_K:
 ; ──────────────────────────────────────────────
 ClearEOS:
 	PUSH	HL
-	;PUSH	DE
-	;LD	H, A		;LD	H, 0
 	CALL	SetCursorPos
 CLSLOO:	XOR	A
 	LD	(HL),A
 	INC	HL
 	OR	H
 	JP	P,CLSLOO
-	;POP	DE
 	POP	HL
 
 skip_ESC_J:
@@ -2211,7 +2189,7 @@ skip_ESC_B:
 ; ──────────────────────────────────────────────
 
 CursorUp:
-	LD	A, H		; 10 bytes
+	LD	A, H		; 6 bytes
 	CP	MARGIN_TOP	; это первая строка ?
 	RET	Z
 	DEC	H		; POSY--
@@ -2336,7 +2314,7 @@ SetCursorPos:
 	LD	(VG_75),A
 
 	; Вычисляем адрес видеопамяти
-	LD	C, L		;ВС КООРДИНАТУ X
+	LD	C, L		;В С КООРДИНАТУ X
 	LD	A, H		;В А КООРДИНАТУ Y
 	CALL	CALC
 PROD:	LD	DE, SA		; ЗАГРУЗИТЬ АДРЕС
@@ -2437,6 +2415,9 @@ BDOSRET:				; Точка возврата из функции BDOS
 	LD	L, A
 	LD	H, B
 	RET
+
+	NOP
+	NOP
 
 	CHK	10000H, "* Size not 2K ! *"
 
