@@ -540,7 +540,6 @@ Compare_HL_DE:
 	LD	A,L
 	CP	E
 	RET
-
 ; ──────────────────────────────────────────────
 ; Считывает область памяти ROM-диска с HL по DE в адреса BC ОЗУ
 ; ВХОД:
@@ -558,12 +557,7 @@ DirectiveReadROM:					; 14 bytes
 	IF	(DirectiveInputTape & 0FF00H) <> (DirectiveReadROM & 0FF00H)
 		ERROR	"DirectiveInputTape and DirectiveReadROM must be in same page"
 	ENDIF
-	LD	(PDB),HL
-	LD	A,(PDA)
-	LD	(BC),A
-	INC	BC
-	CALL	IncHLAndRetIfEqDE
-	JP	DirectiveReadROM
+	JP	ReadROM
 
 ; ──────────────────────────────────────────────
 ; Ищет байт C в области памяти с HL по DE
@@ -587,7 +581,26 @@ DirectiveSearch:					; 11 bytes
 	CALL	IncHLAndRetIfEqDEWithBrk
 	JP	DirectiveSearch
 
-	NOP
+; ──────────────────────────────────────────────
+; Ввод символа без ожидания с проверкой нажатия Ctrl-C. 
+; При нажатии Ctrl-C выход в МОНИТОР с переинцициализацией ВГ.
+; ВХОД:
+;	Нет
+; ВЫХОД:
+;	A=0FFH - не нажата
+;	A=0FEH - РУС/ЛАТ
+;	A - код клавиши
+; ИЗМЕНЯЕТ:
+;	AF		 TODO: проверить, что изменяет ReadKeyCode и InitVideo
+; ──────────────────────────────────────────────
+
+ReadKeyCodeChkBrk:
+	CALL	ReadKeyCode			; 12 bytes
+	CP	3
+	RET	NZ
+	CALL	InitVideo
+	JP	SyntaxError
+
 ; ──────────────────────────────────────────────
 
 	CHK	0F9B0H, "* Internal subroutine PrintCR shifted ! *"
@@ -614,6 +627,7 @@ DIRTABLE:				; 23 bytes
 	DB	'R', DirectiveReadROM & 0FFH
 	DB	'S', DirectiveSearch & 0FFH
 	DB	'T', DirectiveTransfer & 0FFH
+	DB	'U', DirectiveReadROM & 0FFH
 	DB	0
 
 
@@ -723,36 +737,26 @@ AFB4D:	CALL	TapeWriteByte
 	JP	InitVideo
 
 ; ──────────────────────────────────────────────
-; Возвращает символ в текущих координатах видео ОЗУ
-; ВХОД:
-;	Нет
-; ВЫХОД:
-;	A	- символ в текущих координатах
-; ИЗМЕНЯЕТ:
-;	A
-; ──────────────────────────────────────────────
 
-ReadVideoRAM:
-	PUSH	HL			; 7 bytes
-	CALL	SetCursorPos
-	LD	A,(HL)
-	POP	HL
-	RET
+C_READ:	CALL	InputSymbol	; 6 bytes
+	JP	PrintCharFromA
 
-; ──────────────────────────────────────────────
-
-AFC34:	LD	HL,(TMPSTK)		; 18 bytes
-	LD	SP,HL
-	CALL	InitVideo
-	LD	A,D
-	OR	A
-	JP	P,SyntaxError
-	CALL	ReadKeyCodeChkBrk
-	JP	AFB9C
-
-	CHK	0FA68H, "* Internal subroutine ReadROM shifted ! *"
 ReadROM:
-	JP	DirectiveReadROM
+	LD	A,(FLG_P2)		; 46 bytes
+	OR	A
+	JP	NZ,DirectiveReadROMParms
+	LD	HL, 07E00H
+	LD	DE, 07FFFH
+	LD	BC, BASE-0200H
+	PUSH	BC			; Адрес запуска
+	CHK	0FA68H, "* Internal subroutine DirectiveReadROMParams shifted ! *"
+DirectiveReadROMParms:
+	LD	(PDB), HL
+	LD	A,(PDA)
+	LD	(BC),A
+	INC	BC
+	CALL	IncHLAndRetIfEqDE
+	JP	DirectiveReadROMParms
 
 ; ──────────────────────────────────────────────
 
@@ -787,14 +791,14 @@ AFB19:	LD	A,(HL)
 
 ; ──────────────────────────────────────────────
 
-KEY_FE:	LD	A,(PC)			; 17 bytes
-	RLA
-	JP	NC,KEY_FE		; ждём отпускания РУС/ЛАТ
-	LD	A,(RUSLAT)
-	CPL
-	CALL	SET_RL
-	JP	AFE1A
-
+AFC34:	LD	HL,(TMPSTK)		; 18 bytes
+	LD	SP,HL
+	CALL	InitVideo
+	LD	A,D
+	OR	A
+	JP	P,SyntaxError
+	CALL	ReadKeyCodeChkBrk
+	JP	AFB9C
 
 ; ──────────────────────────────────────────────
 
@@ -802,27 +806,6 @@ AFEF3:	LD	A,H			; 7 bytes
 	LD	HL,TABK1
 	JP	AFEFE
 
-; ──────────────────────────────────────────────
-
-; ──────────────────────────────────────────────
-; Ввод символа без ожидания с проверкой нажатия Ctrl-C. 
-; При нажатии Ctrl-C выход в МОНИТОР с переинцициализацией ВГ.
-; ВХОД:
-;	Нет
-; ВЫХОД:
-;	A=0FFH - не нажата
-;	A=0FEH - РУС/ЛАТ
-;	A - код клавиши
-; ИЗМЕНЯЕТ:
-;	AF		 TODO: проверить, что изменяет ReadKeyCode и InitVideo
-; ──────────────────────────────────────────────
-
-ReadKeyCodeChkBrk:
-	CALL	ReadKeyCode			; 12 bytes
-	CP	3
-	RET	NZ
-	CALL	InitVideo
-	JP	SyntaxError
 
 ; ──────────────────────────────────────────────
 
@@ -832,7 +815,6 @@ BDOSRET:				; Точка возврата из функции BDOS
 	LD	L, A
 	LD	H, B
 	RET
-
 
 ; ──────────────────────────────────────────────
 
@@ -980,20 +962,18 @@ TAB:	LD	A, L
 	LD	L, A
 	RET
 
-
 ; ──────────────────────────────────────────────
 
-C_READ:	CALL	InputSymbol	; 6 bytes
-	JP	PrintCharFromA
+ProcessBackspace:
+	LD	A,B			; 16 bytes
+	OR	A			; начало буфера ввода ?
+	JP	Z,GotoCmdLineBegin	; GotoCmdLineBegin
+	DEC	B
+	DEC	HL
+	CALL	RST_18
+	DB	8,' ',8+80H
+	JP	InputNextSymbol
 
-; ──────────────────────────────────────────────
-
-LD_BLK:	CALL	TapeReadByteNoSync			; 10 bytes
-	LD	(HL),A
-	CALL	IncHLAndRetIfEqDE
-	JP	LD_BLK
-
-	
 ; ──────────────────────────────────────────────
 ; Печать перевода строки, числа из HL в 16-ричном формате, пробела,
 ; перевода строки, числа из BC в 16-ричном формате, пробела
@@ -1639,8 +1619,6 @@ AFF06:	LD	L,A
 	POP	HL
 	RET
 
-
-
 ; ──────────────────────────────────────────────
 ; Увеличивает HL и вызывает второй RET, если равен DE
 ; При нажатии Brk выходит с ошибкой в МОНИТОР
@@ -1714,8 +1692,6 @@ InputSymbol:
 	LD	(KBDFLG),A
 	LD	A,(LAST_K)
 	RET
-
-
 
 ; ──────────────────────────────────────────────
 
@@ -2218,18 +2194,6 @@ ReadKeyCode:
 	RET
 
 ; ──────────────────────────────────────────────
-
-ProcessBackspace:
-	LD	A,B			; 16 bytes
-	OR	A			; начало буфера ввода ?
-	JP	Z,GotoCmdLineBegin	; GotoCmdLineBegin
-	DEC	B
-	DEC	HL
-	CALL	RST_18
-	DB	8,' ',8+80H
-	JP	InputNextSymbol
-
-; ──────────────────────────────────────────────
 ; Устанавливает курсор в заданные координаты
 ; ВХОД:
 ;	H	- номер строки
@@ -2382,25 +2346,42 @@ S1:;				;ФОРМУЛЕ:
 	JP	NZ,S1
 	RET
 
-	NOP				; 27 bytes
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
+; ──────────────────────────────────────────────
+; Возвращает символ в текущих координатах видео ОЗУ
+; ВХОД:
+;	Нет
+; ВЫХОД:
+;	A	- символ в текущих координатах
+; ИЗМЕНЯЕТ:
+;	A
+; ──────────────────────────────────────────────
+
+ReadVideoRAM:
+	PUSH	HL			; 7 bytes
+	CALL	SetCursorPos
+	LD	A,(HL)
+	POP	HL
+	RET
+
+; ──────────────────────────────────────────────
+
+LD_BLK:	CALL	TapeReadByteNoSync			; 10 bytes
+	LD	(HL),A
+	CALL	IncHLAndRetIfEqDE
+	JP	LD_BLK
+
+
+; ──────────────────────────────────────────────
+
+KEY_FE:	LD	A,(PC)			; 17 bytes
+	RLA
+	JP	NC,KEY_FE		; ждём отпускания РУС/ЛАТ
+	LD	A,(RUSLAT)
+	CPL
+	CALL	SET_RL
+	JP	AFE1A
+
+	NOP				; 9 bytes
 	NOP
 	NOP
 	NOP
