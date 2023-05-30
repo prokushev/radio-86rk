@@ -598,33 +598,9 @@ PrintCR:
 	RET
 
 ; ──────────────────────────────────────────────
-; Дамп области памяти с HL по DE
-; ВХОД:
-;	HL	- начальный адрес
-;	DE	- конечный адрес
-; ВЫХОД:
-;	HL	- конечный адрес источника
-; ИЗМЕНЯЕТ:
-;	AF, HL		!!TODO!! проверить подпрограммы на изменение
-; ──────────────────────────────────────────────
-
-DirectiveDump:
-	IF	(DirectiveSearch & 0FF00H) <> (DirectiveDump & 0FF00H)
-		ERROR	"DirectiveDump and DirectiveSearch must be in same page"
-	ENDIF
-	CALL	PrintCRAndHexWordAndSpace			; 18 bytes
-AF9C8:	CALL	PrintHexByteFromMemAndSpace
-	CALL	IncHLAndRetIfEqDEWithBrk
-	LD	A,L
-	AND	0FH
-	JP	Z,DirectiveDump
-	JP	AF9C8
-
-
-; ──────────────────────────────────────────────
 DIRTABLE:				; 23 bytes
-	IF	(DIRTABLE & 0FF00H) <> (DirectiveDump & 0FF00H)
-		ERROR	"DirectiveDump and DIRTABLE must be in same page"
+	IF	(DIRTABLE & 0FF00H) <> (DirectiveSearch & 0FF00H)
+		ERROR	"DirectiveSearch and DIRTABLE must be in same page"
 	ENDIF
 
 	DB	'C', DirectiveCompare & 0FFH
@@ -632,7 +608,7 @@ DIRTABLE:				; 23 bytes
 	DB	'F', DirectiveFill & 0FFH
 	DB	'G', DirectiveGoto & 0FFH
 	DB	'I', DirectiveInputTape & 0FFH
-	DB	'L', DirectiveList & 0FFH
+	DB	'L', DirectiveDump & 0FFH
 	DB	'M', DirectiveModify & 0FFH
 	DB	'O', DirectiveOutputTape & 0FFH
 	DB	'R', DirectiveReadROM & 0FFH
@@ -642,7 +618,6 @@ DIRTABLE:				; 23 bytes
 
 
 DirectiveModify:
-
 	IF	(DIRTABLE & 0FF00H) <> (DirectiveModify & 0FF00H)
 		ERROR	"DirectiveModify and DIRTABLE must be in same page"
 	ENDIF
@@ -661,35 +636,44 @@ AFA3B:	INC	HL
 	JP	DirectiveModify
 
 ; ──────────────────────────────────────────────
-; Вывод текста области памяти с HL по DE
+; Вывод дампа и текста области памяти с HL по DE
 ; ВХОД:
 ;	HL	- начальный адрес
 ;	DE	- конечный адрес
 ; ВЫХОД:
 ;	HL	- конечный адрес источника
 ; ИЗМЕНЯЕТ:
-;	AF, HL		!!TODO!! проверить подпрограммы на изменение
+;	AF, HL
 ; ──────────────────────────────────────────────
 
-DirectiveList:
+DirectiveDump:
 
-	IF	(DIRTABLE & 0FF00H) <> (DirectiveList & 0FF00H)
-		ERROR	"DirectiveList and DIRTABLE must be in same page"
+	IF	(DIRTABLE & 0FF00H) <> (DirectiveDump & 0FF00H)
+		ERROR	"DirectiveDump and DIRTABLE must be in same page"
 	ENDIF
 
-	CALL	PrintCRAndHexWordAndSpace			; 30 bytes
-AFA0B:	LD	A,(HL)
+	CALL	PrintCRAndHexWordAndSpace
+	PUSH	HL
+	LD	BC,808H
+	;PrintCRAndHexWordAndSpace
+DIRL1:	CALL	PrintHexByteFromMemAndSpace
+	DEC	C
+	INC	HL
+	JP	NZ,DIRL1
+	POP	HL
+DIRL2:	LD	A,(HL)
 	OR	A
 	JP	M,AFA15
 	CP	20H
 	JP	NC,AFA17
 AFA15:	LD	A,'.'
 AFA17:	CALL	PrintCharFromA
-	CALL	IncHLAndRetIfEqDEWithBrk
-	LD	A,L
-	AND	0FH
-	JP	Z,DirectiveList
-	JP	AFA0B
+	CALL	Compare_HL_DE
+	RET	Z
+	DEC	B
+	INC	HL
+	JP	NZ,DIRL2
+	JP	DirectiveDump
 
 ; ──────────────────────────────────────────────
 
@@ -757,16 +741,14 @@ ReadVideoRAM:
 
 ; ──────────────────────────────────────────────
 
-CALC:					; 13 bytes
-	INC	A
-	LD	DE, 78		;В DE ДЛИНУ СТРОКИ
-	LD	HL, -78		;ВЫЧИСЛЕНИЕ
-				;АДРЕСА ПО
-S1:;				;ФОРМУЛЕ:
-	ADD	HL, DE		;АДРЕС=78*Y
-	DEC	A
-	JP	NZ,S1
-	RET
+AFC34:	LD	HL,(TMPSTK)		; 18 bytes
+	LD	SP,HL
+	CALL	InitVideo
+	LD	A,D
+	OR	A
+	JP	P,SyntaxError
+	CALL	ReadKeyCodeChkBrk
+	JP	AFB9C
 
 	CHK	0FA68H, "* Internal subroutine ReadROM shifted ! *"
 ReadROM:
@@ -1657,16 +1639,6 @@ AFF06:	LD	L,A
 	POP	HL
 	RET
 
-; ──────────────────────────────────────────────
-
-AFC34:	LD	HL,(TMPSTK)		; 18 bytes
-	LD	SP,HL
-	CALL	InitVideo
-	LD	A,D
-	OR	A
-	JP	P,SyntaxError
-	CALL	ReadKeyCodeChkBrk
-	JP	AFB9C
 
 
 ; ──────────────────────────────────────────────
@@ -2397,7 +2369,25 @@ PrintString:				; 11 bytes
 	RET	M			; RET if high bit set
 	JP	PrintString
 
-	NOP				; 22 bytes
+; ──────────────────────────────────────────────
+
+CALC:					; 13 bytes
+	INC	A
+	LD	DE, 78		;В DE ДЛИНУ СТРОКИ
+	LD	HL, -78		;ВЫЧИСЛЕНИЕ
+				;АДРЕСА ПО
+S1:;				;ФОРМУЛЕ:
+	ADD	HL, DE		;АДРЕС=78*Y
+	DEC	A
+	JP	NZ,S1
+	RET
+
+	NOP				; 27 bytes
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
 	NOP
 	NOP
 	NOP

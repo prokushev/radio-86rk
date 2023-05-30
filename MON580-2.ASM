@@ -464,6 +464,7 @@ ParseParameters:
 	RET	C
 	JP	SyntaxError
 
+	IF	0
 ; ──────────────────────────────────────────────
 ; Вывод текста области памяти с HL по DE
 ; ВХОД:
@@ -482,6 +483,7 @@ DirectiveList:
 	ENDIF
 
 	FJMP	3, DirectiveListROM
+	endif
 
 ; ──────────────────────────────────────────────
 ; Заполняет память с HL по DE байтом C
@@ -553,6 +555,11 @@ DirectiveGoto:
 
 ; ──────────────────────────────────────────────
 
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
 	NOP
 	NOP
 	NOP
@@ -673,7 +680,7 @@ DIRTABLE:				; 23 bytes
 	DB	'F', DirectiveFill & 0FFH
 	DB	'G', DirectiveGoto & 0FFH
 	DB	'I', DirectiveInputTape & 0FFH
-	DB	'L', DirectiveList & 0FFH
+	DB	'L', DirectiveDump & 0FFH
 	DB	'M', DirectiveModify & 0FFH
 	DB	'O', DirectiveOutputTape & 0FFH
 	DB	'R', DirectiveReadROM & 0FFH

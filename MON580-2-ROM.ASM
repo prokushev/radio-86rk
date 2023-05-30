@@ -306,6 +306,7 @@ EmptyString:
 	INC	HL
 	JP	DirectiveModifyROM
 
+	if	0
 ; ──────────────────────────────────────────────
 ; Дамп области памяти с HL по DE
 ; ВХОД:
@@ -326,7 +327,44 @@ AF9C8:	CALL	PrintHexByteFromMemAndSpace
 	AND	0FH
 	JP	Z,DirectiveDumpROM
 	JP	AF9C8
+	endif
 
+; ──────────────────────────────────────────────
+; Вывод дампа и текста области памяти с HL по DE
+; ВХОД:
+;	HL	- начальный адрес
+;	DE	- конечный адрес
+; ВЫХОД:
+;	HL	- конечный адрес источника
+; ИЗМЕНЯЕТ:
+;	AF, HL
+; ──────────────────────────────────────────────
+
+	SHARED	DirectiveDumpROM
+DirectiveDumpROM:
+	CALL	PrintCRAndHexWordAndSpace
+	PUSH	HL
+	LD	BC,808H
+DIRL1:	CALL	PrintHexByteFromMemAndSpace
+	DEC	C
+	INC	HL
+	JP	NZ,DIRL1
+	POP	HL
+DIRL2:	LD	A,(HL)
+	OR	A
+	JP	M,AFA15
+	CP	20H
+	JP	NC,AFA17
+AFA15:	LD	A,'.'
+AFA17:	CALL	PrintCharFromA
+	CALL	Compare_HL_DE
+	RET	Z
+	DEC	B
+	INC	HL
+	JP	NZ,DIRL2
+	JP	DirectiveDumpROM
+
+	IF	0
 ; ──────────────────────────────────────────────
 ; Вывод текста области памяти с HL по DE
 ; ВХОД:
@@ -353,6 +391,7 @@ AFA17:	CALL	PrintCharFromA
 	AND	0FH
 	JP	Z,DirectiveListROM
 	JP	AFA0B
+	endif
 
 ; ──────────────────────────────────────────────
 ; Перемещает область памяти с HL по DE в адреса BC
