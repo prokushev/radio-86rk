@@ -29,6 +29,7 @@ p2bin mon580-2.p roms\2.00-32\b2m\radiorom.rom
 p2bin mon580-2.p roms\2.00-32\emu80\rk86.rom
 asw -lUa -i roms\romctrl -D BASE=07600H -D STUB=0 mon580-2-rom.asm > mon580-2-32-rom-2.lst
 p2bin mon580-2-rom.p roms\2.00-32\b2m\romdisk.rom
+p2bin mon580-2-rom.p roms\1.20-32\b2m\romdisk.rom
 p2bin mon580-2-rom.p roms\2.00-32\emu80\romdisk.bin
 
 echo MONITOR 2.00 16KB
@@ -40,4 +41,5 @@ p2bin mon580-2.p roms\2.00-16\b2m\radiorom.rom
 p2bin mon580-2.p roms\2.00-16\emu80\rk86.rom
 asw -lUa -i roms\romctrl -D BASE=03600H -D STUB=0 mon580-2-rom.asm > mon580-2-16-rom-2.lst
 p2bin mon580-2-rom.p roms\2.00-16\b2m\romdisk.rom
+p2bin mon580-2-rom.p roms\1.20-16\b2m\romdisk.bin
 p2bin mon580-2-rom.p roms\2.00-16\emu80\romdisk.bin

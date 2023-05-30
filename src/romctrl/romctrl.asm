@@ -18,12 +18,46 @@
 
 	INCLUDE	"syscalls.inc"
 
+PCALL	MACRO	ADDR
+	LD	HL, RETADDR-BaseAddress
+	ADD	HL, DE
+	PUSH	HL
+	LD	HL, ADDR-BaseAddress
+	ADD	HL, DE
+	JP	(HL)
+RETADDR	EQU	$
+	ENDM
+
+PJP	MACRO	ADDR
+	LD	HL, ADDR-BaseAddress
+	ADD	HL, DE
+	JP	(HL)
+	ENDM
+
+PLDHL	MACRO	ADDR
+	LD	HL, ADDR-BaseAddress
+	ADD	HL, DE
+	ENDM
+	
 	ORG	BASE-0200H
 
-	LD	HL, SO1
+	LD	HL, (0)
+	LD	B, H
+	LD	C, L
+	LD	HL, 0E9E1H		; POP HL ! JP(HL)
+	LD	(0), HL
+	RST	0
+BaseAddress:
+	EX	DE, HL			; DE=BaseAddress
+	LD	H, B
+	LD	L, C
+	LD	(0), HL
+
+	PLDHL	SO1
 	CALL	PrintString
 	LD	B, 0FFH
-	CALL	SEARCHS
+
+	PCALL	SEARCHS
 
 	LD	C, '>'
 	CALL	PrintCharFromC
@@ -45,6 +79,7 @@ SEARCHS:
 	LD	HL, 0800H		; Начало ROM-диска
 	LD	C, L			; LD C, 0
 SEARCH:
+	PUSH	DE
 	PUSH	HL			; (1)
 	LD	DE, (8+2+2)-1
 	ADD	HL, DE
@@ -66,7 +101,7 @@ SEARCH:
 	CP	0FFH
 
 	POP	DE			; (2)
-	
+
 	RET	Z
 
 FUNC:	CALL	PRINTN
@@ -93,7 +128,6 @@ SKIP:
 PRINTN:
 	PUSH	HL
 	PUSH	BC
-	PUSH	DE
 
 	LD	A, C			; Печатаем порядковый номер
 	ADD	A, 30H
@@ -133,7 +167,6 @@ PLOOP:	LD	A, (HL)			; Печатаем имя
 
 	LD	HL, SO2			; Печатаем перевод строки
 	CALL	PrintString
-	POP	DE
 	POP	BC
 	POP	HL
 	RET
