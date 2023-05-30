@@ -79,7 +79,7 @@ SEARCHS:
 	LD	HL, 0800H		; Начало ROM-диска
 	LD	C, L			; LD C, 0
 SEARCH:
-	PUSH	DE
+
 	PUSH	HL			; (1)
 	LD	DE, (8+2+2)-1
 	ADD	HL, DE
