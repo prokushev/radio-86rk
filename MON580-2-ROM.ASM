@@ -24,6 +24,11 @@
 ; ƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒ
 
 	INCLUDE	"syscalls.inc"
+
+; ƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒ
+; Ä§‡•·† Ø‡Ô¨ÎÂ ¢ÎßÆ¢Æ¢ ¢ åéçàíéê (!!! íÆ´Ï™Æ §´Ô §®‡•™‚®¢ åéçàíéê-2.00)
+; ƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒ
+
 	IF	STUB
 	INCLUDE	"stub.inc"
 	ELSE
@@ -780,22 +785,6 @@ S3:	LD     A,(HL)   	;èÖêÖëãÄíú
 SO6:	DB 	0DH,"OUT OF BUFFER",0
 	DEPHASE
 ENDSAVEROM:
-
-	FILE "ZERO$", 07400H, ENDZEROROM-ZEROROM
-; èêéÉêÄååÄ éóàëíäà èÄåüíà (áÄèàëú "0")
-; BO ÇëÖ ÑéëíìèçõÖ èéãúáéÇÄíÖãû üóÖâäà éáì,
-; äêéåÖ üóÖÖä, çÄóàçÄü ë 7400ç).
-ZEROROM:
-	PHASE	07400H
-	LD 	HL,0 	;
-Z1:	LD 	(HL),0 	;éóàëíàíú
-	INC 	HL 	; èÄåüíú.
-	LD 	A,H 	;
-	CP 	74H 	;Öëãà ÄÑêÖë ÅéãúòÖ
-	JP	NZ, 	Z1 	; 7400ç, íé Çõâíà
-	JP 	WarmBoot 	;Ç åÖçû.
-	DEPHASE
-ENDZEROROM:
 
 	FILE "TEST$", 00100H, ENDTESTROM-TESTROM
 
@@ -1776,171 +1765,16 @@ ENDTESTROM:
 	ENDOFFILES
 
 ; ƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒ
-; èêéÉêÄååÄ ìèêÄÇãÖçàü ROM-DISK/32K Ñãü äéåèúûíÖêÄ 
-; "êÄÑàé-86êä" ë OÅöEMOM éáì èéãúáéÇÄíÖãü 16ä/32ä.
-; èêéÉêÄååÄ ìèêÄÇãÖçàü áÄîàäëàêéÇÄçÄ Ç èáì 
-; èé ÄÑêÖëÄå 7E00H-7FFFH. ìäÄáÄççìû éÅãÄëíú èáì 
-; áÄèêÖôÖçé àëèéãúáéÇÄíú èéÑ ROM-DISK. 
-; èêéÉêÄååÄ àá èáì Ç éáì èÖêÖçéëàíëü áÄÉêìáóàäéå, 
-; (Ç MONITORE) èé ÑàêÖäíàÇÖ "U" à áÄçàåÄÖí 
-; ÇÖêïçàÖ ÄÑêÖëÄ éáì, çÄóàçÄü ë 7400ç.
+; èêéÉêÄååÄ ìèêÄÇãÖçàü ROM-DISK/32K
 ; ƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒ
 
 	ORG	07E00H
-	
-	PHASE	BASE-0200H
 
-	LD	HL, SO1
-	CALL	PrintString
-	LD	B, 0FFH
-	CALL	SEARCHS
-
-	LD	C, '>'
-	CALL	PrintCharFromC
-	CALL	InputSymbol
-	LD	C, A
-	CALL	PrintCharFromC
-	CP	03h
-	JP	Z,WarmBoot
-	SUB	30H
-	LD	B, A
-	LD	HL, FUNC+1
-	LD	(HL), EXECN & 0ffh
-	INC	HL
-	LD	(HL), EXECN >> 8
-	CALL	SEARCHS
-	JP	WarmBoot
-
-SEARCHS:
-	LD	HL, 0800H		; ç†Á†´Æ ROM-§®·™†
-	LD	C, L			; LD C, 0
-SEARCH:
-	PUSH	HL			; (1)
-	LD	DE, (8+2+2)-1
-	ADD	HL, DE
-	EX	HL, DE
-	POP	HL			; (1)
-
-	PUSH	HL			; (2)
-	
-	PUSH	BC			; (3)
-
-	LD	BC, T
-	PUSH	BC			; (4)
-	CALL	ReadROM
-	POP	HL			; (4)
-
-	POP	BC			; (3)
-
-	LD	A, (HL)
-	CP	0FFH
-
-	POP	DE			; (2)
-	
-	RET	Z
-
-FUNC:	CALL	PRINTN
-
-	PUSH	DE			; (5)
-;---------------------
-	LD	HL, (T+8+2)
-	LD	A, L			; ¢Î·Á®‚Î¢†•¨ ≠†Á†´Æ ·´•§„ÓÈ•© ß†Ø®·®
-	OR	A			; Æ™†≠Á®¢†•‚·Ô ≠† ≠Æ´Ï
-	JP	Z, SKIP
-	OR	0fh
-	LD	L, A
-	INC	HL
-SKIP:
-	LD	DE, 10h
-	ADD	HL, DE
-;---------------------
-	POP	DE			; (5)
-	
-	ADD	HL, DE
-	INC	C
-	JP	SEARCH
-
-PRINTN:
-	PUSH	HL
-	PUSH	BC
-	PUSH	DE
-
-	LD	A, C			; è•Á†‚†•¨ ØÆ‡Ô§™Æ¢Î© ≠Æ¨•‡
-	ADD	A, 30H
-	LD	C, A
-	CALL	PrintCharFromC
-	LD	C, ' '
-	CALL	PrintCharFromC
-
-	LD	B, 8
-	LD	HL, T
-PLOOP:	LD	A, (HL)			; è•Á†‚†•¨ ®¨Ô
-	LD	C, A
-	CALL	PrintCharFromC
-	INC	HL
-	DEC	B
-	JP	NZ, PLOOP
-
-	INC	HL
-	LD	C, ' '			; è•Á†‚†•¨ ·‚†‡‚Æ¢Î© †§‡•·
-	CALL	PrintCharFromC
-	LD	A, (HL)
-	CALL	PrintHexByte
-	DEC	HL
-	LD	A, (HL)
-	CALL	PrintHexByte
-
-	INC	HL
-	INC	HL
-	INC	HL
-	LD	C, ' '			; è•Á†‚†•¨ ‡†ß¨•‡
-	CALL	PrintCharFromC
-	LD	A, (HL)
-	CALL	PrintHexByte
-	DEC	HL
-	LD	A, (HL)
-	CALL	PrintHexByte
-
-	LD	HL, SO2			; è•Á†‚†•¨ Ø•‡•¢Æ§ ·‚‡Æ™®
-	CALL	PrintString
-	POP	DE
-	POP	BC
-	POP	HL
-	RET
-
-EXECN:
-	LD	A, C
-	SUB	B
-	RET	NZ
-	
-	LD	HL, 010H
-	ADD	HL, DE		; DE - Ì‚Æ †§‡•· ≠† ROM-§®·™•
-	EX	DE, HL
-	
-	LD	SP, T+8		; àëèéãúáìü ëíÖä,
-	POP	BC		; start
-	POP	HL		; size
-
-	ADD	HL, DE
-	EX	DE, HL
-
-	PUSH	BC		; ó®‚†•¨ ¢ éáì
-	CALL    ReadROM
-	POP	HL
-
-	JP	(HL)          	;à áÄèìëíàíú èêéÉêÄååì.
-
-T:	DB	8+2+2 DUP 0			;
-
-SO1:	DB 	0AH,0DH,"*ROM-DISK/32K* V3.0-23"
-	DB 	0AH,0AH,0DH,"DIRECTORY:"
-SO2:	DB	0AH,0DH,0
-
-	DB	BASE-3-$ DUP (0FFH)
-
-	; ÇÂÆ§ ØÆ §®‡•™‚®¢• Z
-	JP	BASE-0200H
-	DEPHASE
+	if BASE=7600H
+	BINCLUDE "romctrl32k.rom"
+	else
+	BINCLUDE "romctrl16k.rom"
+	endif
 
 	CHK	08000H, "* Block overflow ! *"
 	END 				;
