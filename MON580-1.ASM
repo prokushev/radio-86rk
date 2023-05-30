@@ -1423,13 +1423,10 @@ WRP:	INC	L		; POSX ++
 ;	Снизу добавляется пустая строка.
 ; ──────────────────────────────────────────────
 
-LF:	;LD	A,H
-	LD	A, MARGIN_TOP+24	; мы на последней строке ? ;CP
-	CP	H
+LF:	LD	A,H
+	CP	MARGIN_TOP+24	; мы на последней строке ?
 	JP	NZ, CursorDown	; если не на последней строке
-	XOR	A
-	;PUSH	HL
-	;LD	HL, SCBASE
+	LD	A, MARGIN_TOP
 	JP	RLUP
 
 ; ──────────────────────────────────────────────
@@ -1452,24 +1449,11 @@ AFF50:	POP	HL
 	RET
 
 ; ──────────────────────────────────────────────
-; Печать строки по адресу HL
-; ВХОД:
-;	HL	- адрес строки. 0H - признак конца
-;		  или символ больше 7Fh
-; ВЫХОД:
-;	HL	- адрес последнего напечатанного символа
-; ИЗМЕНЯЕТ:
-;	AF, HL
-; ──────────────────────────────────────────────
 
-PrintString:				; 11 bytes
-	LD	A,(HL)
-	OR	A
-	RET	Z
-	CALL	PrintCharFromA
-	INC	HL
-	RET	M			; RET if high bit set
-	JP	PrintString
+LD_BLK:	CALL	TapeReadByteNoSync			; 10 bytes
+	LD	(HL),A
+	CALL	IncHLAndRetIfEqDE
+	JP	LD_BLK
 
 ; ──────────────────────────────────────────────
 ; Возвращает в HL координаты курсора
@@ -1486,8 +1470,6 @@ GetCursorPos:
 	LD	HL,(POSX)		; 4 bytes
 	RET
 
-	;NOP
-	
 ; ──────────────────────────────────────────────
 ; Подача звукового сигнала
 ; ВХОД:
@@ -2385,11 +2367,24 @@ ReadVideoRAM:
 	RET
 
 ; ──────────────────────────────────────────────
+; Печать строки по адресу HL
+; ВХОД:
+;	HL	- адрес строки. 0H - признак конца
+;		  или символ больше 7Fh
+; ВЫХОД:
+;	HL	- адрес последнего напечатанного символа
+; ИЗМЕНЯЕТ:
+;	AF, HL
+; ──────────────────────────────────────────────
 
-LD_BLK:	CALL	TapeReadByteNoSync			; 10 bytes
-	LD	(HL),A
-	CALL	IncHLAndRetIfEqDE
-	JP	LD_BLK
+PrintString:				; 11 bytes
+	LD	A,(HL)
+	OR	A
+	RET	Z
+	CALL	PrintCharFromA
+	INC	HL
+	RET	M			; RET if high bit set
+	JP	PrintString
 
 ; ──────────────────────────────────────────────
 
@@ -2400,8 +2395,6 @@ KEY_FE:	LD	A,(PC)			; 17 bytes
 	CPL
 	CALL	SET_RL
 	JP	AFE1A
-
-	NOP
 
 	CHK	10000H, "* Size not 2K ! *"
 
