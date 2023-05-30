@@ -41,17 +41,18 @@ PLDHL	MACRO	ADDR
 	
 	ORG	BASE-0200H
 
+Stack:
 	LD	HL, (0)
-	LD	B, H
-	LD	C, L
+	EX	DE, HL			; DE=(0)
 	LD	HL, 0E9E1H		; POP HL ! JP(HL)
 	LD	(0), HL
 	RST	0
 BaseAddress:
-	EX	DE, HL			; DE=BaseAddress
-	LD	H, B
-	LD	L, C
+	EX	DE, HL			; DE=BaseAddress, HL=(0)
 	LD	(0), HL
+
+	PLDHL	Stack
+	LD	SP, Stack
 
 	PLDHL	SO1
 	CALL	PrintString
@@ -179,7 +180,7 @@ EXECN:
 	LD	HL, 010H
 	ADD	HL, DE		; DE - это адрес на ROM-диске
 	EX	DE, HL
-	
+
 	LD	SP, T+8		; ИСПОЛЬЗУЯ СТЕК,
 	POP	BC		; start
 	POP	HL		; size
@@ -188,7 +189,7 @@ EXECN:
 	EX	DE, HL
 
 	PUSH	BC		; Читаем в ОЗУ
-	CALL    ReadROM
+	CALL	ReadROM
 	POP	HL
 
 	JP	(HL)          	;И ЗАПУСТИТЬ ПРОГРАММУ.
