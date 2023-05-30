@@ -1423,17 +1423,14 @@ WRP:	INC	L		; POSX ++
 ;	Снизу добавляется пустая строка.
 ; ──────────────────────────────────────────────
 
-LF:	LD	A,H
-	CP	MARGIN_TOP+24	; мы на последней строке ?
+LF:	;LD	A,H
+	LD	A, MARGIN_TOP+24	; мы на последней строке ? ;CP
+	CP	H
 	JP	NZ, CursorDown	; если не на последней строке
-
-	PUSH	HL		; РОЛИК ЭКРАНА
-	LD	HL, SCBASE+78
-	LD	BC, SCBASE
-	LD	DE, SCBASE+26*78
-	CALL	DirectiveTransfer
-	POP	HL
-	RET
+	XOR	A
+	;PUSH	HL
+	;LD	HL, SCBASE
+	JP	RLUP
 
 ; ──────────────────────────────────────────────
 
@@ -1455,6 +1452,26 @@ AFF50:	POP	HL
 	RET
 
 ; ──────────────────────────────────────────────
+; Печать строки по адресу HL
+; ВХОД:
+;	HL	- адрес строки. 0H - признак конца
+;		  или символ больше 7Fh
+; ВЫХОД:
+;	HL	- адрес последнего напечатанного символа
+; ИЗМЕНЯЕТ:
+;	AF, HL
+; ──────────────────────────────────────────────
+
+PrintString:				; 11 bytes
+	LD	A,(HL)
+	OR	A
+	RET	Z
+	CALL	PrintCharFromA
+	INC	HL
+	RET	M			; RET if high bit set
+	JP	PrintString
+
+; ──────────────────────────────────────────────
 ; Возвращает в HL координаты курсора
 ; ВХОД:
 ;	Нет
@@ -1469,7 +1486,8 @@ GetCursorPos:
 	LD	HL,(POSX)		; 4 bytes
 	RET
 
-
+	;NOP
+	
 ; ──────────────────────────────────────────────
 ; Подача звукового сигнала
 ; ВХОД:
@@ -1536,8 +1554,9 @@ AFE2A:	DEC	H			; в рег.A=код клав, в рег.H- COUNT
 	JP	Z,KEY_FE		; если код FE (RUSLAT)
 
 	PUSH	BC			; КЛИК
-	LD	BC,5003H
-	CALL	SND_BC
+	;LD	BC,5003H
+	;CALL	SND_BC
+	CALL	Beep
 	POP	BC
 
 	LD	A,(APVFLG)
@@ -1937,6 +1956,27 @@ skip_ESC_Y:
 ; ──────────────────────────────────────────────
 DeleteLine:
 
+	;PUSH	HL
+	LD	A, H
+	;SUB	H
+	;NOP
+	;NOP
+RLUP:	PUSH	HL
+	CALL	CALC
+	LD	BC, SA
+	ADD	HL, BC
+	PUSH	HL
+	LD	BC, 78
+	ADD	HL, BC
+	POP	BC
+	;PUSH	HL		; РОЛИК ЭКРАНА
+;	LD	HL, SCBASE+78
+;	LD	BC, SCBASE
+	LD	DE, SCBASE+26*78
+	CALL	DirectiveTransfer
+	POP	HL
+	;nop
+
 skip_ESC_M:
 	INC	A		;CP	'L'
 ;	JP	NZ, skip_ESC_L
@@ -2221,7 +2261,7 @@ SetCursorPos:
 
 	; Вычисляем адрес видеопамяти
 	LD	C, L		;В С КООРДИНАТУ X
-	LD	A, H		;В А КООРДИНАТУ Y
+CALC2:	LD	A, H		;В А КООРДИНАТУ Y
 	CALL	CALC
 PROD:	LD	DE, SA		; ЗАГРУЗИТЬ АДРЕС
 	ADD	HL, DE		; КООРДИНАТ 0. 0.
@@ -2313,25 +2353,6 @@ C_WRITESTR:				; 11 bytes
 	JP	C_WRITESTR
 
 
-; ──────────────────────────────────────────────
-; Печать строки по адресу HL
-; ВХОД:
-;	HL	- адрес строки. 0H - признак конца
-;		  или символ больше 7Fh
-; ВЫХОД:
-;	HL	- адрес последнего напечатанного символа
-; ИЗМЕНЯЕТ:
-;	AF, HL
-; ──────────────────────────────────────────────
-
-PrintString:				; 11 bytes
-	LD	A,(HL)
-	OR	A
-	RET	Z
-	CALL	PrintCharFromA
-	INC	HL
-	RET	M			; RET if high bit set
-	JP	PrintString
 
 ; ──────────────────────────────────────────────
 
@@ -2370,7 +2391,6 @@ LD_BLK:	CALL	TapeReadByteNoSync			; 10 bytes
 	CALL	IncHLAndRetIfEqDE
 	JP	LD_BLK
 
-
 ; ──────────────────────────────────────────────
 
 KEY_FE:	LD	A,(PC)			; 17 bytes
@@ -2381,14 +2401,6 @@ KEY_FE:	LD	A,(PC)			; 17 bytes
 	CALL	SET_RL
 	JP	AFE1A
 
-	NOP				; 9 bytes
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
 	NOP
 
 	CHK	10000H, "* Size not 2K ! *"
