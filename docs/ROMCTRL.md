@@ -17,6 +17,7 @@
 ## Формат ROM-диска
 
 ROM-диск может быть выполнен по одной из схем:
+- [Радио 1987 год №3](http://archive.radio.ru/web/1987/03/)
 - [Радио 1991 год №10](http://archive.radio.ru/web/1991/10/)
 - https://github.com/skiselev/radio-86rk-rom
 
