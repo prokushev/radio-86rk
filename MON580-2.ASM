@@ -204,8 +204,7 @@ WarmBoot:
 	PUSH	HL			; Ά αβ¥ª¥ «¥¦¨β  ¤ΰ¥α Ά®§ΰ β  Ά ’
 
 	CALL	ParseParameters
-	LD	HL,COMBUF
-	LD	A,(HL)
+	LD	A,(COMBUF)
 	LD	HL,(PAR_BC)		; Z80: LD BC,(PAR_BC)
 	LD	C,L
 	LD	B,H
@@ -327,6 +326,7 @@ SetSec:							; 6 bytes
 	ld (SECT), HL
 	ret
 
+	NOP
 	NOP
 	NOP
 	NOP
