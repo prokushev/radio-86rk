@@ -261,24 +261,58 @@ TapeReadWord:
 TABK2:	DB	09,0AH,0DH,7FH,08H,19H,18H,1AH	; 8 bytes
 
 ; ──────────────────────────────────────────────
-; Печать строки по адресу HL
+; Печать с новой строки знаение HL в 16-м формате, пробела и
+; числа из ячейки памяти HL в 16-м формате и пробела
 ; ВХОД:
-;	HL	- адрес строки. 0H - признак конца
-;		  или символ больше 7Fh
+;	HL	- адрес байта числа для печати
 ; ВЫХОД:
-;	HL	- адрес последнего напечатанного символа
+;	Нет
 ; ИЗМЕНЯЕТ:
-;	AF, HL
+;	AF
 ; ──────────────────────────────────────────────
 
-PrintString:
+PrintCRAndHexWordAndSpaceAndHexByteMemAndSpace:
+	CALL	PrintCRAndHexWordAndSpace			; 12 bytes
+
+; ──────────────────────────────────────────────
+; Печать числа из ячейки памяти HL в 16-м формате и пробела
+; ВХОД:
+;	HL	- адрес байта числа для печати
+; ВЫХОД:
+;	Нет
+; ИЗМЕНЯЕТ:
+;	AF
+; ──────────────────────────────────────────────
+
+PrintHexByteFromMemAndSpace:
 	LD	A,(HL)
-	CP	0			; CP 0 (не оптимизировать!)
-	RET	Z
-	CALL	PrintCharFromA
-	INC	HL
-	RET	M			; RET if high bit set
-	JP	PrintString
+
+; ──────────────────────────────────────────────
+; Печать числа из A в 16-м формате и пробела
+; ВХОД:
+;	A	- число для печати
+; ВЫХОД:
+;	Нет
+; ИЗМЕНЯЕТ:
+;	AF
+; ──────────────────────────────────────────────
+
+PrintHexByteAndSpace:
+	CALL	PrintHexByte
+
+; ──────────────────────────────────────────────
+; Печать пробела
+; ВХОД:
+;	Нет
+; ВЫХОД:
+;	Нет
+; ИЗМЕНЯЕТ:
+;	A
+; ──────────────────────────────────────────────
+
+PrintSpace:
+	LD	A, ' '
+	JP	PrintCharFromA
 
 ; ──────────────────────────────────────────────
 ; Запись блока с HL по DE на магнитофон
@@ -533,7 +567,6 @@ Compare_HL_DE:
 	LD	A,L
 	CP	E
 	RET
-
 ; ──────────────────────────────────────────────
 ; Считывает область памяти ROM-диска с HL по DE в адреса BC ОЗУ
 ; ВХОД:
@@ -551,12 +584,7 @@ DirectiveReadROM:					; 14 bytes
 	IF	(DirectiveInputTape & 0FF00H) <> (DirectiveReadROM & 0FF00H)
 		ERROR	"DirectiveInputTape and DirectiveReadROM must be in same page"
 	ENDIF
-	LD	(PDB),HL
-	LD	A,(PDA)
-	LD	(BC),A
-	INC	BC
-	CALL	IncHLAndRetIfEqDE
-	JP	DirectiveReadROM
+	JP	ReadROM
 
 ; ──────────────────────────────────────────────
 ; Ищет байт C в области памяти с HL по DE
@@ -570,17 +598,36 @@ DirectiveReadROM:					; 14 bytes
 ;	AF, HL
 ; ──────────────────────────────────────────────
 
-DirectiveSearch:
+DirectiveSearch:					; 11 bytes
 	IF	(DirectiveSearch & 0FF00H) <> (DirectiveReadROM & 0FF00H)
 		ERROR	"DirectiveReadROM and DirectiveSearch must be in same page"
 	ENDIF
-	LD	A,C			; 11 bytes
+	LD	A,C
 	CP	(HL)
 	CALL	Z,PrintCRAndHexWordAndSpace
 	CALL	IncHLAndRetIfEqDEWithBrk
 	JP	DirectiveSearch
 
-	NOP
+; ──────────────────────────────────────────────
+; Ввод символа без ожидания с проверкой нажатия Ctrl-C. 
+; При нажатии Ctrl-C выход в МОНИТОР с переинцициализацией ВГ.
+; ВХОД:
+;	Нет
+; ВЫХОД:
+;	A=0FFH - не нажата
+;	A=0FEH - РУС/ЛАТ
+;	A - код клавиши
+; ИЗМЕНЯЕТ:
+;	AF		 TODO: проверить, что изменяет ReadKeyCode и InitVideo
+; ──────────────────────────────────────────────
+
+ReadKeyCodeChkBrk:
+	CALL	ReadKeyCode			; 12 bytes
+	CP	3
+	RET	NZ
+	CALL	InitVideo
+	JP	SyntaxError
+
 ; ──────────────────────────────────────────────
 
 	CHK	0F9B0H, "* Internal subroutine PrintCR shifted ! *"
@@ -591,33 +638,9 @@ PrintCR:
 	RET
 
 ; ──────────────────────────────────────────────
-; Дамп области памяти с HL по DE
-; ВХОД:
-;	HL	- начальный адрес
-;	DE	- конечный адрес
-; ВЫХОД:
-;	HL	- конечный адрес источника
-; ИЗМЕНЯЕТ:
-;	AF, HL		!!TODO!! проверить подпрограммы на изменение
-; ──────────────────────────────────────────────
-
-DirectiveDump:
-	IF	(DirectiveSearch & 0FF00H) <> (DirectiveDump & 0FF00H)
-		ERROR	"DirectiveDump and DirectiveSearch must be in same page"
-	ENDIF
-	CALL	PrintCRAndHexWordAndSpace			; 18 bytes
-AF9C8:	CALL	PrintHexByteFromMemAndSpace
-	CALL	IncHLAndRetIfEqDEWithBrk
-	LD	A,L
-	AND	0FH
-	JP	Z,DirectiveDump
-	JP	AF9C8
-
-
-; ──────────────────────────────────────────────
 DIRTABLE:				; 23 bytes
-	IF	(DIRTABLE & 0FF00H) <> (DirectiveDump & 0FF00H)
-		ERROR	"DirectiveDump and DIRTABLE must be in same page"
+	IF	(DIRTABLE & 0FF00H) <> (DirectiveSearch & 0FF00H)
+		ERROR	"DirectiveSearch and DIRTABLE must be in same page"
 	ENDIF
 
 	DB	'C', DirectiveCompare & 0FFH
@@ -625,17 +648,17 @@ DIRTABLE:				; 23 bytes
 	DB	'F', DirectiveFill & 0FFH
 	DB	'G', DirectiveGoto & 0FFH
 	DB	'I', DirectiveInputTape & 0FFH
-	DB	'L', DirectiveList & 0FFH
+	DB	'L', DirectiveDump & 0FFH
 	DB	'M', DirectiveModify & 0FFH
 	DB	'O', DirectiveOutputTape & 0FFH
 	DB	'R', DirectiveReadROM & 0FFH
 	DB	'S', DirectiveSearch & 0FFH
 	DB	'T', DirectiveTransfer & 0FFH
+	DB	'U', DirectiveReadROM & 0FFH
 	DB	0
 
 
 DirectiveModify:
-
 	IF	(DIRTABLE & 0FF00H) <> (DirectiveModify & 0FF00H)
 		ERROR	"DirectiveModify and DIRTABLE must be in same page"
 	ENDIF
@@ -654,35 +677,44 @@ AFA3B:	INC	HL
 	JP	DirectiveModify
 
 ; ──────────────────────────────────────────────
-; Вывод текста области памяти с HL по DE
+; Вывод дампа и текста области памяти с HL по DE
 ; ВХОД:
 ;	HL	- начальный адрес
 ;	DE	- конечный адрес
 ; ВЫХОД:
 ;	HL	- конечный адрес источника
 ; ИЗМЕНЯЕТ:
-;	AF, HL		!!TODO!! проверить подпрограммы на изменение
+;	AF, HL
 ; ──────────────────────────────────────────────
 
-DirectiveList:
+DirectiveDump:
 
-	IF	(DIRTABLE & 0FF00H) <> (DirectiveList & 0FF00H)
-		ERROR	"DirectiveList and DIRTABLE must be in same page"
+	IF	(DIRTABLE & 0FF00H) <> (DirectiveDump & 0FF00H)
+		ERROR	"DirectiveDump and DIRTABLE must be in same page"
 	ENDIF
 
-	CALL	PrintCRAndHexWordAndSpace			; 30 bytes
-AFA0B:	LD	A,(HL)
+	CALL	PrintCRAndHexWordAndSpace
+	PUSH	HL
+	LD	BC,808H
+	;PrintCRAndHexWordAndSpace
+DIRL1:	CALL	PrintHexByteFromMemAndSpace
+	DEC	C
+	INC	HL
+	JP	NZ,DIRL1
+	POP	HL
+DIRL2:	LD	A,(HL)
 	OR	A
 	JP	M,AFA15
 	CP	20H
 	JP	NC,AFA17
 AFA15:	LD	A,'.'
 AFA17:	CALL	PrintCharFromA
-	CALL	IncHLAndRetIfEqDEWithBrk
-	LD	A,L
-	AND	0FH
-	JP	Z,DirectiveList
-	JP	AFA0B
+	CALL	Compare_HL_DE
+	RET	Z
+	DEC	B
+	INC	HL
+	JP	NZ,DIRL2
+	JP	DirectiveDump
 
 ; ──────────────────────────────────────────────
 
@@ -732,38 +764,26 @@ AFB4D:	CALL	TapeWriteByte
 	JP	InitVideo
 
 ; ──────────────────────────────────────────────
-; Возвращает символ в текущих координатах видео ОЗУ
-; ВХОД:
-;	Нет
-; ВЫХОД:
-;	A	- символ в текущих координатах
-; ИЗМЕНЯЕТ:
-;	A
-; ──────────────────────────────────────────────
 
-ReadVideoRAM:
-	PUSH	HL			; 7 bytes
-	CALL	SetCursorPos
-	LD	A,(HL)
-	POP	HL
-	RET
+C_READ:	CALL	InputSymbol	; 6 bytes
+	JP	PrintCharFromA
 
-; ──────────────────────────────────────────────
-
-CALC:					; 13 bytes
-	INC	A
-	LD	DE, 78		;В DE ДЛИНУ СТРОКИ
-	LD	HL, -78;0	;ВЫЧИСЛЕНИЕ
-;	OR	A 		;АДРЕСА ПО
-S1:;	RET	Z		;ФОРМУЛЕ:
-	ADD	HL, DE		;АДРЕС=78*Y
-	DEC	A
-	JP	NZ,S1
-	RET
-
-	CHK	0FA68H, "* Internal subroutine ReadROM shifted ! *"
 ReadROM:
-	JP	DirectiveReadROM
+	LD	A,(FLG_P2)		; 46 bytes
+	OR	A
+	JP	NZ,DirectiveReadROMParms
+	LD	HL, 07E00H
+	LD	DE, 07FFFH
+	LD	BC, BASE-0200H
+	PUSH	BC			; Адрес запуска
+	CHK	0FA68H, "* Internal subroutine DirectiveReadROMParams shifted ! *"
+DirectiveReadROMParms:
+	LD	(PDB), HL
+	LD	A,(PDA)
+	LD	(BC),A
+	INC	BC
+	CALL	IncHLAndRetIfEqDE
+	JP	DirectiveReadROMParms
 
 ; ──────────────────────────────────────────────
 
@@ -798,26 +818,14 @@ AFB19:	LD	A,(HL)
 
 ; ──────────────────────────────────────────────
 
-KEY_FE:	LD	A,(PC)			; 17 bytes
-	RLA
-	JP	NC,KEY_FE		; ждём отпускания РУС/ЛАТ
-	LD	A,(RUSLAT)
-	CPL
-	CALL	SET_RL
-	JP	AFE1A
-
-; ──────────────────────────────────────────────
-
-BYTE3:	LD	A,C			; 18 bytes
-	SUB	20H
-	LD	C,A
-AFD77:	DEC	C
-	LD	A,3
-	JP	M,SETESC
-	PUSH	BC
-	CALL	CursorDown
-	POP	BC
-	JP	AFD77
+AFC34:	LD	HL,(TMPSTK)		; 18 bytes
+	LD	SP,HL
+	CALL	InitVideo
+	LD	A,D
+	OR	A
+	JP	P,SyntaxError
+	CALL	ReadKeyCodeChkBrk
+	JP	AFB9C
 
 ; ──────────────────────────────────────────────
 
@@ -825,9 +833,15 @@ AFEF3:	LD	A,H			; 7 bytes
 	LD	HL,TABK1
 	JP	AFEFE
 
+
 ; ──────────────────────────────────────────────
 
-	NOP				; 1 byte
+BDOSRET:				; Точка возврата из функции BDOS
+	LD	HL, (TMPSTK)		; 7 bytes
+	LD	SP, HL
+	LD	L, A
+	LD	H, B
+	RET
 
 ; ──────────────────────────────────────────────
 
@@ -975,20 +989,18 @@ TAB:	LD	A, L
 	LD	L, A
 	RET
 
-
 ; ──────────────────────────────────────────────
 
-C_READ:	CALL	InputSymbol	; 6 bytes
-	JP	PrintCharFromA
+ProcessBackspace:
+	LD	A,B			; 16 bytes
+	OR	A			; начало буфера ввода ?
+	JP	Z,GotoCmdLineBegin	; GotoCmdLineBegin
+	DEC	B
+	DEC	HL
+	CALL	RST_18
+	DB	8,' ',8+80H
+	JP	InputNextSymbol
 
-; ──────────────────────────────────────────────
-
-LD_BLK:	CALL	TapeReadByteNoSync			; 10 bytes
-	LD	(HL),A
-	CALL	IncHLAndRetIfEqDE
-	JP	LD_BLK
-
-	
 ; ──────────────────────────────────────────────
 ; Печать перевода строки, числа из HL в 16-ричном формате, пробела,
 ; перевода строки, числа из BC в 16-ричном формате, пробела
@@ -1371,16 +1383,20 @@ PrintCharFromC:
 	JP	M,NO_ESC	; BUG Для VT-52 факт обработки ESC-последовательности не значит, что он игнорирует контрольные коды
 	JP	Z,EscapeHandler	; если второй байт ('Y')
 	DEC	A
-	JP	Z,BYTE3		; если третий байт
-	LD	A,C		; четвёртый байт
-	SUB	20H
-	LD	C,A
-AFCDD:	DEC	C
-	JP	M,EscapeHandlerEnd         ; СБРОС ESC_FL И ВЫХОД
-	PUSH	BC
-	CALL	CursorRight
-	POP	BC
-	JP	AFCDD
+	JP	NZ, skip_BYTE3	; если третий байт
+; ──────────────────────────────────────────────
+BYTE3:				; 9 bytes
+	LD	A, C		; Третий байт Esc-Y
+	SUB	20H-MARGIN_TOP
+	LD	H, A
+	LD	A, 3
+	JP	SETESC
+; ──────────────────────────────────────────────
+skip_BYTE3:
+	LD	A,C		; Четвёртый байт Esc-Y
+	SUB	20H-MARGIN_LEFT
+	LD	L,A
+	JP	EscapeHandlerEnd
 
 skip_TAB:
 	INC	A		;CP	08H
@@ -1437,14 +1453,8 @@ WRP:	INC	L		; POSX ++
 LF:	LD	A,H
 	CP	MARGIN_TOP+24	; мы на последней строке ?
 	JP	NZ, CursorDown	; если не на последней строке
-
-	PUSH	HL		; РОЛИК ЭКРАНА
-	LD	HL, SCBASE+78
-	LD	BC, SCBASE
-	LD	DE, SCBASE+26*78
-	CALL	DirectiveTransfer
-	POP	HL
-	RET
+	LD	A, MARGIN_TOP
+	JP	RLUP
 
 ; ──────────────────────────────────────────────
 
@@ -1464,6 +1474,13 @@ AFF3F:	LD	A,L
 	XOR	10H
 AFF50:	POP	HL
 	RET
+
+; ──────────────────────────────────────────────
+
+LD_BLK:	CALL	TapeReadByteNoSync			; 10 bytes
+	LD	(HL),A
+	CALL	IncHLAndRetIfEqDE
+	JP	LD_BLK
 
 ; ──────────────────────────────────────────────
 ; Возвращает в HL координаты курсора
@@ -1546,8 +1563,9 @@ AFE2A:	DEC	H			; в рег.A=код клав, в рег.H- COUNT
 	JP	Z,KEY_FE		; если код FE (RUSLAT)
 
 	PUSH	BC			; КЛИК
-	LD	BC,5003H
-	CALL	SND_BC
+	;LD	BC,5003H
+	;CALL	SND_BC
+	CALL	Beep
 	POP	BC
 
 	LD	A,(APVFLG)
@@ -1630,71 +1648,6 @@ AFF06:	LD	L,A
 	RET
 
 ; ──────────────────────────────────────────────
-
-AFC34:	LD	HL,(TMPSTK)		; 18 bytes
-	LD	SP,HL
-	CALL	InitVideo
-	LD	A,D
-	OR	A
-	JP	P,SyntaxError
-	CALL	ReadKeyCodeChkBrk
-	JP	AFB9C
-
-; ──────────────────────────────────────────────
-; Печать с новой строки знаение HL в 16-м формате, пробела и
-; числа из ячейки памяти HL в 16-м формате и пробела
-; ВХОД:
-;	HL	- адрес байта числа для печати
-; ВЫХОД:
-;	Нет
-; ИЗМЕНЯЕТ:
-;	AF
-; ──────────────────────────────────────────────
-
-PrintCRAndHexWordAndSpaceAndHexByteMemAndSpace:
-	CALL	PrintCRAndHexWordAndSpace			; 12 bytes
-
-; ──────────────────────────────────────────────
-; Печать числа из ячейки памяти HL в 16-м формате и пробела
-; ВХОД:
-;	HL	- адрес байта числа для печати
-; ВЫХОД:
-;	Нет
-; ИЗМЕНЯЕТ:
-;	AF
-; ──────────────────────────────────────────────
-
-PrintHexByteFromMemAndSpace:
-	LD	A,(HL)
-
-; ──────────────────────────────────────────────
-; Печать числа из A в 16-м формате и пробела
-; ВХОД:
-;	A	- число для печати
-; ВЫХОД:
-;	Нет
-; ИЗМЕНЯЕТ:
-;	AF
-; ──────────────────────────────────────────────
-
-PrintHexByteAndSpace:
-	CALL	PrintHexByte
-
-; ──────────────────────────────────────────────
-; Печать пробела
-; ВХОД:
-;	Нет
-; ВЫХОД:
-;	Нет
-; ИЗМЕНЯЕТ:
-;	A
-; ──────────────────────────────────────────────
-
-PrintSpace:
-	LD	A, ' '
-	JP	PrintCharFromA
-
-; ──────────────────────────────────────────────
 ; Увеличивает HL и вызывает второй RET, если равен DE
 ; При нажатии Brk выходит с ошибкой в МОНИТОР
 ; ВХОД:
@@ -1767,8 +1720,6 @@ InputSymbol:
 	LD	(KBDFLG),A
 	LD	A,(LAST_K)
 	RET
-
-
 
 ; ──────────────────────────────────────────────
 
@@ -1951,7 +1902,7 @@ skip_ESC_e:
 	JP	NZ, skip_ESC_Y
 
 	;esc_Y
-	CALL	CursorHome
+	POP	BC		; Убираем из стека EscapeHandlerEnd, возвращаемся только на TOBACK
 	INC	A		;LD	A,2; ПРИНЯТО 2 БАЙТА ESC,'Y'
 
 ; ──────────────────────────────────────────────
@@ -1965,7 +1916,7 @@ skip_ESC_e:
 ; ──────────────────────────────────────────────
 
 EscapeHandlerStart:
-	INC	A		; LD A, 1 - для EscapeHandlerStart и LD A, 2 - для EscapeHAndler
+	INC	A		; LD A, 1 - для EscapeHandlerStart и LD A, 2 - для EscapeHandler
 	DB	06H		; LD B, ... функционально JP SETESC
 
 ; ──────────────────────────────────────────────
@@ -2013,6 +1964,27 @@ skip_ESC_Y:
 ; ОПИСАНИЕ:
 ; ──────────────────────────────────────────────
 DeleteLine:
+
+	;PUSH	HL
+	LD	A, H
+	;SUB	H
+	;NOP
+	;NOP
+RLUP:	PUSH	HL
+	CALL	CALC
+	LD	BC, SA
+	ADD	HL, BC
+	PUSH	HL
+	LD	BC, 78
+	ADD	HL, BC
+	POP	BC
+	;PUSH	HL		; РОЛИК ЭКРАНА
+;	LD	HL, SCBASE+78
+;	LD	BC, SCBASE
+	LD	DE, SCBASE+26*78
+	CALL	DirectiveTransfer
+	POP	HL
+	;nop
 
 skip_ESC_M:
 	INC	A		;CP	'L'
@@ -2070,15 +2042,12 @@ skip_ESC_K:
 ; ──────────────────────────────────────────────
 ClearEOS:
 	PUSH	HL
-	;PUSH	DE
-	;LD	H, A		;LD	H, 0
 	CALL	SetCursorPos
 CLSLOO:	XOR	A
 	LD	(HL),A
 	INC	HL
 	OR	H
 	JP	P,CLSLOO
-	;POP	DE
 	POP	HL
 
 skip_ESC_J:
@@ -2207,7 +2176,7 @@ skip_ESC_B:
 ; ──────────────────────────────────────────────
 
 CursorUp:
-	LD	A, H		; 10 bytes
+	LD	A, H		; 6 bytes
 	CP	MARGIN_TOP	; это первая строка ?
 	RET	Z
 	DEC	H		; POSY--
@@ -2245,26 +2214,6 @@ BDOS:	LD	HL, 0000H	; Сохраняем стек
 	RET
 
 ; ──────────────────────────────────────────────
-; Ввод символа без ожидания с проверкой нажатия Ctrl-C. 
-; При нажатии Ctrl-C выход в МОНИТОР с переинцициализацией ВГ.
-; ВХОД:
-;	Нет
-; ВЫХОД:
-;	A=0FFH - не нажата
-;	A=0FEH - РУС/ЛАТ
-;	A - код клавиши
-; ИЗМЕНЯЕТ:
-;	AF		 TODO: проверить, что изменяет ReadKeyCode и InitVideo
-; ──────────────────────────────────────────────
-
-ReadKeyCodeChkBrk:
-	CALL	ReadKeyCode			; 12 bytes
-	CP	3
-	RET	NZ
-	CALL	InitVideo
-	JP	SyntaxError
-
-; ──────────────────────────────────────────────
 ; Ввод символа без ожидания. 
 ; ВХОД:
 ;	Нет
@@ -2294,18 +2243,6 @@ ReadKeyCode:
 	RET
 
 ; ──────────────────────────────────────────────
-
-ProcessBackspace:
-	LD	A,B			; 16 bytes
-	OR	A			; начало буфера ввода ?
-	JP	Z,GotoCmdLineBegin	; GotoCmdLineBegin
-	DEC	B
-	DEC	HL
-	CALL	RST_18
-	DB	8,' ',8+80H
-	JP	InputNextSymbol
-
-; ──────────────────────────────────────────────
 ; Устанавливает курсор в заданные координаты
 ; ВХОД:
 ;	H	- номер строки
@@ -2332,8 +2269,8 @@ SetCursorPos:
 	LD	(VG_75),A
 
 	; Вычисляем адрес видеопамяти
-	LD	C, L		;ВС КООРДИНАТУ X
-	LD	A, H		;В А КООРДИНАТУ Y
+	LD	C, L		;В С КООРДИНАТУ X
+CALC2:	LD	A, H		;В А КООРДИНАТУ Y
 	CALL	CALC
 PROD:	LD	DE, SA		; ЗАГРУЗИТЬ АДРЕС
 	ADD	HL, DE		; КООРДИНАТ 0. 0.
@@ -2425,14 +2362,66 @@ C_WRITESTR:				; 11 bytes
 	JP	C_WRITESTR
 
 
+
 ; ──────────────────────────────────────────────
 
-BDOSRET:				; Точка возврата из функции BDOS
-	LD	HL, (TMPSTK)		; 7 bytes
-	LD	SP, HL
-	LD	L, A
-	LD	H, B
+CALC:					; 13 bytes
+	INC	A
+	LD	DE, 78		;В DE ДЛИНУ СТРОКИ
+	LD	HL, -78		;ВЫЧИСЛЕНИЕ
+				;АДРЕСА ПО
+S1:;				;ФОРМУЛЕ:
+	ADD	HL, DE		;АДРЕС=78*Y
+	DEC	A
+	JP	NZ,S1
 	RET
+
+; ──────────────────────────────────────────────
+; Возвращает символ в текущих координатах видео ОЗУ
+; ВХОД:
+;	Нет
+; ВЫХОД:
+;	A	- символ в текущих координатах
+; ИЗМЕНЯЕТ:
+;	A
+; ──────────────────────────────────────────────
+
+ReadVideoRAM:
+	PUSH	HL			; 7 bytes
+	CALL	SetCursorPos
+	LD	A,(HL)
+	POP	HL
+	RET
+
+; ──────────────────────────────────────────────
+; Печать строки по адресу HL
+; ВХОД:
+;	HL	- адрес строки. 0H - признак конца
+;		  или символ больше 7Fh
+; ВЫХОД:
+;	HL	- адрес последнего напечатанного символа
+; ИЗМЕНЯЕТ:
+;	AF, HL
+; ──────────────────────────────────────────────
+
+PrintString:				; 11 bytes
+	LD	A,(HL)
+	OR	A
+	RET	Z
+	CALL	PrintCharFromA
+	INC	HL
+	RET	M			; RET if high bit set
+	JP	PrintString
+
+; ──────────────────────────────────────────────
+
+KEY_FE:	LD	A,(PC)			; 17 bytes
+	RLA
+	JP	NC,KEY_FE		; ждём отпускания РУС/ЛАТ
+	LD	A,(RUSLAT)
+	CPL
+	CALL	SET_RL
+	JP	AFE1A
 
 	CHK	10000H, "* Size not 2K ! *"
 

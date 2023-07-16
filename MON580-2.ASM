@@ -464,6 +464,7 @@ ParseParameters:
 	RET	C
 	JP	SyntaxError
 
+	IF	0
 ; ──────────────────────────────────────────────
 ; Вывод текста области памяти с HL по DE
 ; ВХОД:
@@ -482,6 +483,7 @@ DirectiveList:
 	ENDIF
 
 	FJMP	3, DirectiveListROM
+	endif
 
 ; ──────────────────────────────────────────────
 ; Заполняет память с HL по DE байтом C
@@ -553,6 +555,11 @@ DirectiveGoto:
 
 ; ──────────────────────────────────────────────
 
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
 	NOP
 	NOP
 	NOP
@@ -673,7 +680,7 @@ DIRTABLE:				; 23 bytes
 	DB	'F', DirectiveFill & 0FFH
 	DB	'G', DirectiveGoto & 0FFH
 	DB	'I', DirectiveInputTape & 0FFH
-	DB	'L', DirectiveList & 0FFH
+	DB	'L', DirectiveDump & 0FFH
 	DB	'M', DirectiveModify & 0FFH
 	DB	'O', DirectiveOutputTape & 0FFH
 	DB	'R', DirectiveReadROM & 0FFH
@@ -696,7 +703,7 @@ DirectiveU:			; 15 bytes
 	JP	BASE-0200H
 
 ; ──────────────────────────────────────────────
-; Выполняет переход по адресу 07400H
+; Выполняет переход по адресу 075FDH
 ; ВХОД:
 ; ВЫХОД:
 ;	НЕТ
@@ -845,16 +852,22 @@ ProcessBackspace:
 
 ; ──────────────────────────────────────────────
 
-BYTE3:	LD	A,C			; 18 bytes
-	SUB	20H
-	LD	C,A
-AFD77:	DEC	C
-	LD	A,3
-	JP	M,SETESC
-	PUSH	BC
-	CALL	CursorDown
-	POP	BC
-	JP	AFD77
+BYTE3:	LD	A, C			; 9 bytes
+	SUB	20H-MARGIN_TOP
+	LD	H, A
+	LD	A, 3
+	JP	SETESC
+
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+
 
 ; ──────────────────────────────────────────────
 ; Увеличивает HL и вызывает второй RET, если равен DE
@@ -1437,14 +1450,20 @@ PrintCharFromC:
 	DEC	A
 	JP	Z,BYTE3		; если третий байт
 	LD	A,C		; четвёртый байт
-	SUB	20H
-	LD	C,A
-AFCDD:	DEC	C
-	JP	M,EscapeHandlerEnd         ; СБРОС ESC_FL И ВЫХОД
-	PUSH	BC
-	CALL	CursorRight
-	POP	BC
-	JP	AFCDD
+	SUB	20H-MARGIN_LEFT
+	LD	L,A
+	JP	EscapeHandlerEnd
+
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+
 
 skip_TAB:
 	INC	A		;CP	08H
@@ -1930,7 +1949,10 @@ skip_ESC_e:
 	JP	NZ, skip_ESC_Y
 
 	;esc_Y
-	CALL	CursorHome
+;	CALL	CursorHome
+	NOP
+	NOP
+	POP	BC		; Убираем из стека EscapeHandlerEnd, возвращаемся только на TOBACK
 	INC	A		;LD	A,2; ПРИНЯТО 2 БАЙТА ESC,'Y'
 
 ; ──────────────────────────────────────────────

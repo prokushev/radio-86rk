@@ -24,6 +24,11 @@
 ; ───────────────────────────────────────────────────────────────────────
 
 	INCLUDE	"syscalls.inc"
+
+; ───────────────────────────────────────────────────────────────────────
+; Адреса прямых вызовов в МОНИТОР (!!! Только для директив МОНИТОР-2.00)
+; ───────────────────────────────────────────────────────────────────────
+
 	IF	STUB
 	INCLUDE	"stub.inc"
 	ELSE
@@ -306,6 +311,7 @@ EmptyString:
 	INC	HL
 	JP	DirectiveModifyROM
 
+	if	0
 ; ──────────────────────────────────────────────
 ; Дамп области памяти с HL по DE
 ; ВХОД:
@@ -326,7 +332,44 @@ AF9C8:	CALL	PrintHexByteFromMemAndSpace
 	AND	0FH
 	JP	Z,DirectiveDumpROM
 	JP	AF9C8
+	endif
 
+; ──────────────────────────────────────────────
+; Вывод дампа и текста области памяти с HL по DE
+; ВХОД:
+;	HL	- начальный адрес
+;	DE	- конечный адрес
+; ВЫХОД:
+;	HL	- конечный адрес источника
+; ИЗМЕНЯЕТ:
+;	AF, HL
+; ──────────────────────────────────────────────
+
+	SHARED	DirectiveDumpROM
+DirectiveDumpROM:
+	CALL	PrintCRAndHexWordAndSpace
+	PUSH	HL
+	LD	BC,808H
+DIRL1:	CALL	PrintHexByteFromMemAndSpace
+	DEC	C
+	INC	HL
+	JP	NZ,DIRL1
+	POP	HL
+DIRL2:	LD	A,(HL)
+	OR	A
+	JP	M,AFA15
+	CP	20H
+	JP	NC,AFA17
+AFA15:	LD	A,'.'
+AFA17:	CALL	PrintCharFromA
+	CALL	Compare_HL_DE
+	RET	Z
+	DEC	B
+	INC	HL
+	JP	NZ,DIRL2
+	JP	DirectiveDumpROM
+
+	IF	0
 ; ──────────────────────────────────────────────
 ; Вывод текста области памяти с HL по DE
 ; ВХОД:
@@ -353,6 +396,7 @@ AFA17:	CALL	PrintCharFromA
 	AND	0FH
 	JP	Z,DirectiveListROM
 	JP	AFA0B
+	endif
 
 ; ──────────────────────────────────────────────
 ; Перемещает область памяти с HL по DE в адреса BC
@@ -742,22 +786,6 @@ SO6:	DB 	0DH,"OUT OF BUFFER",0
 	DEPHASE
 ENDSAVEROM:
 
-	FILE "ZERO$", 07400H, ENDZEROROM-ZEROROM
-; ПРОГРАММА ОЧИСТКИ ПАМЯТИ (ЗАПИСЬ "0")
-; BO ВСЕ ДОСТУПНЫЕ ПОЛЬЗОВАТЕЛЮ ЯЧЕЙКИ ОЗУ,
-; КРОМЕ ЯЧЕЕК, НАЧИНАЯ С 7400Н).
-ZEROROM:
-	PHASE	07400H
-	LD 	HL,0 	;
-Z1:	LD 	(HL),0 	;ОЧИСТИТЬ
-	INC 	HL 	; ПАМЯТЬ.
-	LD 	A,H 	;
-	CP 	74H 	;ЕСЛИ АДРЕС БОЛЬШЕ
-	JP	NZ, 	Z1 	; 7400Н, ТО ВЫЙТИ
-	JP 	WarmBoot 	;В МЕНЮ.
-	DEPHASE
-ENDZEROROM:
-
 	FILE "TEST$", 00100H, ENDTESTROM-TESTROM
 
 TESTROM:
@@ -1079,6 +1107,12 @@ MTESTF81E:
 	LD	HL, MTESTF81EMsg
 	CALL	0F818H		; Вывод строки
 
+	CALL	DumpRegs
+
+	CALL	0F81EH		; Запрос положения курсора
+
+	CALL	DumpRegs
+
 	LD	HL, AnyKey
 	CALL	0F818H		; Вывод строки
 	CALL	0F803H		; Ожидание ввода
@@ -1092,6 +1126,12 @@ MTESTF821:
 	PUSH	HL
 	LD	HL, MTESTF821Msg
 	CALL	0F818H		; Вывод строки
+
+	CALL	DumpRegs
+
+	CALL	0F821H		; Запрос текущего символа
+
+	CALL	DumpRegs
 
 	LD	HL, AnyKey
 	CALL	0F818H		; Вывод строки
@@ -1135,6 +1175,15 @@ MTESTF82A:
 	LD	HL, MTESTF82AMsg
 	CALL	0F818H		; Вывод строки
 
+	LD	HL, testdata
+	LD	DE, testdataend
+
+	CALL	DumpRegs
+
+	CALL	0F82AH		; Расчет контрольной суммы
+
+	CALL	DumpRegs
+
 	LD	HL, AnyKey
 	CALL	0F818H		; Вывод строки
 	CALL	0F803H		; Ожидание ввода
@@ -1143,11 +1192,21 @@ MTESTF82A:
 	POP	AF
 	RET
 
+testdata:
+	DB	0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,11,22,33,44,22,55,44,88,0EEH
+testdataend: EQU	$-1
+
 MTESTF82D:
 	PUSH	AF
 	PUSH	HL
 	LD	HL, MTESTF82DMsg
 	CALL	0F818H		; Вывод строки
+
+	CALL	DumpRegs
+
+	CALL	0F82DH		; Инициализация видеоподсистемы
+
+	CALL	DumpRegs
 
 	LD	HL, AnyKey
 	CALL	0F818H		; Вывод строки
@@ -1163,6 +1222,12 @@ MTESTF830:
 	LD	HL, MTESTF830Msg
 	CALL	0F818H		; Вывод строки
 
+	CALL	DumpRegs
+
+	CALL	0F830H		; Получить последний адрес памяти
+
+	CALL	DumpRegs
+
 	LD	HL, AnyKey
 	CALL	0F818H		; Вывод строки
 	CALL	0F803H		; Ожидание ввода
@@ -1176,6 +1241,20 @@ MTESTF833:
 	PUSH	HL
 	LD	HL, MTESTF833Msg
 	CALL	0F818H		; Вывод строки
+
+	CALL	0F830H		; Получить границу памяти
+	PUSH	HL
+
+	LD	HL, 02000H
+
+	CALL	DumpRegs
+
+	CALL	0F833H		; установить границу памяти
+
+	CALL	DumpRegs
+	
+	POP	HL		; Восстановить границу озу
+	CALL	0F833H		; установить границу памяти
 
 	LD	HL, AnyKey
 	CALL	0F818H		; Вывод строки
@@ -1191,6 +1270,16 @@ MTESTF836:
 	LD	HL, MTESTF836Msg
 	CALL	0F818H		; Вывод строки
 
+	LD	HL, 02000H
+	LD	A, 1
+
+	CALL	DumpRegs
+
+	CALL	0F836H		; считать из допстраницы
+
+	CALL	DumpRegs
+
+
 	LD	HL, AnyKey
 	CALL	0F818H		; Вывод строки
 	CALL	0F803H		; Ожидание ввода
@@ -1204,6 +1293,17 @@ MTESTF839:
 	PUSH	HL
 	LD	HL, MTESTF839Msg
 	CALL	0F818H		; Вывод строки
+
+	LD	HL, 02000H
+	LD	A, 1
+	LD	C, 077H
+
+	CALL	DumpRegs
+
+	CALL	0F839H		; записать в допстраницу
+
+	CALL	DumpRegs
+
 
 	LD	HL, AnyKey
 	CALL	0F818H		; Вывод строки
@@ -1219,6 +1319,13 @@ MTESTF83C:
 	LD	HL, MTESTF83CMsg
 	CALL	0F818H		; Вывод строки
 
+	LD	HL, 1010H
+	CALL	DumpRegs
+
+	CALL	0F83CH
+
+	CALL	DumpRegs
+
 	LD	HL, AnyKey
 	CALL	0F818H		; Вывод строки
 	CALL	0F803H		; Ожидание ввода
@@ -1233,6 +1340,12 @@ MTESTF83F:
 	LD	HL, MTESTF83FMsg
 	CALL	0F818H		; Вывод строки
 
+	CALL	DumpRegs
+
+	CALL	0F83FH		; Beep
+
+	CALL	DumpRegs
+
 	LD	HL, AnyKey
 	CALL	0F818H		; Вывод строки
 	CALL	0F803H		; Ожидание ввода
@@ -1242,7 +1355,167 @@ MTESTF83F:
 	RET
 
 MONITORNonStdTest:
+	PUSH	AF
+	PUSH	HL
+
+MONITORNonStdTestLoop:
+	LD	HL, MONITORNonStdMsg
+	CALL	0F818H		; Вывод строки
+
+	CALL	0F803H		; Ожидание ввода
+
+	CP	"A"
+	CALL	Z, MTESTF86C
+	CP	"B"
+	CALL	Z, MTESTF8EE
+	CP	"C"
+	CALL	Z, MTESTF92C
+	CP	"D"
+	CALL	Z, MTESTF990
+	CP	"E"
+	CALL	Z, MTESTF9B0
+	CP	"F"
+	CALL	Z, MTESTFA68
+	CP	"G"
+	CALL	Z, MTESTFACE
+	CP	"H"
+	CALL	Z, MTESTFB78
+	CP	"I"
+	CALL	Z, MTESTFD27
+	CP	"0"
+	JP	NZ, MONITORNonStdTestLoop
+	
+	POP	HL
+	POP	AF
+
 	RET
+
+MTESTF86C:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF86CMsg
+	CALL	0F818H		; Вывод строки
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF8EE:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF8EEMsg
+	CALL	0F818H		; Вывод строки
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF92C:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF8EEMsg
+	CALL	0F92CH		; Вывод строки
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF990:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF8EEMsg
+	CALL	0F990H		; Вывод строки
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTF9B0:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF8EEMsg
+	CALL	0F9B0H		; Вывод строки
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTFA68:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF8EEMsg
+	CALL	0FA68H		; Вывод строки
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTFACE:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTF8EEMsg
+	CALL	0FACEH		; Вывод строки
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTFB78:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTFB78Msg
+	CALL	0F818H		; Вывод строки
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
+MTESTFD27:
+	PUSH	AF
+	PUSH	HL
+	LD	HL, MTESTFD27Msg
+	CALL	0F818H		; Вывод строки
+
+	LD	HL, AnyKey
+	CALL	0F818H		; Вывод строки
+	CALL	0F803H		; Ожидание ввода
+
+	POP	HL
+	POP	AF
+	RET
+
 
 DumpRegs:
 	PUSH	HL
@@ -1395,6 +1668,37 @@ MTESTF83CMsg:
 	DB	0dh, 0ah, "prowerka F83CH", 0dh, 0ah, '>', 0
 MTESTF83FMsg:
 	DB	0dh, 0ah, "prowerka F83FH", 0dh, 0ah, '>', 0
+MONITORNonStdMsg:
+	DB	0dh, 0ah, "* testirowanie monitora * wyberite podprogrammu: ", 0dh, 0ah
+	DB	"A F86C", 0dh, 0ah
+	DB	"B F8EE", 0dh, 0ah
+	DB	"C F92C", 0dh, 0ah
+	DB	"D F990", 0dh, 0ah
+	DB	"E F9B0", 0dh, 0ah
+	DB	"F FA68", 0dh, 0ah
+	DB	"G FACE", 0dh, 0ah
+	DB	"H FB78", 0dh, 0ah
+	DB	"I FD27", 0dh, 0ah
+	DB	"0 nazad"
+	DB	0dh, 0ah,">", 0
+MTESTF86CMsg:
+	DB	0dh, 0ah, "prowerka F86CH", 0dh, 0ah, '>', 0
+MTESTF8EEMsg:
+	DB	0dh, 0ah, "prowerka F8EEH", 0dh, 0ah, '>', 0
+MTESTF92CMsg:
+	DB	0dh, 0ah, "prowerka F92CH", 0dh, 0ah, '>', 0
+MTESTF990Msg:
+	DB	0dh, 0ah, "prowerka F990H", 0dh, 0ah, '>', 0
+MTESTF9B0Msg:
+	DB	0dh, 0ah, "prowerka F9B0H", 0dh, 0ah, '>', 0
+MTESTFA68Msg:
+	DB	0dh, 0ah, "prowerka FA68H", 0dh, 0ah, '>', 0
+MTESTFACEMsg:
+	DB	0dh, 0ah, "prowerka FACEH", 0dh, 0ah, '>', 0
+MTESTFB78Msg:
+	DB	0dh, 0ah, "prowerka FB78H", 0dh, 0ah, '>', 0
+MTESTFD27Msg:
+	DB	0dh, 0ah, "prowerka FD27H", 0dh, 0ah, '>', 0
 
 RegistersListStr:
 	db 0Dh, 0Ah, "HL-"
@@ -1461,169 +1765,17 @@ ENDTESTROM:
 	ENDOFFILES
 
 ; ───────────────────────────────────────────────────────────────────────
-; ПРОГРАММА УПРАВЛЕНИЯ ROM-DISK/32K ДЛЯ КОМПЬЮТЕРА 
-; "РАДИО-86РК" С OБЪEMOM ОЗУ ПОЛЬЗОВАТЕЛЯ 16К/32К.
-; ПРОГРАММА УПРАВЛЕНИЯ ЗАФИКСИРОВАНА В ПЗУ 
-; ПО АДРЕСАМ 7E00H-7FFFH. УКАЗАННУЮ ОБЛАСТЬ ПЗУ 
-; ЗАПРЕЩЕНО ИСПОЛЬЗОВАТЬ ПОД ROM-DISK. 
-; ПРОГРАММА ИЗ ПЗУ В ОЗУ ПЕРЕНОСИТСЯ ЗАГРУЗЧИКОМ, 
-; (В MONITORE) ПО ДИРЕКТИВЕ "U" И ЗАНИМАЕТ 
-; ВЕРХНИЕ АДРЕСА ОЗУ, НАЧИНАЯ С 7400Н.
+; ПРОГРАММА УПРАВЛЕНИЯ ROM-DISK/32K
 ; ───────────────────────────────────────────────────────────────────────
 
 	ORG	07E00H
-	
-	PHASE	BASE-0200H
 
-	LD	HL, SO1
-	CALL	PrintString
-	LD	B, 0FFH
-	CALL	SEARCHS
+	if BASE=7600H
+	BINCLUDE "romctrl32k.rom"
+	else
+	BINCLUDE "romctrl16k.rom"
+	endif
 
-	LD	C, '>'
-	CALL	PrintCharFromC
-	CALL	InputSymbol
-	LD	C, A
-	CALL	PrintCharFromC
-	CP	03h
-	JP	Z,WarmBoot
-	SUB	30H
-	LD	B, A
-	LD	HL, FUNC+1
-	LD	(HL), EXECN & 0ffh
-	INC	HL
-	LD	(HL), EXECN >> 8
-	CALL	SEARCHS
-	JP	WarmBoot
-
-SEARCHS:
-	LD	HL, 0800H		; Начало ROM-диска
-	LD	C, L			; LD C, 0
-SEARCH:
-	PUSH	HL			; (1)
-	LD	DE, (8+2+2)-1
-	ADD	HL, DE
-	EX	HL, DE
-	POP	HL			; (1)
-
-	PUSH	HL			; (2)
-	
-	PUSH	BC			; (3)
-
-	LD	BC, T
-	PUSH	BC			; (4)
-	CALL	ReadROM
-	POP	HL			; (4)
-
-	POP	BC			; (3)
-
-	LD	A, (HL)
-	CP	0FFH
-
-	POP	DE			; (2)
-	
-	RET	Z
-
-FUNC:	CALL	PRINTN
-
-	PUSH	DE			; (5)
-;---------------------
-	LD	HL, (T+8+2)
-	LD	A, L			; высчитываем начало следующей записи
-	OR	A			; оканчивается на ноль
-	JP	Z, SKIP
-	OR	0fh
-	LD	L, A
-	INC	HL
-SKIP:
-	LD	DE, 10h
-	ADD	HL, DE
-;---------------------
-	POP	DE			; (5)
-	
-	ADD	HL, DE
-	INC	C
-	JP	SEARCH
-
-PRINTN:
-	PUSH	HL
-	PUSH	BC
-	PUSH	DE
-
-	LD	A, C			; Печатаем порядковый номер
-	ADD	A, 30H
-	LD	C, A
-	CALL	PrintCharFromC
-	LD	C, ' '
-	CALL	PrintCharFromC
-
-	LD	B, 8
-	LD	HL, T
-PLOOP:	LD	A, (HL)			; Печатаем имя
-	LD	C, A
-	CALL	PrintCharFromC
-	INC	HL
-	DEC	B
-	JP	NZ, PLOOP
-
-	INC	HL
-	LD	C, ' '			; Печатаем стартовый адрес
-	CALL	PrintCharFromC
-	LD	A, (HL)
-	CALL	PrintHexByte
-	DEC	HL
-	LD	A, (HL)
-	CALL	PrintHexByte
-
-	INC	HL
-	INC	HL
-	INC	HL
-	LD	C, ' '			; Печатаем размер
-	CALL	PrintCharFromC
-	LD	A, (HL)
-	CALL	PrintHexByte
-	DEC	HL
-	LD	A, (HL)
-	CALL	PrintHexByte
-
-	LD	HL, SO2			; Печатаем перевод строки
-	CALL	PrintString
-	POP	DE
-	POP	BC
-	POP	HL
-	RET
-
-EXECN:
-	LD	A, C
-	SUB	B
-	RET	NZ
-	
-	LD	HL, 010H
-	ADD	HL, DE		; DE - это адрес на ROM-диске
-	EX	DE, HL
-	
-	LD	SP, T+8		; ИСПОЛЬЗУЯ СТЕК,
-	POP	BC		; start
-	POP	HL		; size
-
-	ADD	HL, DE
-	EX	DE, HL
-
-	PUSH	BC		; Читаем в ОЗУ
-	CALL    ReadROM
-	POP	HL
-
-	JP	(HL)          	;И ЗАПУСТИТЬ ПРОГРАММУ.
-
-T:	DB	8+2+2 DUP 0			;
-
-SO1:	DB 	0AH,0DH,"*ROM-DISK/32K* V3.0-23"
-	DB 	0AH,0AH,0DH,"DIRECTORY:"
-SO2:	DB	0AH,0DH,0
-
-	DEPHASE
-
-	DB	08000H-$ DUP (0FFH)
 	CHK	08000H, "* Block overflow ! *"
 	END 				;
 
