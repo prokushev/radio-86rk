@@ -203,29 +203,27 @@ WarmBoot:
 	LD	HL,WarmBoot
 	PUSH	HL			; в стеке лежит адрес возрата в МОНИТОР
 
+	JP	NC,DirectiveReadROM
+
 	CALL	ParseParameters
-	LD	A,(COMBUF)
-	LD	HL,(PAR_BC)		; Z80: LD BC,(PAR_BC)
-	LD	C,L
-	LD	B,H
-	LD	HL,(PAR_DE)		; Z80: LD DE,(PAR_DE)
-	EX	DE,HL
+	LD	A, (COMBUF)
 
 	LD	HL, DIRTABLE-1
 DIRLOOP:
 	INC	HL
 	CP	(HL)
-	PUSH	AF
-	XOR	A
-	CP	(HL)
-	JP	Z,SyntaxError
-	POP	AF
+	JP	M,SyntaxError
 	INC	HL
 	JP	NZ, DIRLOOP
 	LD	L, (HL)
-	PUSH	HL
+	PUSH	HL			; Адрес вызова обработчика директивы
+	LD	HL,(PAR_BC)		; Z80: LD BC,(PAR_BC)
+	LD	C,L
+	LD	B,H
+	LD	HL,(PAR_DE)		; Z80: LD DE,(PAR_DE)
+	EX	DE,HL
 	LD	HL,(PAR_HL)
-	RET
+	RET				; Переход в обработчик директивы
 
 ; ──────────────────────────────────────────────
 
@@ -321,11 +319,12 @@ skip:
 	;		in @sect for further operations.
 
 SetSec:							; 6 bytes
-	ld l,c
-	ld h,b
-	ld (SECT), HL
-	ret
+	LD L,C
+	LD H,B
+	LD (SECT), HL
+	RET
 
+	NOP
 	NOP
 	NOP
 	NOP
@@ -688,7 +687,7 @@ DIRTABLE:				; 23 bytes
 	DB	'T', DirectiveTransfer & 0FFH
 	DB	'U', DirectiveU & 0FFH
 	DB	'Z', DirectiveStart & 0FFH
-	DB	0
+	DB	0FFH
 
 ; ──────────────────────────────────────────────
 
