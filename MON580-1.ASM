@@ -165,31 +165,27 @@ WarmBoot:
 	LD	HL,WarmBoot
 	PUSH	HL			; в стеке лежит адрес возрата в МОНИТОР
 
+	JP	NC,DirectiveReadROM
+
 	CALL	ParseParameters
-;	LD	HL,COMBUF
-;	LD	A,(HL)
 	LD	A, (COMBUF)
-	LD	HL,(PAR_BC)		; Z80: LD BC,(PAR_BC)
-	LD	C,L
-	LD	B,H
-	LD	HL,(PAR_DE)		; Z80: LD DE,(PAR_DE)
-	EX	DE,HL
 
 	LD	HL, DIRTABLE-1
 DIRLOOP:
 	INC	HL
 	CP	(HL)
-	PUSH	AF
-	XOR	A
-	CP	(HL)
-	JP	Z,SyntaxError
-	POP	AF
+	JP	M,SyntaxError
 	INC	HL
 	JP	NZ, DIRLOOP
 	LD	L, (HL)
-	PUSH	HL
+	PUSH	HL			; Адрес вызова обработчика директивы
+	LD	HL,(PAR_BC)		; Z80: LD BC,(PAR_BC)
+	LD	C,L
+	LD	B,H
+	LD	HL,(PAR_DE)		; Z80: LD DE,(PAR_DE)
+	EX	DE,HL
 	LD	HL,(PAR_HL)
-	RET
+	RET				; Переход в обработчик директивы
 
 ; ──────────────────────────────────────────────
 
@@ -332,6 +328,7 @@ TapeWriteFromHLtoDE:
 	JP	TapeWriteFromHLtoDE
 
 	NOP
+	NOP
 
 ; ──────────────────────────────────────────────
 ; Ввод строки в буфер COMBUF
@@ -395,7 +392,7 @@ Enter:	INC	DE
 	EX	DE, HL
 	LD	(HL), B
 	LD	A, 0FFH			;
-	ADD	A, B			; ╙ёЄрэютшЄ№ Їыру яхЁхяюыэхэш , хёыш ўЄю-Єю ттхыш
+	ADD	A, B			; Установить флаг переполнения, если что-то ввели
 	INC	HL
 	EX	DE, HL			; DE на выходе содержит адрес буфера
 	RET
@@ -655,7 +652,7 @@ DIRTABLE:				; 23 bytes
 	DB	'S', DirectiveSearch & 0FFH
 	DB	'T', DirectiveTransfer & 0FFH
 	DB	'U', DirectiveReadROM & 0FFH
-	DB	0
+	DB	0FFH
 
 
 DirectiveModify:
