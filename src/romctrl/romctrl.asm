@@ -140,6 +140,8 @@ PRINTN:
 	LD	B, 8
 	LD	HL, T
 PLOOP:	LD	A, (HL)			; Печатаем имя
+	CP	"$"
+	CALL	Z, PrintCOM
 	LD	C, A
 	CALL	PrintCharFromC
 	INC	HL
@@ -158,7 +160,7 @@ PLOOP:	LD	A, (HL)			; Печатаем имя
 	INC	HL
 	INC	HL
 	INC	HL
-	LD	C, ' '			; Печатаем размер
+	LD	C, 			; Печатаем размер
 	CALL	PrintCharFromC
 	LD	A, (HL)
 	CALL	PrintHexByte
@@ -169,6 +171,13 @@ PLOOP:	LD	A, (HL)			; Печатаем имя
 	LD	HL, SO2			; Печатаем перевод строки
 	CALL	PrintString
 	POP	BC
+	POP	HL
+	RET
+
+PrintCOM:
+	PUSH	HL
+	LD	HL, SO0
+	CALL	PrintString
 	POP	HL
 	RET
 
@@ -190,15 +199,14 @@ EXECN:
 
 	PUSH	BC		; Читаем в ОЗУ
 	CALL	ReadROM
-	POP	HL
-
-	JP	(HL)          	;И ЗАПУСТИТЬ ПРОГРАММУ.
+	RET			; POP HL! JP (HL) ;И ЗАПУСТИТЬ ПРОГРАММУ.
 
 T:	DB	8+2+2 DUP 0			;
 
+SO0:	DB	".COM", ' '+80H
 SO1:	DB 	0AH,0DH,"*ROM-DISK/32K* V3.0-23"
 	DB 	0AH,0AH,0DH,"DIRECTORY:"
-SO2:	DB	0AH,0DH,0
+SO2:	DB	0AH,0DH+80H
 
 	DB	BASE-3-$ DUP (0FFH)
 

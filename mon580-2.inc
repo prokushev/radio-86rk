@@ -4,7 +4,7 @@ IncHLAndRetIfEqDE equ 0FA90H
 GET_HL equ 0FAFFH
 PrintCRAndHexWordAndSpaceAndCRAndHexWordAndSpace equ 0FB72H
 PrintCRAndHexWordBCAndSpace equ 0FB75H
-PrintCharFromA equ 0FCA1H
+PrintCharFromA equ 0FC9FH
 PrintCRAndHexWordAndSpaceAndHexByteMemAndSpace equ 0FDECH
 PrintHexByteFromMemAndSpace equ 0FDEFH
 PrintHexByteAndSpace equ 0FDF0H

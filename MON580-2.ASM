@@ -39,6 +39,7 @@ CHK	MACRO	adr, msg
 ; ──────────────────────────────────────────────
 
 	INCLUDE	"MON580-2-ROM.INC"
+	INCLUDE	"DSKDEF.MAC"
 
 	ORG	RABADR
 
@@ -114,12 +115,31 @@ COD_0D:	LD	L, MARGIN_LEFT		; 3 bytes
 
 	JP	SetCursorPos		; F83C
 	JP	Beep			; F83F
-Version:
-	DB	"V5.x"
+; ──────────────────────────────────────────────
+; Идентификационная строка версии МОНИТОРа
+; 
+; WXYZ
+; ^^^^
+; !!!'----- Битовая маска возможностей
+; !!!       0 - поддержка VT-52
+; !!!       1 - поддержка печати на принтер
+; !!!       2 - поддержка адаптера CP/M
+; !!!       3 - клавиатура MC-7007 (1) или РК86 (0)
+; !!!       4 - Поддержка звука ВИ
+; !!!       5 - резерв
+; !!!       6-7 - схема цветности  00 - ч/б, 01 - схема 1, 10 - схема 2, 11 - схема 3
+; !!'------ Номер версии от 0 до 127 (бит 7 установлен, если это эксперимельная версия)
+; !'------- Битовая маска возможностей
+; !         0-3 - Количество ОЗУ (кратно 4кб)   1100 - 48кб, 1000 - 32кб, 0100 - 16кб, 0011 - 12кб
+; !         4-7 - зарезервировано, должно быть 0
+; '-------- R - РК86
+;           0 - Микро-80
+;           8 - ЮТ-88
+;           M - Микроша
+; ──────────────────────────────────────────────
 
-	NOP
-	NOP
-	NOP
+Version:
+	DB	'R', 00001000b, 0+80h, 0000101b
 
 ; ──────────────────────────────────────────────
 ; Печать строки по адресу HL
@@ -177,6 +197,10 @@ RST_18:	EX	(SP),HL			; 6 bytes
 	EX	(SP),HL
 	RET
 
+	NOP
+	NOP
+	NOP
+
 ; ──────────────────────────────────────────────
 ; "Теплый" старт МОНИТОРа
 ; ВХОД:
@@ -203,7 +227,7 @@ WarmBoot:
 	LD	HL,WarmBoot
 	PUSH	HL			; в стеке лежит адрес возрата в МОНИТОР
 
-	JP	NC,DirectiveReadROM
+	JP	NC,DirectiveU
 
 	CALL	ParseParameters
 	LD	A, (COMBUF)
@@ -330,7 +354,7 @@ SetSec:							; 6 bytes
 	NOP
 	NOP
 	NOP
-
+	
 ; ──────────────────────────────────────────────
 ; Ввод строки в буфер COMBUF
 ; ВХОД:
@@ -798,41 +822,44 @@ TapeWriteBlock:
 	FJMP	4, TapeWriteBlockROM
 
 SetDMA:						; 6 bytes
-	ld l,c
-	ld h,b
-	ld (DMA), HL
-	ret
+	LD L,C
+	LD H,B
+	LD (DMA), HL
+	RET
 
 SecTran:					; 11 bytes
-	ld l,c
-	ld h,b
-	ld a,d
-	or e
-	ret z
-	ex hl, de
-	add hl,bc
-	ld l,(hl)
-	ld h,0
-	ret
+	LD L,C
+	LD H,B
+	LD A,D
+	OR E
+	RET Z
+	EX HL, DE
+	ADD HL,BC
+	LD L,(HL)
+	LD H,0
+	RET
 
 ; ──────────────────────────────────────────────
 
 TABK2:	DB	09,0AH,0DH,7FH,08H,19H,18H,1AH	; 8 bytes
 
 Home:
-	ld	bc, 0				; same as set track zero
+	LD	BC, 0				; same as set track zero
 
 
-	; SETTRK
-	;	Set Track. Saves track address from <BC> 
-	;		in @TRK for further operations.
+; SETTRK
+;	Set Track. Saves track address from <BC> 
+;		in @TRK for further operations.
 
 SetTrk:
-	ld	l,c
-	ld	h,b
+	LD	L,C
+	LD	H,B
 	LD	(TRK), HL
 	RET
 
+;		disks		1
+;		diskdef		0, 1, 8, 1, 1024, 32, 40H, 0, 6
+;		endef
 	DB	15H DUP (0)
 
 	CHK	0FA68H, "* Internal subroutine ReadROM shifted ! *"
@@ -1175,11 +1202,6 @@ KEY_FE:	LD	A,(PC)			; 17 bytes
 	CALL	SET_RL
 	JP	AFE1A
 
-
-	NOP
-	NOP
-
-
 ; ──────────────────────────────────────────────
 ; Загрузка A без поиска синхробайта
 ; ВХОД:
@@ -1453,17 +1475,6 @@ PrintCharFromC:
 	LD	L,A
 	JP	EscapeHandlerEnd
 
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-
-
 skip_TAB:
 	INC	A		;CP	08H
 	JP	Z,CursorLeft
@@ -1527,7 +1538,7 @@ LF:	LD	A,H
 	CALL	MoveBlock	; МОНИТОР-1.20 использует DirectiveTransfer
 	POP	HL
 	RET
-	
+
 ; ──────────────────────────────────────────────
 
 AFEFA:	LD	A,H			; 32 bytes
@@ -1551,6 +1562,21 @@ AFF06:	LD	L,A
 	POP	HL
 	RET
 
+SelDsk:						; 7 bytes
+	LD			A,C
+	OR			A
+	RET			NZ
+;	LD			HL,dpbase
+	RET
+
+
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
 	NOP
 	NOP
 	NOP
@@ -1769,9 +1795,6 @@ InputSymbol:				; 15 bytes
 	LD	(KBDFLG),A
 	LD	A,(LAST_K)
 	RET
-
-
-
 
 ; ──────────────────────────────────────────────
 ; Обработчик ESC-последовательности
@@ -2361,7 +2384,7 @@ BIOSENTRY:
 	JP	TapeWriteByte		; PUNCH/AUXOUT Вывод не перфоратор/магнитофон
 	JP	TapeReadByte		; READER/AUXIN Ввод данных с перволенты/магнитофона
 	JP	Home			; HOME		;21: Перемещение головки на позицию 0
-	JP	0			; SELDSK	;24: Выбор привода
+	JP	SelDsk			; SELDSK	;24: Выбор привода
 	JP	SetTrk			; SETTRK	;27: Выбор дорожки
 	JP	SetSec			; SETSEC	;30: Выбор сектора
 	JP	0			; SETDMA	;33: Set DMA address

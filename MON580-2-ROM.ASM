@@ -52,6 +52,12 @@ FJMP	MACRO	block, adr
 		DB	(adr & 0FFH)
 	ENDM
 
+SFJMP	MACRO	block, adr
+		RST	16
+		DB	block
+		DB	(adr & 0FFH)
+	ENDM
+
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 ; „ «ì­ïï JP Z, block, label
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
@@ -70,7 +76,7 @@ CHK	MACRO	adr, msg
 	ENDM
 
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
-; «®ª 0. ˆ­¨æ¨ «¨§ æ¨ï
+; «®ª 0. ˆ­¨æ¨ «¨§ æ¨ï BDOS
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 
 	ORG	0
@@ -80,12 +86,16 @@ CHK	MACRO	adr, msg
 ; «®ª § é¨âë § £àã§ª¨ ­  Žà¨®­-128. ‚ë¢®¤¨â
 ; á®®¡é¥­¨¥, çâ® ¤ ­­ë© ¤¨áª ¯à¥¤­ §­ ç¥­ ¤«ï  ¤¨®-86Š.
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+
+	PHASE	0B800H			; €¤à¥á § £àã§ª¨ ¤«ï ORDOS
 ORDOSStart:
 	LD	HL, MsgRKOnly
 	CALL	PrintString
 	JP	WarmBoot
 MsgRKOnly:
 	DB	"|tot ROM-disk prednazna~en dlq radio-86r",'k' + 80H
+
+	DEPHASE
 
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 ; ˆ­¨æ¨ «¨§ æ¨ï á¨¬ã«ïâ®à  CP/M
@@ -116,6 +126,11 @@ INITBDOS:
 	LD	HL, FARJZ
 	LD	(9), HL
 
+	; RST 16 (Far Jump)
+	LD	(16), A
+	LD	HL, FARJMP
+	LD	(17), HL
+
 	LD	HL, CPMMSG
 	CALL	PrintString
 	JP	WarmBoot
@@ -135,11 +150,11 @@ CPMMSG:
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 ; «®ª í¬ã«ïæ¨¨ â®ç¥ª ¢å®¤  BDOS
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
-; To make a BDOS call in an 8-bit CP/M, use:
+; To make a BDOS call in a CP/M, use:
 ;
-;    LD  DE,parameter
-;    LD  C,function
-;    CALL    5
+;	LD DE,parameter
+;	LD C,function
+;	CALL 5
 ;
 ; In CP/M 1.x, 8-bit values are returned in A and 
 ; 16-bit values in BA. In later 8-bit versions,
@@ -152,28 +167,54 @@ BDOSENTRY:
 	ADD	HL, SP
 	LD	(TMPSTK), HL
 	LD	SP, 080H
-	DEC	C
-	JP	M, WarmBoot		; ”ã­ªæ¨ï 0 P_TERMCPM
+
 	LD	HL, BDOSRET
 	PUSH	HL			; ‚ áâ¥ª ª« ¤¥¬  ¤à¥á ¢®§¢à â  ¨§ BDOS
+
+	LD	B, 0
 	LD	A, C
-	LD	C, E
-	FJPZ	2, C_READ		; ”ã­ªæ¨ï 1 C_READ
-	DEC	A
-	JP	Z, PrintCharFromC	; ”ã­ªæ¨ï 2 C_WRITE
-	SUB	4
-	FJPZ	2, C_RAWIO		; ”ã­ªæ¨ï 6 C_RAWIO
-	SUB	3
-	FJPZ	2, C_WRITESTR		; ”ã­ªæ¨ï 9 C_WRITESTR
-	DEC	A
-	FJPZ	2, C_READSTR		; ”ã­ªæ¨ï 10 C_READSTR
-	DEC	A
-	JP	Z, GetKeyboardStatus	; ”ã­ªæ¨ï 11 C_STAT
-	DEC	A
-	JP	NZ, WarmBoot	; ”ã­ªæ¨¨ 13 ¨ ¢ëè¥ ­¥ ¯®¤¤¥à¦¨¢ ¥âáï
-	LD	A, 20H		; ”ã­ªæ¨ï 12 S_BDOSVER
-	LD	B, 00H
-	RET
+	CP	30
+	JP	C, NextBDOS
+	LD	HL, FTABLE
+	ADD	HL, BC
+	ADD	HL, BC
+	ADD	HL, BC
+	JP	(HL)
+
+NextBDOS:
+	SFJMP	2, NextBDOSROM
+
+FTABLE:
+	SFJMP	5, P_TERMCPM
+	SFJMP	2, C_READ
+	SFJMP	5, C_WRITE
+	SFJMP	5, A_READ
+	SFJMP	5, A_WRITE
+	SFJMP	5, L_WRITE
+	SFJMP	2, C_RAWIO
+	SFJMP	5, A_STATIN
+	SFJMP	5, A_STATOUT
+	SFJMP	2, C_WRITESTR
+	SFJMP	2, C_READSTR
+	SFJMP	5, C_STAT
+	SFJMP	5, S_BDOSVER
+	SFJMP	5, DRV_ALLRESET
+	SFJMP	5, DRV_SET
+	SFJMP	5, F_OPEN
+	SFJMP	5, F_CLOSE
+	SFJMP	5, F_SFIRST
+	SFJMP	5, F_SNEXT
+	SFJMP	5, F_DELETE
+	SFJMP	5, F_READ
+	SFJMP	5, F_WRITE
+	SFJMP	5, F_MAKE
+	SFJMP	5, F_RENAME
+	SFJMP	5, DRV_LOGINVEC
+	SFJMP	5, DRV_GET
+	SFJMP	5, F_DMAOFF
+	SFJMP	5, DRV_ALLOCVEC
+	SFJMP	5, DRV_SETRO
+	SFJMP	5, DRV_ROVEC
 
 	CHK	ROMBUF+ROMBUFMAX, "* Block overflow ! *"
 	DEPHASE
@@ -284,6 +325,25 @@ ProcessBackspace:
 	JP	InputNextSymbol
 
 BkSp:	DB	8,' ',8+80H
+
+NextBDOSROM:
+	SUB	30
+	LD	C, A
+	LD	HL, FTABLE2
+	ADD	HL, BC
+	ADD	HL, BC
+	ADD	HL, BC
+	JP	(HL)
+
+FTABLE2:
+	SFJMP	5, F_ATTRIB
+	SFJMP	5, DRV_DPB
+	SFJMP	5, F_USERNUM
+	SFJMP	5, F_READRAND
+	SFJMP	5, F_WRITERAND
+	SFJMP	5, F_SIZE
+	SFJMP	5, F_RANDREC
+	SFJMP	5, DRV_RESET
 
 	CHK	ROMBUF+ROMBUFMAX, "* Block overflow ! *"
 	DEPHASE
@@ -570,7 +630,53 @@ TapeWriteFromHLtoDE:
 	ORG	0280H
 	PHASE	ROMBUF
 
-	DB	80H dup 0ffH
+P_TERMCPM:
+	JP	WarmBoot
+
+C_WRITE:
+	JP	PrintCharFromC
+C_STAT:
+	JP	GetKeyboardStatus
+
+A_READ:
+A_WRITE:
+L_WRITE:
+A_STATIN:
+A_STATOUT:
+DRV_ALLRESET:
+DRV_SET:
+F_OPEN:
+F_CLOSE:
+F_SFIRST:
+F_SNEXT;
+F_DELETE:
+F_READ;
+F_WRITE:
+F_MAKE:
+F_RENAME:
+DRV_LOGINVEC:
+DRV_GET:
+F_DMAOFF:
+DRV_ALLOCVEC:
+DRV_SETRO:
+DRV_ROVEC:
+F_ATTRIB:
+DRV_DPB:
+F_USERNUM:
+F_READRAND:
+F_WRITERAND:
+F_SIZE:
+F_RANDREC:
+DRV_RESET:
+F_WRITEZF:
+	LD	B, 00H
+	LD	A, 0FFH
+	RET
+
+S_BDOSVER:
+	LD	A, 20H		; ”ã­ªæ¨ï 12 S_BDOSVER
+	LD	B, 00H
+	RET
 
 	CHK	ROMBUF+ROMBUFMAX, "* Block overflow ! *"
 	DEPHASE
@@ -716,6 +822,10 @@ ENDOFFILES	MACRO
 	DB	0FFH
 	ENDM
 
+	FILE "DUMP$", 100H, 275
+DUMPCOM:
+	BINCLUDE "dump.com"
+
 	FILE "BASIC$", 0, 02000H
 BASICROM:
 	BINCLUDE "basic.rom"
@@ -806,6 +916,7 @@ TESTLOOP:
 	JP	NZ, TESTLOOP
 
 	RST	0				; ‚®§¢à â ¢ CP/M
+
 WelcomeMsg:
 	DB	0dh,0ah,"* analiz sowmestimosti *",0dh,0ah
 	DB	"wyberite komponent:", 0dh, 0ah
@@ -963,6 +1074,15 @@ MTESTF806:
 	LD	HL, AnyKey
 	CALL	0F818H		; ‚ë¢®¤ áâà®ª¨
 	CALL	0F803H		; Ž¦¨¤ ­¨¥ ¢¢®¤ 
+
+	CALL	DumpRegs
+
+	CALL	0F806H		; Ž¦¨¤ ­¨¥ ¢¢®¤  á ¬ £­¨â®ä®­ 
+
+	CALL	DumpRegs
+
+	LD	HL, AnyKey
+	CALL	0F818H		; ‚ë¢®¤ áâà®ª¨
 
 	POP	HL
 	POP	AF
@@ -1628,7 +1748,8 @@ AnyKey:
 TestMsg:
 	DB	0dh,0ah,"test",0dh,0ah,0
 MTESTF806Msg:
-	DB	0dh, 0ah, "prowerka F806H", 0dh, 0ah, '>', 0
+	DB	0dh, 0ah, "prowerka F806H", 0dh, 0ah
+	DB	"wwod bajta s magnitofona. zapustite wosproizwedenie i", 0
 MTESTF809Msg:
 	DB	0dh, 0ah, "prowerka F809H", 0dh, 0ah
 	DB	"wywod simwola iz registra C na |kran.", 0dh, 0ah, '>', 0
@@ -1726,13 +1847,29 @@ CPMTest:
 	PUSH	BC
 	PUSH	DE
 
-	LD	C, 9				; C_WRITESTR
-	LD	DE, CPMBDOSMsg
+CPMTestLoop:
+	LD	DE, CPMMsg
+	LD	C, 9		; ‚ë¢®¤ áâà®ª¨
+	CALL	5		; ‚ë§®¢ BDOS
+
+	CALL	0F803H		; Ž¦¨¤ ­¨¥ ¢¢®¤ 
+
+	CP	"A"
+	CALL	Z, MONITORStdTest
+	CP	"B"
+	CALL	Z, MONITORNonStdTest
+	CP	"0"
+	JP	NZ, MONITORTestLoop
+
+	LD	C, 1				; C_READ
 	CALL	5				; BDOS
 
-	LD	C, 9				; C_WRITESTR
-	LD	DE, CPMBDOSMsg
-	CALL	5				; BDOS
+	CP	"A"
+;	CALL	Z, MONITORTest
+	CP	"B"
+;	CALL	Z, CPMTest
+	CP	"0"
+	JP	NZ, CPMTestLoop
 
 	POP	DE
 	POP	BC
@@ -1740,11 +1877,29 @@ CPMTest:
 	POP	AF
 	RET
 
+FCB	DB	0
+	DB	"BASIC   "
+	DB	"COM"
+	DB	0
+	DB	0
+	DB	0
+	DB	0
+	DB	16 DUP (0)
+	DB	0
+	DB	0
+
+CPMMsg:
+	DB	0dh, 0ah, "* testirowanie CP/M * wyberite komponent: ", 0dh, 0ah
+	DB	"A BIOS", 0dh, 0ah
+	DB	"B BDOS", 0dh, 0ah
+	DB	"0 nazad"
+	DB	0dh, 0ah,">$"
+
 CPMBIOSMsg:
-	DB	"CP/M BIOS", 0dh, 0ah, "CONOUT: ", 0dh, 0ah, "$"
+	DB	0dh,0ah,"CP/M BIOS", 0dh, 0ah, "CONOUT: ", 0dh, 0ah, "$"
 
 CPMBDOSMsg:
-	DB	"CP/M BDOS", 0dh, 0ah, "C_WRITE: ", 0dh, 0ah, "$"
+	DB	0dh,0ah,"CP/M BDOS", 0dh, 0ah, "C_WRITE: ", 0dh, 0ah, "$"
 
 ;CONST	EQU	BIOS+3
 ;CONIN	EQU	BIOS+6
