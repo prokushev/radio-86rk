@@ -166,7 +166,7 @@ BDOSENTRY:
 	LD	HL, 0000H		; Сохраняем стек
 	ADD	HL, SP
 	LD	(TMPSTK), HL
-	LD	SP, 080H
+	LD	SP, 080H		; Инициализируем стек
 
 	LD	HL, BDOSRET
 	PUSH	HL			; В стек кладем адрес возврата из BDOS
@@ -174,7 +174,7 @@ BDOSENTRY:
 	LD	B, 0
 	LD	A, C
 	CP	30
-	JP	C, NextBDOS
+	JP	P, NextBDOS
 	LD	HL, FTABLE
 	ADD	HL, BC
 	ADD	HL, BC
@@ -247,7 +247,7 @@ C_WRITESTR_LOOP:
 	INC	HL
 	JP	C_WRITESTR_LOOP
 
-C_READ:	EX	(SP),HL		; восстанавливаем HL из стеке
+C_READ:	;EX	(SP),HL		; восстанавливаем HL из стеке
 	CALL	InputSymbol	; 6 bytes
 	JP	PrintCharFromA
 
@@ -1851,15 +1851,6 @@ CPMTestLoop:
 	LD	DE, CPMMsg
 	LD	C, 9		; Вывод строки
 	CALL	5		; Вызов BDOS
-
-	CALL	0F803H		; Ожидание ввода
-
-	CP	"A"
-	CALL	Z, MONITORStdTest
-	CP	"B"
-	CALL	Z, MONITORNonStdTest
-	CP	"0"
-	JP	NZ, MONITORTestLoop
 
 	LD	C, 1				; C_READ
 	CALL	5				; BDOS
