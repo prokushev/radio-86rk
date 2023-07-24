@@ -1159,7 +1159,7 @@ DIRTABLE:
 	DB	DirectiveGoto & 0FFH	;G
 	DB	SyntaxError & 0FFH	;H
 	DB	DirectiveInputTape & 0FFH;I
-	DB	SyntaxError & 0FFH	;J
+	DB	DirectiveGoto & 0FFH	;J
 	DB	SyntaxError & 0FFH	;K
 	DB	DirectiveDump & 0FFH	;L
 	DB	DirectiveModify & 0FFH	;M
