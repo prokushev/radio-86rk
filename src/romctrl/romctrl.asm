@@ -80,6 +80,7 @@ SEARCHS:
 	LD	HL, 0800H		; Начало ROM-диска
 	LD	C, L			; LD C, 0
 SEARCH:
+	PUSH	DE			; (0)
 
 	PUSH	HL			; (1)
 	LD	DE, (8+2+2)-1
@@ -88,7 +89,7 @@ SEARCH:
 	POP	HL			; (1)
 
 	PUSH	HL			; (2)
-	
+
 	PUSH	BC			; (3)
 
 	LD	BC, T
@@ -102,6 +103,7 @@ SEARCH:
 	CP	0FFH
 
 	POP	DE			; (2)
+
 
 	RET	Z
 
@@ -121,9 +123,10 @@ SKIP:
 	ADD	HL, DE
 ;---------------------
 	POP	DE			; (5)
-	
+
 	ADD	HL, DE
 	INC	C
+	POP	DE			; (0)
 	JP	SEARCH
 
 PRINTN:
