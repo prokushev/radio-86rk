@@ -135,7 +135,7 @@ BIOSENTRYEND:
 
 ; ──────────────────────────────────────────────
 
-INIT2:					; 15 bytes
+INIT2:					; 14 bytes
 	CALL	RST_18
 	DB	1Fh,"radio-86r",'k' + 80H
 
@@ -169,13 +169,13 @@ WarmBoot:
 
 	CALL	ParseParameters
 
+	; Обработка директив. DIRTABLE должна находится по адресу xx00H
 	LD	A, (COMBUF)
 	SUB	'C'
 	JP	C, SyntaxError		; < 'C'
 	CP	'U'-'C'
 	JP	NC, SyntaxError		; > 'U'
-	;ADD	A, L
-	LD	H, DIRTABLE >>8
+	LD	H, DIRTABLE >> 8
 	LD	L, A
 	LD	L,(HL)
 	PUSH	HL			; Адрес вызова обработчика директивы
@@ -1149,7 +1149,7 @@ GetCursorPos:
 ; ──────────────────────────────────────────────
 DIRTABLE:
 	IF	(DIRTABLE & 0FFH) <> 0
-		ERROR	"DIRTABLE must be at 0"
+		ERROR	"DIRTABLE must be at xx00h"
 	ENDIF
 
 	DB	DirectiveCompare & 0FFH	;C
@@ -1297,9 +1297,12 @@ AFA91:	CALL	TapeReadBlock
 	RET	Z
 	CALL	PrintCRAndHexWordDEAndSpace
 SyntaxError:
+	IF	(SyntaxError & 0FF00H) <> (DirectiveFill & 0FF00H)
+		ERROR	"SyntaxError and DirectiveFill must be in same page"
+	ENDIF
 	CALL	RST_18
 	DB	'?'+80H
-	RET	;JP	WarmBoot
+	JP	WarmBoot
 
 DirectiveCompare:
 	IF	(DirectiveCompare & 0FF00H) <> (DirectiveFill & 0FF00H)
@@ -1470,9 +1473,7 @@ TapeWriteFromHLtoDE:
 	CALL	IncHLAndRetIfEqDE
 	JP	TapeWriteFromHLtoDE
 
-	NOP     ; 8 bytes
-	NOP
-	NOP
+	NOP     ; 6 bytes
 	NOP
 	NOP
 	NOP
@@ -1783,8 +1784,6 @@ AFE2A:	DEC	H			; в рег.A=код клав, в рег.H- COUNT
 	JP	Z,KEY_FE		; если код FE (RUSLAT)
 
 	PUSH	BC			; КЛИК
-	;LD	BC,5003H
-	;CALL	SND_BC
 	CALL	Beep
 	POP	BC
 
@@ -2125,7 +2124,7 @@ skip_ESC_L:
 ClearEOL:
 	PUSH	HL
 KLOOP:	CALL	PrintSpace
-	CALL	GetCursorPos
+	INC	L
 	LD	A, L
 	CP	MARGIN_LEFT+63		; последняя колонка
 	JP	NZ, KLOOP
@@ -2289,64 +2288,6 @@ CursorUp:
 
 
 ; ──────────────────────────────────────────────
-; Первичная инициализация МОНИТОРа
-; ВХОД:
-;	Нет
-; ВЫХОД:
-;	Нет
-; ИЗМЕНЯЕТ:
-;	Не определено
-; ──────────────────────────────────────────────
-
-ColdBoot:
-	LD	HL,BASE-1
-	LD	(RAMTOP),HL
-	INC	HL
-	LD	SP,HL
-
-; ──────────────────────────────────────────────
-; Инициализация симулятора CP/M
-; Размещает точки входа в BIOS и BDOS
-; ──────────────────────────────────────────────
-
-	LD	A, 0C3H			; JMP opcode
-	LD	(HL), A			; LD (BDOSST), A
-	LD	(5), A
-	LD	(0006H), HL		; HL = BDOSST
-
-	LD	C,L			; LD C, 0
-	LD	B,L			; LD B, 0
-
-	LD	(BC), A			; LD (0), A
-
-	LD	L, CURST & 0FFH
-	LD	(HL), 099H
-	CALL	InitVideo
-
-	INC	HL			; LD	HL, RUSLAT
-	LD	DE, COMBUF+COMBUFMAX-1
-	CALL	DirectiveFill
-
-	LD	HL, BIOSENTRY+3		; WBOOT
-	LD	(0001H), HL
-
-	LD	HL, BDOS
-	LD	(BDOSST+1), HL
-
-	LD	A,8AH
-	LD	(PU),A
-
-; ──────────────────────────────────────────────
-; Инициализация констант чтения/записи
-; ──────────────────────────────────────────────
-
-	LD	HL,1D2AH
-	LD	(KNS_RD),HL
-
-	JP	INIT2
-
-
-; ──────────────────────────────────────────────
 ; Блок эмуляции точек входа BDOS
 ; ──────────────────────────────────────────────
 
@@ -2427,13 +2368,73 @@ AFF2A:	LD	A,H
 	POP	HL
 	RET
 
+; ──────────────────────────────────────────────
+; Первичная инициализация МОНИТОРа
+; ВХОД:
+;	Нет
+; ВЫХОД:
+;	Нет
+; ИЗМЕНЯЕТ:
+;	Не определено
+; ──────────────────────────────────────────────
+
+ColdBoot:
+	LD	HL,BASE-1
+	LD	(RAMTOP),HL
+	INC	HL
+	LD	SP,HL
+
+; ──────────────────────────────────────────────
+; Инициализация симулятора CP/M
+; Размещает точки входа в BIOS и BDOS
+; ──────────────────────────────────────────────
+
+	LD	A, 0C3H			; JMP opcode
+	LD	(HL), A			; LD (BDOSST), A
+	LD	(5), A
+	LD	(0006H), HL		; HL = BDOSST
+
+	LD	C,L			; LD C, 0
+	LD	B,L			; LD B, 0
+
+	LD	(BC), A			; LD (0), A
+
+	LD	L, CURST & 0FFH
+	LD	(HL), 099H
+	CALL	InitVideo
+
+	INC	HL			; LD	HL, RUSLAT
+	LD	DE, COMBUF+COMBUFMAX-1
+	CALL	DirectiveFill
+
+	LD	HL, BIOSENTRY+3		; WBOOT
+	LD	(0001H), HL
+
+	LD	HL, BDOS
+	LD	(BDOSST+1), HL
+
+	LD	A,8AH
+	LD	(PU),A
+
+; ──────────────────────────────────────────────
+; Инициализация констант чтения/записи
+; ──────────────────────────────────────────────
+
+	LD	HL,1D2AH
+	LD	(KNS_RD),HL
+
+	JP	INIT2
+
+
 	NOP
 	NOP
 	NOP
 	NOP
 	NOP
 	NOP
-	
+	NOP
+	NOP
+
 	CHK	10000H, "* Size not 2K ! *"
 
 	END
