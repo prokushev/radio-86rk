@@ -68,6 +68,7 @@ SetFreeMemAddr:				; F833
 	LD	(RAMTOP),HL		; 4 bytes
 
 	RET				; F836
+
 ; ──────────────────────────────────────────────
 ; Возврат каретки
 ; ВХОД:
@@ -97,45 +98,56 @@ COD_0D:	LD	L, MARGIN_LEFT
 ; 
 ; WXYZ
 ; ^^^^
-; !!!'----- Битовая маска возможностей
+; !!!`----- Битовая маска возможностей
 ; !!!       0 - поддержка VT-52
 ; !!!       1 - поддержка печати на принтер
-; !!!       2 - поддержка адаптера CP/M
-; !!!       3 - клавиатура MC-7007 (1) или РК86 (0)
-; !!!       4 - Поддержка звука ВИ
-; !!!       5 - резерв
-; !!!       6-7 - схема цветности  00 - ч/б, 01 - схема 1, 10 - схема 2, 11 - схема 3
-; !!'------ Номер версии от 0 до 127 (бит 7 установлен, если это эксперимельная версия)
-; !'------- Битовая маска возможностей
-; !         0-3 - Количество ОЗУ (кратно 4кб)   1100 - 48кб, 1000 - 32кб, 0100 - 16кб, 0011 - 12кб
-; !         4-7 - зарезервировано, должно быть 0
-; '-------- R - РК86
+; !!!       2 - клавиатура MC-7007 (1) или РК86 (0)
+; !!!       3 - Поддержка звука ВИ
+; !!!       4-5 - схема цветности  00 - ч/б, 01 - схема 1, 10 - схема 2, 11 - схема 3
+; !!!       6-7 - резерв
+; !!`------ Битовая маска возможностей
+; !!        0-3 - Количество ОЗУ (кратно 4кб)   1100 - 48кб, 1000 - 32кб, 0100 - 16кб, 0011 - 12кб
+; !!        4-7 - зарезервировано, должно быть 0
+; !`------ Номер версии от 0 до 127 (бит 7 установлен, если это экспериментальная версия)
+; `-------- R - РК86
 ;           0 - Микро-80
 ;           8 - ЮТ-88
 ;           M - Микроша
 ; ──────────────────────────────────────────────
 
 Version:
-	DB	'R', 00001000b, 0+80h, 0000101b
+	DB	'R', 0+80h, 00001000b, 0000101b
+	NOP
+; 24 bytes
+
+INIT2:
+	LD	(HL), 099H
+	CALL	InitVideo
+
+	INC	HL			; LD	HL, RUSLAT
+	LD	DE, COMBUF+COMBUFMAX-1
+	CALL	DirectiveFill
+
+;	LD	HL, BIOSENTRY+3		; WBOOT
+;	LD	(0001H), HL
+
+;	LD	HL, BDOS
+;	LD	(BDOSST+1), HL
+
+	LD	A,8AH
+	LD	(PU),A
 
 ; ──────────────────────────────────────────────
-; Блок эмуляции точек входа BIOS
+; Инициализация констант чтения/записи
 ; ──────────────────────────────────────────────
 
-BIOSENTRY:				; 24 bytes
-	JP	ColdBoot		; CBOOT Холодный старт
-	JP	WarmBoot		; WBOOT Теплый старт
-	JP	GetKeyboardStatus	; CONST Статус консоли
-	JP	InputSymbol		; CONIN Консольный ввод
-	JP	PrintCharFromC		; CONOUT Консольный вывод
-	JP	PrintCharFromC		; LIST Печать на принтер. это д.быть PRINT
-	JP	TapeWriteByte		; PUNCH/AUXOUT Вывод не перфоратор/магнитофон
-	JP	TapeReadByte		; READER/AUXIN Ввод данных с перволенты/магнитофона
-BIOSENTRYEND:
+	LD	HL,1D2AH
+	LD	(KNS_RD),HL
 
 ; ──────────────────────────────────────────────
+; Вывод приветсвия
+; ──────────────────────────────────────────────
 
-INIT2:					; 14 bytes
 	CALL	RST_18
 	DB	1Fh,"radio-86r",'k' + 80H
 
@@ -254,8 +266,21 @@ TapeReadWord:
 
 ; ──────────────────────────────────────────────
 
+Home:					; 9 bytes
+	LD	BC, 0			; same as set track zero
 
-TABK2:	DB	09,0AH,0DH,7FH,08H,19H,18H,1AH	; 8 bytes
+
+; ──────────────────────────────────────────────
+; SetTrk
+; Set Track. Saves track address from <BC> 
+; in TRK for further operations.
+; ──────────────────────────────────────────────
+
+SetTrk:
+	LD	L,C
+	LD	H,B
+	LD	(TRK), HL
+	RET
 
 ; ──────────────────────────────────────────────
 ; Печать с новой строки знаение HL в 16-м формате, пробела и
@@ -269,7 +294,7 @@ TABK2:	DB	09,0AH,0DH,7FH,08H,19H,18H,1AH	; 8 bytes
 ; ──────────────────────────────────────────────
 
 PrintCRAndHexWordAndSpaceAndHexByteMemAndSpace:
-	CALL	PrintCRAndHexWordAndSpace			; 12 bytes
+	CALL	PrintCRAndHexWordAndSpace			; ?? bytes
 
 ; ──────────────────────────────────────────────
 ; Печать числа из ячейки памяти HL в 16-м формате и пробела
@@ -308,8 +333,10 @@ PrintHexByteAndSpace:
 ; ──────────────────────────────────────────────
 
 PrintSpace:
-	LD	A, ' '
-	JP	PrintCharFromA
+	LD	A, ' '+2
+	DEC	HL
+	DB	0C6H		; ADD A, 07EH
+	;JP	PrintCharFromA
 
 ; ──────────────────────────────────────────────
 ; Печать строки по адресу HL
@@ -399,13 +426,7 @@ Enter:	INC	DE
 	RET
 
 ; ──────────────────────────────────────────────
-
-TOBACK:					; 6 bytes
-	CALL	SetCursorPos
-	JP	POPREGA
-
-	NOP
-	NOP
+TABK2:	DB	09,0AH,0DH,7FH,08H,19H,18H,1AH	; 8 bytes
 
 ; ──────────────────────────────────────────────
 ; Читает аргументы со второй позиции буфера команды в регистры HL, DE, BC
@@ -504,28 +525,8 @@ Compare_HL_DE:
 	RET
 
 ; ──────────────────────────────────────────────
-; Ввод символа без ожидания с проверкой нажатия Ctrl-C. 
-; При нажатии Ctrl-C выход в МОНИТОР с переинцициализацией ВГ.
-; ВХОД:
-;	Нет
-; ВЫХОД:
-;	A=0FFH - не нажата
-;	A=0FEH - РУС/ЛАТ
-;	A - код клавиши
-; ИЗМЕНЯЕТ:
-;	AF		 TODO: проверить, что изменяет ReadKeyCode и InitVideo
-; ──────────────────────────────────────────────
 
-ReadKeyCodeChkBrk:
-	CALL	ReadKeyCode			; 12 bytes
-	CP	3
-	RET	NZ
-	CALL	InitVideo
-	JP	SyntaxError
-
-; ──────────────────────────────────────────────
-
-CALC:					; 13 bytes
+CALC:				; 13 bytes
 	INC	A
 	LD	DE, 78		;В DE ДЛИНУ СТРОКИ
 	LD	HL, -78		;ВЫЧИСЛЕНИЕ
@@ -536,7 +537,19 @@ S1:;				;ФОРМУЛЕ:
 	JP	NZ,S1
 	RET
 
-	nop
+	NOP			; 13 bytes
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
 
 	CHK	0F9B0H, "* Internal subroutine PrintCR shifted ! *"
 
@@ -547,8 +560,11 @@ PrintCR:
 
 ; ──────────────────────────────────────────────
 
-C_READ:	CALL	InputSymbol	; 6 bytes
-	JP	PrintCharFromA
+SetDMA:						; 6 bytes
+	LD L,C
+	LD H,B
+	LD (DMA), HL
+	RET
 
 ; ──────────────────────────────────────────────
 
@@ -601,9 +617,9 @@ SetCursorPos:
 
 	; Вычисляем адрес видеопамяти
 	LD	C, L		;В С КООРДИНАТУ X
-CALC2:	LD	A, H		;В А КООРДИНАТУ Y
+	LD	A, H		;В А КООРДИНАТУ Y
 	CALL	CALC
-PROD:	LD	DE, SA		; ЗАГРУЗИТЬ АДРЕС
+	LD	DE, SA		; ЗАГРУЗИТЬ АДРЕС
 	ADD	HL, DE		; КООРДИНАТ 0. 0.
 	LD	B, 0		; СЛОЖИТЬ С АДРЕСОМ НАЧАЛА
 	ADD	HL, BC		; И ПРИБАВИТЬ X
@@ -618,43 +634,30 @@ RST_18:	EX	(SP),HL			; 6 bytes
 	RET
 
 ; ──────────────────────────────────────────────
-; Печать строки по адресу DE
-; ВХОД:
-;	DE	- адрес строки. $ - признак конца
-; ВЫХОД:
-;	HL	- адрес последнего напечатанного символа
-; ИЗМЕНЯЕТ:
-;	AF, HL, DE
-; ──────────────────────────────────────────────
-
-C_WRITESTR:				; 11 bytes
-	LD	A,(DE)
-	CP	'$'
-	RET	Z
-	CALL	PrintCharFromA
-	INC	DE
-	JP	C_WRITESTR
-
-; ──────────────────────────────────────────────
-; Возвращает символ в текущих координатах видео ОЗУ
+; Ввод символа без ожидания с проверкой нажатия Ctrl-C. 
+; При нажатии Ctrl-C выход в МОНИТОР с переинцициализацией ВГ.
 ; ВХОД:
 ;	Нет
 ; ВЫХОД:
-;	A	- символ в текущих координатах
+;	A=0FFH - не нажата
+;	A=0FEH - РУС/ЛАТ
+;	A - код клавиши
 ; ИЗМЕНЯЕТ:
-;	A
+;	AF		 TODO: проверить, что изменяет ReadKeyCode и InitVideo
 ; ──────────────────────────────────────────────
 
-ReadVideoRAM:
-	PUSH	HL			; 7 bytes
+ReadKeyCodeChkBrk:
+	CALL	ReadKeyCode			; 12 bytes
+	CP	3
+	RET	NZ
+	CALL	InitVideo
+	JP	SyntaxError
+
+; ──────────────────────────────────────────────
+
+TOBACK:					; 6 bytes
 	CALL	SetCursorPos
-	LD	A,(HL)
-	POP	HL
-	RET
-
-
-; ──────────────────────────────────────────────
-
+	JP	POPREGA
 
 ; ──────────────────────────────────────────────
 ; Увеличивает HL и вызывает второй RET, если равен DE
@@ -692,13 +695,11 @@ POPAF:	POP	AF
 
 ; ──────────────────────────────────────────────
 
-
-
 AFBFF:	CP	19H		; ОБРАТНЫЙ С/БАЙТ
 	JP	NZ,AFBB7	; 58 bytes
 	LD	A,0FFH
-	LD	(INV_MG),A 	; Tape inverse flag
-AFC09:	LD	D,9
+SETINV:	LD	(INV_MG),A 	; Tape inverse flag
+	LD	D,9
 AFC0B:	DEC	D
 	JP	NZ,AFBB7
 
@@ -790,11 +791,11 @@ AFEF3:	LD	A,H			; 7 bytes
 
 ; ──────────────────────────────────────────────
 
-BDOSRET:				; Точка возврата из функции BDOS
-	LD	HL, (TMPSTK)		; 7 bytes
-	LD	SP, HL
-	LD	L, A
-	LD	H, B
+SelDsk:						; 7 bytes
+	LD			A,C
+	OR			A
+	RET			NZ
+	LD			HL, 0		; dpbase
 	RET
 
 ; ──────────────────────────────────────────────
@@ -1118,8 +1119,7 @@ AFBDD:	POP	AF		; Регенерация ОЗУ
 	CP	0E6H		; ПРЯМОЙ СИНХРО-БАЙТ ?
 	JP	NZ,AFBFF
 	XOR	A
-	LD	(INV_MG),A	; ПРИЗНАК ИНВЕРСИИ МАГНИТОФОНА
-	JP	AFC09
+	JP	SETINV
 
 ; ──────────────────────────────────────────────
 
@@ -1132,18 +1132,20 @@ KEY_FE:	LD	A,(PC)			; 17 bytes
 	JP	AFE1A
 
 ; ──────────────────────────────────────────────
-; Возвращает в HL координаты курсора
+; Возвращает символ в текущих координатах видео ОЗУ
 ; ВХОД:
 ;	Нет
 ; ВЫХОД:
-;	H - Y
-;	L - X
+;	A	- символ в текущих координатах
 ; ИЗМЕНЯЕТ:
-;	HL
+;	A
 ; ──────────────────────────────────────────────
 
-GetCursorPos:
-	LD	HL,(POSX)		; 4 bytes
+ReadVideoRAM:
+	PUSH	HL				; 7 bytes
+	CALL	SetCursorPos
+	LD	A,(HL)
+	POP	HL
 	RET
 
 ; ──────────────────────────────────────────────
@@ -1224,13 +1226,14 @@ DirectiveTransfer:
 	IF	(DirectiveFill & 0FF00H) <> (DirectiveTransfer & 0FF00H)
 		ERROR	"DirectiveGoto and DirectiveTransfer must be in same page"
 	ENDIF
-DirectiveTransferLoop:	
-	LD	A,(HL)			; 9 bytes
+DirectiveTransferLoop:			; 9 bytes
+	LD	A,(HL)
 	LD	(BC),A
 	INC	BC
 	CALL	IncHLAndRetIfEqDE
 	JP	DirectiveTransferLoop
-
+	NOP
+	NOP
 ; ──────────────────────────────────────────────
 ; Считывает область памяти ROM-диска с HL по DE в адреса BC ОЗУ
 ; ВХОД:
@@ -1311,11 +1314,12 @@ DirectiveCompare:
 
 	LD	A,(BC)			; 19 bytes
 	CP	(HL)
-	JP	Z,AF9E6
+	JP	Z,BytesEqual
 	CALL	PrintCRAndHexWordAndSpaceAndHexByteMemAndSpace
 	LD	A,(BC)
 	CALL	PrintHexByteAndSpace
-AF9E6:	INC	BC
+BytesEqual:
+	INC	BC
 	CALL	IncHLAndRetIfEqDEWithBrk
 	JP	DirectiveCompare
 
@@ -1357,7 +1361,6 @@ DirectiveDump:
 	CALL	PrintCRAndHexWordAndSpace
 	PUSH	HL
 	LD	BC,808H
-	;PrintCRAndHexWordAndSpace
 DIRL1:	CALL	PrintHexByteFromMemAndSpace
 	DEC	C
 	INC	HL
@@ -1370,12 +1373,12 @@ DIRL2:	LD	A,(HL)
 	JP	NC,AFA17
 AFA15:	LD	A,'.'
 AFA17:	CALL	PrintCharFromA
-	CALL	Compare_HL_DE
-	RET	Z
+	CALL	IncHLAndRetIfEqDE
 	DEC	B
-	INC	HL
 	JP	NZ,DIRL2
 	JP	DirectiveDump
+	NOP
+	NOP
 
 ; ──────────────────────────────────────────────
 
@@ -1387,9 +1390,10 @@ DirectiveOutputTape:
 
 	LD	A,C
 	OR	A
-	JP	Z,AFB35
+	JP	Z,UseLastConst
 	LD	(KNS_WR),A
-AFB35:	PUSH	HL
+UseLastConst:
+	PUSH	HL
 	CALL	CalcChecksum
 	POP	HL
 	
@@ -1473,12 +1477,20 @@ TapeWriteFromHLtoDE:
 	CALL	IncHLAndRetIfEqDE
 	JP	TapeWriteFromHLtoDE
 
-	NOP     ; 6 bytes
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
+; ──────────────────────────────────────────────
+; Возвращает в HL координаты курсора
+; ВХОД:
+;	Нет
+; ВЫХОД:
+;	H - Y
+;	L - X
+; ИЗМЕНЯЕТ:
+;	HL
+; ──────────────────────────────────────────────
+
+GetCursorPos:
+	LD	HL,(POSX)		; 4 bytes
+	RET
 
 ; ──────────────────────────────────────────────
 ; Подача звукового сигнала
@@ -1701,7 +1713,7 @@ skip_TAB:
 	JP	Z,CursorLeft
 	INC	A		;CP	07H
 	JP	Z, Beep
-	CALL	SetCursorPos
+	CALL	SetCursorPos	; Получаем адрес символа
 	LD	(HL),C		; Видимый на экране символ
 	LD	HL,(POSX)
 
@@ -1799,27 +1811,6 @@ AFE4C:	LD	A,0FFH
 
 
 ; ──────────────────────────────────────────────
-;BDOS function 6 (C_RAWIO) - Direct console I/O
-;Supported by: CP/M 1.4 and later, with variations
-;Entered with C=6, E=code. Returned values (in A) vary.
-;
-;E=0FFh
-;Return a character without echoing if one is waiting;
-; zero if none is available. In MP/M 1, this works like
-; E=0FDh below and waits for a character.
-;Values of E not supported on a particular system will
-; output the character. Under CP/M 2 and lower, direct 
-;console functions may interact undesirably with non-direct
-; ones, since certain buffers may be bypassed. Do not mix them.
-; ──────────────────────────────────────────────
-
-C_RAWIO:
-	INC	E		; Test for 0FFH
-	JP	NZ,PrintCharFromC
-	CALL	GetKeyboardStatus
-	RET	Z
-
-; ──────────────────────────────────────────────
 ; Ввод символа с ожиданием. 
 ; ВХОД:
 ;	Нет
@@ -1829,7 +1820,7 @@ C_RAWIO:
 ;	AF		 TODO: проверить, что изменяет GetKeyboardStatus
 ; ──────────────────────────────────────────────
 
-InputSymbol:
+InputSymbol:				; 15 bytes
 	CALL	GetKeyboardStatus
 	OR	A
 	JP	Z,InputSymbol
@@ -2089,6 +2080,7 @@ RLUP:	PUSH	HL
 	LD	DE, SCBASE+26*78
 	CALL	DirectiveTransfer
 	POP	HL
+	XOR	A	; Защита от дальнейшей ложной обработки
 
 skip_ESC_M:
 	INC	A		;CP	'L'
@@ -2146,7 +2138,7 @@ skip_ESC_K:
 ; ──────────────────────────────────────────────
 ClearEOS:
 	PUSH	HL
-	CALL	SetCursorPos
+	CALL	SetCursorPos	; Получаем адрес курсора
 CLSLOO:	XOR	A
 	LD	(HL),A
 	INC	HL
@@ -2286,38 +2278,6 @@ CursorUp:
 	DEC	H		; POSY--
 	RET
 
-
-; ──────────────────────────────────────────────
-; Блок эмуляции точек входа BDOS
-; ──────────────────────────────────────────────
-
-BDOS:	LD	HL, 0000H	; Сохраняем стек
-	ADD	HL, SP
-	LD	(TMPSTK), HL
-	LD	SP, STACK
-	DEC	C
-	JP	M, WarmBoot	; Функция 0 P_TERMCPM
-	LD	HL, BDOSRET
-	PUSH	HL
-	LD	A, C
-	LD	C, E
-	JP	Z, C_READ	; Функция 1 C_READ
-	DEC	A
-	JP	Z, PrintCharFromC	; Функция 2 C_WRITE
-	SUB	4
-	JP	Z, C_RAWIO	; Функция 6 C_RAWIO
-	SUB	3
-	JP	Z, C_WRITESTR	; Функция 9 C_WRITESTR
-	DEC	A
-	JP	Z, C_READSTR	; Функция 10 C_READSTR
-	DEC	A
-	JP	Z, GetKeyboardStatus	; Функция 11 C_STAT
-	DEC	A
-	JP	NZ, WarmBoot	; Функции 13 и выше не поддерживается
-	LD	B, A		; LD	B, 00H
-	LD	A, 20H		; Функция 12 S_BDOSVER
-	RET
-
 ; ──────────────────────────────────────────────
 ; Ввод символа без ожидания. 
 ; ВХОД:
@@ -2368,6 +2328,7 @@ AFF2A:	LD	A,H
 	POP	HL
 	RET
 
+
 ; ──────────────────────────────────────────────
 ; Первичная инициализация МОНИТОРа
 ; ВХОД:
@@ -2379,53 +2340,123 @@ AFF2A:	LD	A,H
 ; ──────────────────────────────────────────────
 
 ColdBoot:
-	LD	HL,BASE-1
+	LD	HL,BASE-1		; 75FFH/35FFH
 	LD	(RAMTOP),HL
 	INC	HL
-	LD	SP,HL
+	LD	SP,HL			; 7600H/3600H
 
 ; ──────────────────────────────────────────────
 ; Инициализация симулятора CP/M
 ; Размещает точки входа в BIOS и BDOS
 ; ──────────────────────────────────────────────
 
-	LD	A, 0C3H			; JMP opcode
-	LD	(HL), A			; LD (BDOSST), A
-	LD	(5), A
-	LD	(0006H), HL		; HL = BDOSST
+;	LD	A, 0C3H			; JMP opcode
+;	LD	(HL), A			; LD (BDOSST), A
+;	LD	(5), A
+;	LD	(0006H), HL		; HL = BDOSST
 
 	LD	C,L			; LD C, 0
-	LD	B,L			; LD B, 0
+;	LD	B,L			; LD B, 0
 
-	LD	(BC), A			; LD (0), A
+;	LD	(BC), A			; LD (0), A
 
-	LD	L, CURST & 0FFH
-	LD	(HL), 099H
-	CALL	InitVideo
+	LD	L, CURST & 0FFH		; LD HL, CURST
 
-	INC	HL			; LD	HL, RUSLAT
-	LD	DE, COMBUF+COMBUFMAX-1
-	CALL	DirectiveFill
-
-	LD	HL, BIOSENTRY+3		; WBOOT
-	LD	(0001H), HL
-
-	LD	HL, BDOS
-	LD	(BDOSST+1), HL
-
-	LD	A,8AH
-	LD	(PU),A
-
-; ──────────────────────────────────────────────
-; Инициализация констант чтения/записи
-; ──────────────────────────────────────────────
-
-	LD	HL,1D2AH
-	LD	(KNS_RD),HL
 
 	JP	INIT2
 
+; ──────────────────────────────────────────────
+; Блок эмуляции точек входа BIOS
+; ──────────────────────────────────────────────
 
+BIOSENTRY:				; ?? bytes
+	JP	ColdBoot		; CBOOT Холодный старт
+	JP	WarmBoot		; WBOOT Теплый старт
+	JP	GetKeyboardStatus	; CONST Статус консоли
+	JP	InputSymbol		; CONIN Консольный ввод
+	JP	PrintCharFromC		; CONOUT Консольный вывод
+	JP	PrintCharFromC		; LIST Печать на принтер. это д.быть PRINT
+	JP	TapeWriteByte		; PUNCH/AUXOUT Вывод не перфоратор/магнитофон
+	JP	TapeReadByte		; READER/AUXIN Ввод данных с перволенты/магнитофона
+	JP	Home			; HOME		;21: Перемещение головки на позицию 0
+	JP	SelDsk			; SELDSK	;24: Выбор привода
+	JP	SetTrk			; SETTRK	;27: Выбор дорожки
+	JP	SetSec			; SETSEC	;30: Выбор сектора
+	JP	SetDMA			; SETDMA	;33: Set DMA address
+	JP	0			; READ		;36: Read a sector
+	LD	A, 2			; WRITE		;39: Write a sector
+	RET
+	LD	A,0FFH			; LISTST	;42: Status of list device
+	RET
+	;JP	SecTran			; SECTRAN	;45: Sector translation for skewing
+BIOSENTRYEND:
+
+SecTran:					; 11 bytes
+	LD L,C
+	LD H,B
+	LD A,D
+	OR E
+	RET Z
+	EX HL, DE
+	ADD HL,BC
+	LD L,(HL)
+	LD H,0
+	RET
+
+; ──────────────────────────────────────────────
+; SetSec
+; Set Sector.  Saves sector number from <BC>
+; in SECT for further operations.
+; ──────────────────────────────────────────────
+
+SetSec:							; 6 bytes
+	LD L,C
+	LD H,B
+	LD (SECT), HL
+	RET
+
+
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
 	NOP
 	NOP
 	NOP
