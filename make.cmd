@@ -3,7 +3,14 @@
 SET PATH=tools;%PATH%
 
 echo MONITOR 1.20 32KB
-asw -lU -i . -D BASE=07600H src\monitor\mon580-1.asm > mon580-1-32.lst
+asw -lUa -i . -i roms\romctrl -D BASE=07600H -D STUB=1 mon580-2-rom.asm > mon580-2-32-rom-1.lst
+asw -lUa -i . -D BASE=07600H src\monitor\mon580-1.asm > mon580-1-32.lst
+asw -lUa -i . -i roms\romctrl -D BASE=07600H -D STUB=0 mon580-2-rom.asm > mon580-2-32-rom-2.lst
+
+exit
+
+:asw -lU -i . -D BASE=07600H src\monitor\mon580-1.asm > mon580-1-32.lst
+
 p2bin src\monitor\mon580-1.p roms\1.20-32\b2m\bios.rom
 p2bin src\monitor\mon580-1.p roms\1.20-32\b2m\radiorom.rom
 p2bin src\monitor\mon580-1.p roms\1.20-32\emu80\rk86.rom

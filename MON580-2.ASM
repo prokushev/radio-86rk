@@ -320,6 +320,7 @@ TapeReadWord:
 ;	A	- ­®¬¥à ¡«®ª  (0-15)
 ; ‚›•Ž„:
 ; ˆ‡Œ…Ÿ…’:
+;	BC, DE
 ; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 
 ReadBlock:
@@ -2433,9 +2434,8 @@ FARJMP:
 	PUSH	DE
 	LD	A, (HL)			; ®¬¥à ¡«®ª 
 	INC	HL
-	LD	B, (HL)
+	LD	L, (HL)			; €¤à¥á ¯¥à¥å®¤ 
 	LD 	H, ROMBUF>>8
-	LD 	L, B			; €¤à¥á ¯¥à¥å®¤ 
 	LD	(PAR_HL), HL
 	CALL	ReadBlock		; ‘ç¨âë¢ ¥¬ ¡«®ª c ROM-¤¨áª 
 	LD	HL, (PAR_HL)
@@ -2461,6 +2461,8 @@ BDOSRET:				; ’®çª  ¢®§¢à â  ¨§ äã­ªæ¨¨ BDOS
 	LD	L, A
 	LD	H, B
 	RET
+
+	NOP
 
 	CHK	10000H, "* Size not 2K ! *"
 

@@ -6,6 +6,19 @@
 	CPU	8080
 	Z80SYNTAX	EXCLUSIVE
 
+; ──────────────────────────────────────────────
+; Дальняя JMP block, label
+; ──────────────────────────────────────────────
+
+FJMP	MACRO	block, adr
+		CALL	FARJMP
+		DB	block
+		DB	(adr & 0FFH)
+	ENDM
+
+; ──────────────────────────────────────────────
+; Проверка контрольной точки
+; ──────────────────────────────────────────────
 
 CHK	MACRO	adr, msg
 		IF	adr-$
@@ -16,6 +29,8 @@ CHK	MACRO	adr, msg
 ; ──────────────────────────────────────────────
 
 	INCLUDE	"SYSVARS.INC"
+
+	INCLUDE	"MON580-2-ROM.INC"
 
 	ORG	RABADR
 
@@ -2045,10 +2060,10 @@ RLUP:	PUSH	HL
 	LD	BC, SA
 	ADD	HL, BC
 	PUSH	HL
-	LD	BC, 78
+	LD	BC, SC_WIDTH
 	ADD	HL, BC
 	POP	BC
-	LD	DE, SCBASE+26*78
+	LD	DE, SCBASE+26*SC_WIDTH
 	CALL	DirectiveTransfer
 	POP	HL
 	XOR	A	; Защита от дальнейшей ложной обработки
@@ -2146,8 +2161,8 @@ RLDN:
 	LD	A, 27
 	SUB	H
 	CALL	CALC
-	LD	DE, SCBASE+24*78-1
-	LD	BC, SCBASE+25*78-1
+	LD	DE, SCBASE+24*SC_WIDTH-1
+	LD	BC, SCBASE+25*SC_WIDTH-1
 RLFLOOP:
 	LD	A, (DE)
 	LD	(BC), A
@@ -2299,8 +2314,6 @@ AFF2A:	LD	A,H
 	POP	HL
 	RET
 
-
-
 ; ──────────────────────────────────────────────
 ; Запись блока с HL по DE на магнитофон
 ; ВХОД:
@@ -2323,11 +2336,11 @@ TapeWriteFromHLtoDE:
 
 CALC:				; 13 bytes
 	INC	A
-	LD	DE, 78		;В DE ДЛИНУ СТРОКИ
-	LD	HL, -78		;ВЫЧИСЛЕНИЕ
+	LD	DE, SC_WIDTH	;В DE ДЛИНУ СТРОКИ
+	LD	HL, -SC_WIDTH	;ВЫЧИСЛЕНИЕ
 				;АДРЕСА ПО
 S1:;				;ФОРМУЛЕ:
-	ADD	HL, DE		;АДРЕС=78*Y
+	ADD	HL, DE		;АДРЕС=SC_WIDTH*Y
 	DEC	A
 	JP	NZ,S1
 	RET
@@ -2416,54 +2429,57 @@ S1:;				;ФОРМУЛЕ:
 	NOP
 	NOP
 	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
+
+
+	SHARED	FARJMP
+FARJMP:	
+	EX	(SP), HL		; Сохраняем HL в стек, а в HL адрес возврата
+	PUSH	AF
+	PUSH	BC
+	PUSH	DE
+	LD	A, (HL)			; Номер блока
+	INC	HL
+	LD	L, (HL)			; Адрес перехода
+	LD 	H, ROMBUF>>8
+	PUSH	HL
+	LD	BC, ROMBUF
+	LD	L, 0
+	LD	E, 080h
+	OR	A					; SCF,CCF	; CY=0
+	RRA						; A/2
+	LD	H, A
+	LD	D, A
+	JP	NC, skip
+	EX	DE, HL					; L<->E
+	INC	D
+skip:
+	DEC	DE
+	CALL	DirectiveReadROM			; HL-начальный, DE-конечный, BC-целевой
+
+	POP	HL
+	POP	DE
+	POP	BC
+	POP	AF
+	EX	(SP), HL		; Восстанавливаем значение HL, а адрес перехода помещеам в стек
+	RET				; Вызываем считанную функцию
+
+; ──────────────────────────────────────────────
+; Точка вызова функции BDOS
+; ──────────────────────────────────────────────
+	SHARED	BDOS
+BDOS:	FJMP	1, BDOSENTRY		; 5 bytes
+
+; ──────────────────────────────────────────────
+; Точка возврата из функции BDOS
+; ──────────────────────────────────────────────
+	SHARED	BDOSRET
+BDOSRET:				; Точка возврата из функции BDOS
+	LD	HL, (TMPSTK)		; 7 bytes
+	LD	SP, HL
+	LD	L, A
+	LD	H, B
+	RET
+
 
 	CHK	10000H, "* Size not 2K ! *"
 

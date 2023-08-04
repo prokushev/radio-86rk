@@ -11,6 +11,6 @@ PrintHexByteAndSpace equ 0FDF0H
 BIOSENTRY equ 0FF70H
 FARJZ equ 0FFD3H
 FARJMP equ 0FFDCH
-BDOS equ 0FFF4H
-BDOSRET equ 0FFF9H
+BDOS equ 0FFF3H
+BDOSRET equ 0FFF8H
 ; Ende Include File for Assembler Program
