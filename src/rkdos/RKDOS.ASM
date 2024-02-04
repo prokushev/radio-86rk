@@ -1,4 +1,4 @@
-.xlist
+RKDOS.ASM.xlist
 ; TODO: Планируется выбросить кое-какие вещи и запользовать их
 ; из МОНИТОРа, используя "псевдостандартные" точки входа.
 ; Возможно, дополнить поддержкой РОМ-Диска.
@@ -109,7 +109,16 @@ endif
 
 	.phase	RKDOS
 
+;────────────────────────────────────────────
+; "Холодный" старт ДОС
+;────────────────────────────────────────────
 	XOR	A
+
+;────────────────────────────────────────────
+; Вызов функций ДОС
+; 13 байт
+;────────────────────────────────────────────
+
 BDOS:	PUSH	HL
 	LD	HL, ATABLE
 	ADD	A, A
@@ -123,52 +132,54 @@ BDOS:	PUSH	HL
 	RET	
 
 ;────────────────────────────────────────────
-
-ATABLE:	DW	START		
-	DW	START2
-	DW	VHOD2
-	DW	DIR
-	DW	TYPE
-	DW	SAVE
-	DW	LOAD
-	DW	OPFREE
-	DW	WRSKT
-	DW	RDSKT
-	DW	OPWR
-	DW	OPRD
-	DW	KANR
-	DW	KANW
-	DW	SAVE2
-	DW	LOCVT
-	DW	CMP_3B
-	DW	FRSVT
-	DW	DELF
-	DW	RDCAT
-	DW	RCAT
-	DW	ANSTR
-	DW	ANEXT
-	DW	CONTLD
-	DW	KOMM
-	DW	KOM2
-	DW	SELBUF
-	DW	FREBUF
-	DW	RAMTOP
-	DW	OPENR
-	DW	OPENW
-	DW	APPEND
-	DW	READ
-	DW	WRITE
-	DW	CLOSER
-	DW	CLOSEW
-	DW	INKAN
-	DW	OUTKAN
-	DW	PUSK
-	DW	OSTANOV
-	DW	COPYING
-	DW	ERRMAN
-	DW	ADDRES
-	DW	LD1
-	DW	BX3
+; Таблица адресов функций
+; 90 байт
+;────────────────────────────────────────────
+ATABLE:	DW	START		; Холодный старт
+	DW	START2		; Теплый старт
+	DW	VHOD2		; Запуск CCP
+	DW	DIR		; Вывод каталога диска
+	DW	TYPE		; Вывод файла
+	DW	SAVE		; Запись файла
+	DW	LOAD		; Чтение файла
+	DW	OPFREE		; Очистка буферов
+	DW	WRSKT		; Запись сектора
+	DW	RDSKT		; Чтение сектора
+	DW	OPWR		; Подготовка файла к записи
+	DW	OPRD		; Подготовка файла к чтению
+	DW	KANR		; Открытие канала на чтение
+	DW	KANW		; Открытие канала на запись
+	DW	SAVE2		; Запись файла на диск после подготовки к записи
+	DW	LOCVT		; Резервирование сектора
+	DW	CMP_3B		; Сравнение трех символов в памяти
+	DW	FRSVT		; Освобождение сектора
+	DW	DELF		; Удаление файла
+	DW	RDCAT		; Чтение карты диска и первого каталога
+	DW	RCAT		; Чтение последующего каталога
+	DW	ANSTR		; Поиск первой записи в каталоге
+	DW	ANEXT		; Поиск последующей записи в каталоге
+	DW	CONTLD		; Чтение файла с диска после подготовки к чтению
+	DW	KOMM		; Поиск первого файла на лиске
+	DW	KOM2		; Поиск последующего файла на диске
+	DW	SELBUF		; Запрос области памяти
+	DW	FREBUF		; Освобождение области памяти
+	DW	RAMTOP		; Запрос верхней границы памяти
+	DW	OPENR		; Открыть файл на чтение
+	DW	OPENW		; Открыть файл на запись
+	DW	APPEND		; Открыть файл на дозапись
+	DW	READ		; Считать один байт
+	DW	WRITE		; Записать один байт
+	DW	CLOSER		; Закрыть файл, открытый на чтение
+	DW	CLOSEW		; Закрыть файл, открытый на запись
+	DW	INKAN		; Ввод байта из канало
+	DW	OUTKAN		; Вывод байта в канал
+	DW	PUSK		; Выбрать диск
+	DW	OSTANOV		; Освободить диск
+	DW	COPYING		; Копирование блока памяти
+	DW	ERRMAN		; Обработка ошибок
+	DW	ADDRES		; Получение следующего адреса программы
+	DW	LD1		; Загрузка
+	DW	BX3		; Запуск команды
 	
 ;────────────────────────────────────────────
 
@@ -188,7 +199,7 @@ endif
 	LD	HL, TITR
 	CALL	MSSG
 	
-	LD	(DRIVE), A
+	LD	(DRIVE), A 
 	DEC	A
 	LD	(CLOFLG), A
 	LD	(Y7579), A

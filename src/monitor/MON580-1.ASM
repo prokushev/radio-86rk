@@ -6,6 +6,9 @@
 	CPU	8080
 	Z80SYNTAX	EXCLUSIVE
 
+RK86	EQU	1
+SPEKTR	EQU	0
+
 ; ──────────────────────────────────────────────
 ; Дальняя JMP block, label
 ; ──────────────────────────────────────────────
@@ -34,29 +37,48 @@ CHK	MACRO	adr, msg
 
 	ORG	RABADR
 
+DefaultListHandler	EQU	PrintCharFromCHandler
+DefaultPrintHandler	EQU	PrintCharFromCHandler
+
 ; ──────────────────────────────────────────────
 ; Блок векторов МОНИТОРа
 ; ──────────────────────────────────────────────
 
-	JP	ColdBoot		; F800
-	JP	InputSymbol 		; F803
-	JP	TapeReadByte		; F806
-	JP	PrintCharFromC		; F809
-	JP	TapeWriteByte		; F80C
-	JP	PrintCharFromC		; F80F   это д.быть PRINT
-	JP	GetKeyboardStatus	; F812
-	JP	PrintHexByte 		; F815
-	JP	PrintString  		; F818
-	JP	ReadKeyCode 		; F81B
-	JP	GetCursorPos		; F81E
-	JP	ReadVideoRAM		; F821
-	JP	TapeReadBlock		; F824
-	JP	TapeWriteBlock		; F827
-	JP	CalcChecksum		; F82A
-	JP	InitVideo		; F82D
+ColdBoot:
+	JP	InitHandlers		; F800
+InputSymbol:
+	JP	InputSymbolHandler	; F803
+TapeReadByte:
+	JP	TapeReadByteHandler	; F806
+PrintCharFromC:
+	JP	PrintHandler		; F809
+TapeWriteByte:
+	JP	TapeWriteByteHandler	; F80C
+ListCharFromC:
+	JP	ListHandler		; F80F
+GetKeyboardStatus:
+	JP	GetKeyboardStatusHandler; F812
+PrintHexByte:
+	JP	PrintHexByteHandler	; F815
+PrintString:
+	JP	PrintStringHandler	; F818
+ReadKeyCode:
+	JP	ReadKeyCodeHandler	; F81B
+GetCursorPos:
+	JP	GetCursorPosHandler	; F81E
+ReadVideoRAM:
+	JP	ReadVideoRAMHandler	; F821
+TapeReadBlock:
+	JP	TapeReadBlockHandler	; F824
+TapeWriteBlock:
+	JP	TapeWriteBlockHandler	; F827
+CalcChecksum:
+	JP	CalcChecksumHandler	; F82A
+InitVideo:
+	JP	InitVideoHandler	; F82D
 
 ; ──────────────────────────────────────────────
-; Возвращает верхнею границу свободного ОЗУ
+; Возвращает верхнюю границу свободного ОЗУ
 ; ВХОД:
 ;	Нет
 ; ВЫХОД:
@@ -104,8 +126,10 @@ COD_0D:	LD	L, MARGIN_LEFT
 	NOP
 	NOP
 
-	JP	SetCursorPos		; F83C
-	JP	Beep			; F83F
+SetCursorPos:
+	JP	SetCursorPosHandler	; F83C
+Beep:
+	JP	BeepHandler		; F83F
 
 ; ──────────────────────────────────────────────
 ; Идентификационная строка версии МОНИТОРа
@@ -113,11 +137,10 @@ COD_0D:	LD	L, MARGIN_LEFT
 ; WXYZ
 ; ^^^^
 ; !!!`----- Битовая маска возможностей
-; !!!       0 - поддержка печати на принтер
-; !!!       1 - клавиатура MC-7007 (1) или РК86 (0)
-; !!!       2 - Поддержка звука ВИ
-; !!!       3-4 - схема цветности  00 - ч/б, 01 - схема 1, 10 - схема 2, 11 - схема 3
-; !!!       5-7 - Количество ОЗУ (кратно 4кб)   1100 - 48кб, 1000 - 32кб, 0100 - 16кб, 0011 - 12кб
+; !!!       0 - клавиатура MC-7007 (1) или РК86 (0)
+; !!!       1 - Поддержка звука ВИ
+; !!!       2-3 - схема цветности  00 - ч/б, 01 - схема 1, 10 - схема 2, 11 - схема 3
+; !!!       4-7 - Количество ОЗУ (кратно 4кб)   1100 - 48кб, 1000 - 32кб, 0100 - 16кб, 0011 - 12кб
 ; !!`------ Битовая маска возможностей
 ; !!        0-7 - зарезервировано, должно быть 0
 ; !`------ Номер версии от 0 до 127 (бит 7 установлен, если это экспериментальная версия)
@@ -125,6 +148,7 @@ COD_0D:	LD	L, MARGIN_LEFT
 ;           0 - Микро-80
 ;           8 - ЮТ-88
 ;           M - Микроша
+;           S - Спектр-001
 ; ──────────────────────────────────────────────
 
 Version:
@@ -138,11 +162,9 @@ INIT2:
 	LD	DE, COMBUF+COMBUFMAX-1
 	CALL	DirectiveFill
 
-;	LD	HL, BIOSENTRY+3		; WBOOT
-;	LD	(0001H), HL
-
-;	LD	HL, BDOS
-;	LD	(BDOSST+1), HL
+; ──────────────────────────────────────────────
+; Инициализация ВВ55
+; ──────────────────────────────────────────────
 
 	LD	A,8AH
 	LD	(PU),A
@@ -159,8 +181,12 @@ INIT2:
 ; ──────────────────────────────────────────────
 
 	CALL	RST_18
+	IF	RK86
 	DB	1Fh,"radio-86r",'k' + 80H
-
+	ENDIF
+	IF	SPEKTR
+	DB	1Fh,"spektr-00",'1' + 80H
+	ENDIF
 	NOP
 
 ; ──────────────────────────────────────────────
@@ -202,6 +228,10 @@ WarmBoot:
 	CP	0AFH
 	JP	Z, 0E000H		; Если все ОК, то игнорируем МОНИТОР и грузимся в РК-ДОС
 
+; ──────────────────────────────────────────────
+; Читаем директиву
+; ──────────────────────────────────────────────
+
 	CALL	RST_18
 	DB	13,10,'>'+80H
 
@@ -210,7 +240,7 @@ WarmBoot:
 	LD	HL,WarmBoot
 	PUSH	HL			; в стеке лежит адрес возрата в МОНИТОР
 
-	JP	NC,DirectiveReadROM
+	JP	NC,DirectiveReadROM	; Просто нажали <ВК>
 
 	CALL	ParseParameters
 
@@ -279,7 +309,7 @@ TapeReadWord:
 
 ; ──────────────────────────────────────────────
 
-ReadVideoRAM:
+ReadVideoRAMHandler:
 	PUSH	HL				; 10 bytes
 	LD	HL, (POSX)
 	CALL	SetCursorPos
@@ -299,7 +329,7 @@ ReadVideoRAM:
 ;	HL
 ; ──────────────────────────────────────────────
 
-GetCursorPos:
+GetCursorPosHandler:
 	LD	HL,(POSX)		; 4 bytes
 	RET
 
@@ -370,14 +400,14 @@ PrintSpace:
 ;	AF, HL
 ; ──────────────────────────────────────────────
 
-PrintString:
+PrintStringHandler:
 	LD	A,(HL)
 	OR	A
 	RET	Z
 	CALL	PrintCharFromA
 	INC	HL
 	RET	M			; RET if high bit set
-	JP	PrintString
+	JP	PrintStringHandler
 
 ; ──────────────────────────────────────────────
 ; Ввод строки в буфер COMBUF
@@ -602,7 +632,7 @@ AFF06:	LD	L,A
 ;	HL
 ; ──────────────────────────────────────────────
 
-SetCursorPos:
+SetCursorPosHandler:
 	LD	(POSX),HL
 
 	PUSH	AF
@@ -636,7 +666,7 @@ RST_18:	EX	(SP),HL			; 6 bytes
 	CALL	PrintString
 	EX	(SP),HL
 	RET
-
+	        
 ; ──────────────────────────────────────────────
 ; Ввод символа без ожидания с проверкой нажатия Ctrl-C. 
 ; При нажатии Ctrl-C выход в МОНИТОР с переинцициализацией ВГ.
@@ -758,7 +788,7 @@ AFEAF:	LD	A,0FFH
 ;	AF, BC, HL
 ; ──────────────────────────────────────────────
 
-CalcChecksum:
+CalcChecksumHandler:
 	LD	BC,0			; 23 bytes
 AFB19:	LD	A,(HL)
 	ADD	A,C
@@ -783,34 +813,20 @@ AFB19:	LD	A,(HL)
 ;	Не определено
 ; ──────────────────────────────────────────────
 
-ColdBoot:				; 14 bytes
+ColdBootHandler:			; 14 bytes
 	LD	HL,BASE-1		; 75FFH/35FFH
 	LD	(RAMTOP),HL
 	INC	HL
 	LD	SP,HL			; 7600H/3600H
 
-; ──────────────────────────────────────────────
-; Инициализация симулятора CP/M
-; Размещает точки входа в BIOS и BDOS
-; ──────────────────────────────────────────────
-
-;	LD	A, 0C3H			; JMP opcode
-;	LD	(HL), A			; LD (BDOSST), A
-;	LD	(5), A
-;	LD	(0006H), HL		; HL = BDOSST
-
 	LD	C,L			; LD C, 0
-;	LD	B,L			; LD B, 0
-
-;	LD	(BC), A			; LD (0), A
-
 	LD	L, CURST & 0FFH		; LD HL, CURST
 
 	JP	INIT2
 
 ; ──────────────────────────────────────────────
 
-TapeReadBlock:
+TapeReadBlockHandler:
 	CALL	TapeReadWordSync
 	PUSH	HL
 	ADD	HL,BC
@@ -834,7 +850,7 @@ SET_RL:	LD	(RUSLAT),A		; Т.к. адрес RUSLAT xx06h, то предыдущи
 ; ──────────────────────────────────────────────
 
 	CHK	0FACEH, "* Internal subroutine InitVideo shifted ! *"
-InitVideo:			; 1001.0011
+InitVideoHandler:		; 1001.0011
 				; 1100.0011
 
 	LD	A, (CURST)	; 99H - включен 0A9H - выключен
@@ -1066,7 +1082,7 @@ TapeReadByteNoSync:
 ;	AF
 ; ──────────────────────────────────────────────
 
-TapeReadByte:
+TapeReadByteHandler:
 	PUSH	BC
 	PUSH	DE
 	PUSH	HL
@@ -1402,7 +1418,7 @@ UseLastConst:
 	CALL	PrintCRAndHexWordBCAndSpace
 	POP	HL
 
-TapeWriteBlock:
+TapeWriteBlockHandler:
 	PUSH	BC		; КС
 
 	LD	BC,0		; выводим 256 байтов 00 (пилотон)
@@ -1436,7 +1452,7 @@ AFB4D:	CALL	TapeWriteByte
 
 ; После 15H вызовов GetKeyboardStatus при нажатой клавише выставляется флаг KBDFLG
 
-GetKeyboardStatus:
+GetKeyboardStatusHandler:
 	LD	A,(PC)		; 38 bytes
 	RLA
 	JP	NC,AFE0E	; если нажат RUS/LAT
@@ -1513,7 +1529,8 @@ AFEF3:	LD	A,H			; 7 bytes
 
 	CHK	0FD27H, "* Standard subroutine Beep shifted ! *"
 
-Beep:	LD	BC,05F0H		; 20 bytes
+DefaultBeepHandler:
+	LD	BC,05F0H		; 20 bytes
 SND_BC:	LD	A,B
 BPLOO1:	EI
 	DEC	A
@@ -1565,7 +1582,7 @@ TapeWriteSync:
 ;	Нет
 ; ──────────────────────────────────────────────
 
-TapeWriteByte:
+TapeWriteByteHandler:
 	PUSH	BC
 	PUSH	DE
 	PUSH	HL
@@ -1634,7 +1651,7 @@ POPREG: POP	HL
 ;	AF
 ; ──────────────────────────────────────────────
 
-PrintHexByte:
+PrintHexByteHandler:
 	PUSH	AF			; ?? bytes
 	RRCA
 	RRCA
@@ -1686,7 +1703,7 @@ PrintCharFromA:
 
 ;BUG Для эмуляции VT-52 необходимо игнорировать код NUL (00H) и DEL (7FH). С последним проблеммы, т.к. в РК86 это квадрат.
 
-PrintCharFromC:
+PrintCharFromCHandler:
 	PUSH	BC
 	PUSH	DE
 	PUSH	HL
@@ -1807,10 +1824,10 @@ AFE4C:	LD	A,0FFH
 ;	AF		 TODO: проверить, что изменяет GetKeyboardStatus
 ; ──────────────────────────────────────────────
 
-InputSymbol:				; 15 bytes
+InputSymbolHandler:			; 15 bytes
 	CALL	GetKeyboardStatus
 	OR	A
-	JP	Z,InputSymbol
+	JP	Z,InputSymbolHandler
 	XOR	A
 	LD	(KBDFLG),A
 	LD	A,(LAST_K)
@@ -2276,7 +2293,7 @@ CursorUp:
 ;	AF		 TODO: проверить, что изменяет ReadKeyCode и InitVideo
 ; ──────────────────────────────────────────────
 
-ReadKeyCode:
+ReadKeyCodeHandler:
 	LD	A,(PC)		; 30 bytes
 	RLA
 	LD	A,0FEH
@@ -2345,38 +2362,25 @@ S1:;				;ФОРМУЛЕ:
 	JP	NZ,S1
 	RET
 
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
+; ──────────────────────────────────────────────
+; Настрока обработчиков по умолчанию
+; ──────────────────────────────────────────────
+
+InitHandlers:
+	LD	A, 0C3H
+	LD	(ListHandler), A
+	LD	HL, DefaultListHandler
+	LD	(ListHandler+1), HL
+
+	LD	(PrintHandler), A
+	LD	HL, DefaultPrintHandler
+	LD	(PrintHandler+1), HL
+
+	LD	(BeepHandler), A
+	LD	HL, DefaultBeepHandler
+	LD	(BeepHandler+1), HL
+
+	JP	ColdBootHandler
 	NOP
 	NOP
 	NOP
@@ -2484,4 +2488,3 @@ BDOSRET:				; Точка возврата из функции BDOS
 	CHK	10000H, "* Size not 2K ! *"
 
 	END
-

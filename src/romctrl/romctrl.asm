@@ -6,7 +6,8 @@
 ; ЗАПРЕЩЕНО ИСПОЛЬЗОВАТЬ ПОД ROM-DISK. 
 ; ПРОГРАММА ИЗ ПЗУ В ОЗУ ПЕРЕНОСИТСЯ ЗАГРУЗЧИКОМ, 
 ; (В MONITORE) ПО ДИРЕКТИВЕ "U" или "R" И ЗАНИМАЕТ 
-; ВЕРХНИЕ АДРЕСА ОЗУ, НАЧИНАЯ С 7400Н.
+; ВЕРХНИЕ АДРЕСА ОЗУ, НАЧИНАЯ С 3400H/7400Н.
+; Программа управления позиционно-независимая.
 ; ═══════════════════════════════════════════════════════════════════════
 
 	CPU		8080
@@ -18,39 +19,22 @@
 
 	INCLUDE	"syscalls.inc"
 
-PCALL	MACRO	ADDR
-	LD	HL, RETADDR-BaseAddress
-	ADD	HL, DE
-	PUSH	HL
-	LD	HL, ADDR-BaseAddress
-	ADD	HL, DE
-	JP	(HL)
-RETADDR	EQU	$
-	ENDM
-
-PJP	MACRO	ADDR
-	LD	HL, ADDR-BaseAddress
-	ADD	HL, DE
-	JP	(HL)
-	ENDM
-
-PLDHL	MACRO	ADDR
-	LD	HL, ADDR-BaseAddress
-	ADD	HL, DE
-	ENDM
-	
 	ORG	BASE-0200H
 
-; ──────────────────────────────────────────────
+; ───────────────────────────────────────────────────────────────────────
 ; Проверяем наличие РК-ДОС
 ; (байт по 0E000H содержит AFH)
-; ──────────────────────────────────────────────
+; ───────────────────────────────────────────────────────────────────────
 Stack:
 Start:
 	LD	A, (0E000H)		; Проверяем наличие РК-ДОС
 	CP	0AFH
-	JP	Z, 0E000H		; Если есть, то запускаем его
+	JP	Z, 0E000H		; Если есть, то запускаем её
 
+; ───────────────────────────────────────────────────────────────────────
+; Определяем адрес запуска программы
+; выход: DE=BaseAddress
+; ───────────────────────────────────────────────────────────────────────
 	LD	HL, (0)
 	EX	DE, HL			; DE=(0)
 	LD	HL, 0E9E1H		; POP HL ! JP(HL)
@@ -60,15 +44,55 @@ BaseAddress:
 	EX	DE, HL			; DE=BaseAddress, HL=(0)
 	LD	(0), HL
 
-	PLDHL	Stack
-	LD	SP, Stack
+; ───────────────────────────────────────────────────────────────────────
+; Устанавливаем по адресу RST 0 переход на обработчик относительного
+; адреса
+; ───────────────────────────────────────────────────────────────────────
+	LD	HL, (0)			; Сохраняем данные
+	LD	B, H
+	LD	C, L
+	LD	A, 0C3H			; JMP ...
+	LD	(0), A
+	LD	A, (2)			; Сохраняем данные
+	LD	HL, RST0-BaseAddress	; Смещение до обработчика
+	ADD	HL, DE
+	LD	(1), HL			; Адрес обработчика RST 0
+	LD	H, B			; Запоминаем данные для
+	LD	L, C			; последующего восстановления
+	RST	0
+	LD	(RST0_0-$), HL
+	RST	0
+	LD	(RST0_2-$), A
 
-	PLDHL	SO1
-	CALL	PrintString
+; ───────────────────────────────────────────────────────────────────────
+; Настраиваем стек
+; ───────────────────────────────────────────────────────────────────────
+	RST	0
+	LD	SP, Stack-$
+
+; ───────────────────────────────────────────────────────────────────────
+; Выводим приветствие
+; ───────────────────────────────────────────────────────────────────────
+
+	RST	0
+	CALL	RST_18-$
+T	EQU	$							; DB	8+2+2 DUP 0
+SO1:	DB 	0AH,0DH,"*ROM-DISK/32K* V3.0-23"
+RST0_0	EQU	$
+RST0_2:	EQU	$+2
+	DB 	0AH,0AH,0DH,"DIRECTORY:"
+SO2:	DB	0AH,0DH+80H
+
+; ───────────────────────────────────────────────────────────────────────
+; Выводим каталог диска
+; ───────────────────────────────────────────────────────────────────────
 	LD	B, 0FFH
+	RST	0
+	CALL	SEARCHS-$
 
-	PCALL	SEARCHS
-
+; ───────────────────────────────────────────────────────────────────────
+; Выводим приглашение и ждем номер программы
+; ───────────────────────────────────────────────────────────────────────
 	LD	C, '>'
 	CALL	PrintCharFromC
 	CALL	InputSymbol
@@ -77,20 +101,65 @@ BaseAddress:
 	CP	03h
 	JP	Z,WarmBoot
 	SUB	30H
+
+; ───────────────────────────────────────────────────────────────────────
+; Изменяем функцию вызова печати, на функцию запуска программы
+; ───────────────────────────────────────────────────────────────────────
 	LD	B, A
-	LD	HL, FUNC+1
-	LD	(HL), EXECN & 0ffh
+	RST	0
+	LD	HL, FUNC+1-$
+	RST	0
+	LD	DE, EXECN-$
+	LD	(HL), E
 	INC	HL
-	LD	(HL), EXECN >> 8
-	CALL	SEARCHS
+	LD	(HL), D
+	
+; ───────────────────────────────────────────────────────────────────────
+; Запускаем выбранную программу
+; ───────────────────────────────────────────────────────────────────────
+	RST	0
+	CALL	SEARCHS-$
+	RST	0
+	CALL	RESTORERST-$
 	JP	WarmBoot
+
+; ───────────────────────────────────────────────────────────────────────
+; Подпрограмма модификации относительного адреса перехода
+; ───────────────────────────────────────────────────────────────────────
+
+RST0:	ex	(sp),hl		; Save H,L and get next PC
+	push	de		; Save D,E.
+	push	af		; Save condition codes.
+	dec	hl		; Change RST 0 to NOP.
+	ld	(hl),00h
+	inc	hl
+
+	inc	hl
+	ld	e,(hl)		; Get relative addr. in D, E.
+	inc	hl
+	ld	d,(hl)
+	ex	de,hl		; Add offset for abs. addr.
+	add	hl,de
+	ex	de,hl
+	dec	de		; Set to beginning of instr
+	dec	de
+	ld	(hl),d		; Store absolute addr.
+	dec	hl
+	ld	(hl),e
+	pop	af		; Restore condition codes.
+	pop	de		; Restore D,E.
+	dec	hl		; Set H,L to start of instr
+	ex	(sp),hl		; Restore H,L
+	ret
+
+; ───────────────────────────────────────────────────────────────────────
+; Подпрограмма перебора каталога диска
+; ───────────────────────────────────────────────────────────────────────
 
 SEARCHS:
 	LD	HL, 0800H		; Начало ROM-диска
 	LD	C, L			; LD C, 0
 SEARCH:
-	PUSH	DE			; (0)
-
 	PUSH	HL			; (1)
 	LD	DE, (8+2+2)-1
 	ADD	HL, DE
@@ -113,31 +182,37 @@ SEARCH:
 
 	POP	DE			; (2)
 
-
 	RET	Z
 
-FUNC:	CALL	PRINTN
+	RST	0
+FUNC:	CALL	PRINTN-$
 
 	PUSH	DE			; (5)
 ;---------------------
-	LD	HL, (T+8+2)
+	RST	0
+	LD	HL, ((T+8+2-$) & 0ffffh)
 	LD	A, L			; высчитываем начало следующей записи
 	OR	A			; оканчивается на ноль
-	JP	Z, SKIP
-	OR	0fh
+	RST	0
+	JP	Z, SKIP-$
+	OR	0FH
 	LD	L, A
 	INC	HL
 SKIP:
-	LD	DE, 10h
+	LD	DE, 10H
 	ADD	HL, DE
 ;---------------------
 	POP	DE			; (5)
 
 	ADD	HL, DE
 	INC	C
-	POP	DE			; (0)
-	JP	SEARCH
 
+	RST	0
+	JP	SEARCH-$
+
+; ───────────────────────────────────────────────────────────────────────
+; Подпрограмма печати записи каталога
+; ───────────────────────────────────────────────────────────────────────
 PRINTN:
 	PUSH	HL
 	PUSH	BC
@@ -153,12 +228,14 @@ PRINTN:
 	LD	HL, T
 PLOOP:	LD	A, (HL)			; Печатаем имя
 	CP	"$"
-	CALL	Z, PrintCOM
+	RST	0
+	CALL	Z, PrintCOM-$
 	LD	C, A
 	CALL	PrintCharFromC
 	INC	HL
 	DEC	B
-	JP	NZ, PLOOP
+	RST	0
+	JP	NZ, PLOOP-$
 
 	INC	HL
 	LD	C, ' '			; Печатаем стартовый адрес
@@ -172,7 +249,7 @@ PLOOP:	LD	A, (HL)			; Печатаем имя
 	INC	HL
 	INC	HL
 	INC	HL
-	LD	C, 			; Печатаем размер
+	LD	C, ' '			; Печатаем размер
 	CALL	PrintCharFromC
 	LD	A, (HL)
 	CALL	PrintHexByte
@@ -180,19 +257,16 @@ PLOOP:	LD	A, (HL)			; Печатаем имя
 	LD	A, (HL)
 	CALL	PrintHexByte
 
-	LD	HL, SO2			; Печатаем перевод строки
+	RST	0
+	LD	HL, SO2-$		; Печатаем перевод строки
 	CALL	PrintString
 	POP	BC
 	POP	HL
 	RET
 
-PrintCOM:
-	PUSH	HL
-	LD	HL, SO0
-	CALL	PrintString
-	POP	HL
-	RET
-
+; ───────────────────────────────────────────────────────────────────────
+; Подпрограмма запуска программы
+; ───────────────────────────────────────────────────────────────────────
 EXECN:
 	LD	A, C
 	SUB	B
@@ -202,25 +276,44 @@ EXECN:
 	ADD	HL, DE		; DE - это адрес на ROM-диске
 	EX	DE, HL
 
-	LD	SP, T+8		; ИСПОЛЬЗУЯ СТЕК,
-	POP	BC		; start
-	POP	HL		; size
+	RST	0
+	LD	SP, T+8-$	; Используя стек, читаем...
+	POP	BC		; Начальный адрес
+	POP	HL		; Размер
 
 	ADD	HL, DE
 	EX	DE, HL
 
-	PUSH	BC		; Читаем в ОЗУ
-	CALL	ReadROM
-	RET			; POP HL! JP (HL) ;И ЗАПУСТИТЬ ПРОГРАММУ.
+	PUSH	BC		; Адрес запуска
+	CALL	ReadROM		; Читаем в ОЗУ
+	RST	0
+	CALL	RESTORERST-$
+	RET			; Запускаем программу
 
-T:	DB	8+2+2 DUP 0			;
+; ───────────────────────────────────────────────────────────────────────
+; Подпрограмма восстановления вектора RST 0
+; ───────────────────────────────────────────────────────────────────────
+RESTORERST:
+	RST	0
+	LD	HL, ((RST0_0-$) & 0ffffh)
+	LD	(0), HL
+	RST	0
+	LD	A, ((RST0_2-$) & 0ffffh)
+	LD	(2), A
+	RET
 
+RST_18:	EX	(SP),HL		; 6 bytes
+	CALL	PrintString
+	EX	(SP),HL
+	RET
+
+
+PrintCOM:
+	PUSH	HL
+	RST	0
+	CALL	RST_18-$
 SO0:	DB	".COM", ' '+80H
-SO1:	DB 	0AH,0DH,"*ROM-DISK/32K* V3.0-23"
-	DB 	0AH,0AH,0DH,"DIRECTORY:"
-SO2:	DB	0AH,0DH+80H
+	POP	HL
+	RET
 
-	DB	BASE-3-$ DUP (0FFH)
-
-	; Вход по директиве Z
-	JP	BASE-0200H
+	DB	BASE-$ DUP (0FFH)

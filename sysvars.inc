@@ -21,8 +21,11 @@ BDOSST	EQU	BASE		; Начало BDOS
 ;
 ; ──────────────────────────────────────────────
 
-; Первых три байта занимает точка ввхода в BDOS
+; Первых три байта занимает точка входа в BDOS
 
+;@todo Эти два адреса использует бейсик микрон в команде CUR, надо делать совместимо со стандартным МОНИТОРом
+;7600h
+;7602h
 ; Следующие 3 переменные должны иметь указанный порядок, иначе править ColdBoot
 RAMTOP	EQU	BASE+03H		; 2 FIXED Верхняя граница ОЗУ
 CURST	EQU	BASE+05H		; 1 FIXED Отображать/прятать курсор
@@ -48,9 +51,13 @@ FLG_P2	EQU	BASE+1EH		; 1 флаг, что есть параметры 2 или 2,3
 INV_MG	EQU	BASE+1FH		; 1 флаг инверсии магнитофона
 TRK		EQU	BASE+20H		; 2 Номер трека
 SECT	EQU	BASE+22H		; 2 Номер сектора
-DMA		EQU	BASE+24H		; 2 Адрес буфера рбмена с диском
+DMA		EQU	BASE+24H		; 2 Адрес буфера обмена с диском
 
-; !!! Тут зазор !!!
+ListHandler	EQU	BASE+26H	; 3 JP DefaultListHandler
+
+PrintHandler	EQU	BASE+29H	; 3 JP DefaultPrintHandler
+
+BeepHandler	EQU	BASE+2CH	; 3 JP DefaultBeepHandler
 
 ; Эти две переменные должны идти подряд. Адреса переменных документированы,
 ; менять нельзя
@@ -65,10 +72,10 @@ COMBUF	EQU	BASE+33H		; COMBUFMAX FIXED буфер ввода директивы
 
 COMBUFMAX	EQU	10H			; Максимальный размер буфера ввода команд
 
-ROMBUF	EQU	COMBUF+COMBUFMAX		; ROMBUFMAX буфер подкачки кода из ROM-диска (только для МОНИТОРа 2.0)
+ROMBUF	EQU	COMBUF;+COMBUFMAX		; ROMBUFMAX буфер подкачки кода из ROM-диска
 ROMBUFMAX	EQU	80H			; размер буфера подкачки из ROM-диск
 
-STACK	EQU	BASE+0D0H		; стек монитора (стек небольшой, 9 слов глубиной)
+STACK	EQU	BASE+0D0H		; стек монитора
 
 SA		EQU	BASE+0D0H		; 76D0 начало экранной области
 SCBASE  EQU	BASE+01C2H		; 77C2 ЛЕВ.ВЕРХН.УГОЛ ЭКР.

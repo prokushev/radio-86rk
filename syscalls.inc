@@ -1,24 +1,33 @@
-; อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
-;  ’๋ คซ๏  คจฎ-86 คซ๏ 580, แฎขฌฅแโจฌ๋ฉ แ เจฎญ-128,
-;  ฏฎคคฅเฆชฎฉ VT-52 จ ํฌใซ๏โฎเฎฌ CP/M
-; ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ
-;  ‘จแโฅฌญ๋ฅ ข๋งฎข๋ ’ 
-; อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+; โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•
+;  ะะะะะขะะ ั ะดะปั ะ ะฐะดะธะพ-86ะ ะ ะดะปั ะะ 580, ัะพะฒะผะตััะธะผัะต ั ะั€ะธะพะฝ-128,
+;  ะฟะพะดะดะตั€ะถะบะพะน VT-52 ะธ ัะผัะปััะพั€ะพะผ CP/M
+; โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
+;  ะกะธััะตะผะฝัะต ะฒัะทะพะฒั ะะะะะขะะ ะฐ
+; โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•
 
+ColdBoot			EQU	0F800H
 InputSymbol			EQU	0F803H
-PrintCharFromC		EQU	0F809H
-TapeWriteByte		EQU	0F80CH
-GetKeyboardStatus	EQU	0F812H
+PrintCharFromC			EQU	0F809H
+TapeWriteByte			EQU	0F80CH
+GetKeyboardStatus		EQU	0F812H
 PrintString			EQU	0F818H
-PrintHexByte		EQU	0F815H
+PrintHexByte			EQU	0F815H
 ReadKeyCode			EQU	0F81BH
-CalcChecksum		EQU	0F82AH
+GetCursorPos			EQU	0F81EH
+ReadVideoRAM			EQU	0F821H
+TapeReadBlock			EQU	0F824H
+TapeWriteBlock			EQU	0F827H
+CalcChecksum			EQU	0F82AH
 InitVideo			EQU	0F82Dh
-GetFreeMemAddr		EQU	0F830H
+GetFreeMemAddr			EQU	0F830H
+SetFreeMemAddr			EQU	0F833H
+SetCursorPos			EQU	0F83CH
+Beep				EQU	0F83FH
+
 WarmBoot			EQU	0F86CH
-InputDirective		EQU	0F8EEH
-Compare_HL_DE		EQU	0F990H
+InputDirective			EQU	0F8EEH
+Compare_HL_DE			EQU	0F990H
 PrintCR				EQU	0F9B0H
 ReadROM				EQU	0FA68H
-PrintCRAndHexWordAndSpace EQU	0FB78H
-
+PrintCRAndHexWordAndSpace	EQU	0FB78H
+AltBeep				EQU	0FD27H
