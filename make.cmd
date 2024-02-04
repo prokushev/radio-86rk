@@ -9,11 +9,8 @@ SET PATH=tools;%PATH%
 :xit
 
 echo ROM-disk Control Program 3.0
-asw -lU -i . -D BASE=07600H src\romctrl\romctrl.asm > romctrl-3-32.lst
-p2bin src\romctrl\romctrl.p roms\romctrl\romctrl32k.rom
-
-asw -lU -i . -D BASE=03600H src\romctrl\romctrl.asm > romctrl-3-16.lst
-p2bin src\romctrl\romctrl.p roms\romctrl\romctrl16k.rom
+asw -lU -i . -D BASE=07600H src\romctrl\romctrl.asm > romctrl.lst
+p2bin src\romctrl\romctrl.p roms\romctrl\romctrl.rom
 
 echo BASIC
 cd basic
