@@ -495,7 +495,8 @@ TABK2:	DB	09,0AH,0DH,7FH,08H,19H,18H,1AH	; 8 bytes
 
 	CHK	0F92cH, "* Internal subroutine ParseParameters shifted ! *"
 
-ParseParameters:
+	if 0
+ParseParameters:		; 43 bytes
 	LD	HL,PAR_HL	; Обнуляем параметры
 	LD	DE,FLG_P2
 	LD	C,0
@@ -516,6 +517,40 @@ ParseParameters:
 	LD	(PAR_BC),HL
 	RET	C
 	JP	SyntaxError
+	else
+; Версия парсера от Ruslan Alikberov
+ParseParameters:		; 33 bytes
+	LD	DE, COMBUF
+	CALL	GET_HL
+	CCF
+	SBC	A
+	LD	(FLG_P2), A
+	LD	(PAR_HL),HL
+	CALL	C, GET_HL
+	LD	(PAR_DE),HL
+	LD	HL, 0
+	CALL	NC, GET_HL
+	LD	(PAR_BC),HL
+	RET	C
+	JP	SyntaxError
+	endif
+
+; ──────────────────────────────────────────────
+; Запись блока с HL по DE на магнитофон
+; ВХОД:
+;	HL	- начало блока
+;	DE	- конец блока
+; ВЫХОД:
+;	HL	- конец блока
+; ИЗМЕНЯЕТ:
+;	AF, C, HL
+; ──────────────────────────────────────────────
+
+TapeWriteFromHLtoDE:
+	LD	C,(HL)			; 10 bytes
+	CALL	TapeWriteByte
+	CALL	IncHLAndRetIfEqDE
+	JP	TapeWriteFromHLtoDE
 
 ; ──────────────────────────────────────────────
 
@@ -898,8 +933,10 @@ AFAE1:	LD	A,(HL)		; read status
 ;	AF, BС, DE, HL
 ; ──────────────────────────────────────────────
 
-GET_HL:	LD	HL,0		; 48 bytes
-AF95D:	LD	A,(DE)		; Выход: CY=1 если разделитель <ВК>
+GET_HL:	XOR	A		;LD	HL,0		; 47 bytes
+	LD	H, A
+AF95D:	LD	L,A
+	LD	A,(DE)		; Выход: CY=1 если разделитель <ВК>
 	INC	DE
 	CP	13
 	SCF
@@ -933,11 +970,12 @@ AF982:
 	RET	C		; JP C,SyntaxError
 
 	OR	L
-	LD	L,A
-
-	POP	AF
+	;LD	L,A
+	
+	POP	BC
 	JP	AF95D
 
+	NOP
 ; ──────────────────────────────────────────────
 
 NO_ESC:	LD	A,C
@@ -2331,22 +2369,6 @@ AFF2A:	LD	A,H
 	POP	HL
 	RET
 
-; ──────────────────────────────────────────────
-; Запись блока с HL по DE на магнитофон
-; ВХОД:
-;	HL	- начало блока
-;	DE	- конец блока
-; ВЫХОД:
-;	HL	- конец блока
-; ИЗМЕНЯЕТ:
-;	AF, C, HL
-; ──────────────────────────────────────────────
-
-TapeWriteFromHLtoDE:
-	LD	C,(HL)			; 10 bytes
-	CALL	TapeWriteByte
-	CALL	IncHLAndRetIfEqDE
-	JP	TapeWriteFromHLtoDE
 
 
 ; ──────────────────────────────────────────────
@@ -2381,6 +2403,17 @@ InitHandlers:
 	LD	(BeepHandler+1), HL
 
 	JP	ColdBootHandler
+	
+	NOP			; 61 bytes
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
 	NOP
 	NOP
 	NOP
@@ -2476,6 +2509,7 @@ BDOS:	FJMP	1, BDOSENTRY		; 5 bytes
 ; ──────────────────────────────────────────────
 ; Точка возврата из функции BDOS
 ; ──────────────────────────────────────────────
+
 	SHARED	BDOSRET
 BDOSRET:				; Точка возврата из функции BDOS
 	LD	HL, (TMPSTK)		; 7 bytes

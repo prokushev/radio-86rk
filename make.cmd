@@ -34,24 +34,18 @@ asw -lU -i . src\save\save.asm > save.lst
 p2bin src\save\save.p roms\romctrl\save.rom
 
 echo MONITOR 1.20 32KB
-asw -lUa -i basic\bin\radio-86rk -i . -i roms\romctrl -D BASE=07600H -D STUB=1 src\romdisk\mon580-2-rom.asm > mon580-2-32-rom-1.lst
 asw -lUa -i . -D BASE=07600H src\monitor\mon580-1.asm > mon580-1-32.lst
-asw -lUa -i basic\bin\radio-86rk -i . -i roms\romctrl -i src\monitor -D BASE=07600H -D STUB=0 src\romdisk\mon580-2-rom.asm > mon580-2-32-rom-2.lst
-
 p2bin src\monitor\mon580-1.p roms\1.20-32\b2m\bios.rom
 p2bin src\monitor\mon580-1.p roms\1.20-32\b2m\radiorom.rom
 p2bin src\monitor\mon580-1.p roms\1.20-32\emu80\rk86.rom
-
-exit
-
-:asw -lU -i . -D BASE=07600H src\monitor\mon580-1.asm > mon580-1-32.lst
-
 
 echo MONITOR 1.20 16KB
 asw -lU -i . -D BASE=03600H src\monitor\mon580-1.asm > mon580-1-16.lst
 p2bin src\monitor\mon580-1.p roms\1.20-16\b2m\bios.rom
 p2bin src\monitor\mon580-1.p roms\1.20-16\b2m\radiorom.rom
 p2bin src\monitor\mon580-1.p roms\1.20-16\emu80\rk86.rom
+
+exit
 
 echo MONITOR 2.00 32KB
 asw -lUa -i roms\romctrl -D BASE=07600H -D STUB=1 mon580-2-rom.asm > mon580-2-32-rom-1.lst
