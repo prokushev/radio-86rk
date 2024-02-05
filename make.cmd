@@ -45,20 +45,8 @@ p2bin src\monitor\mon580-1.p roms\1.20-16\b2m\bios.rom
 p2bin src\monitor\mon580-1.p roms\1.20-16\b2m\radiorom.rom
 p2bin src\monitor\mon580-1.p roms\1.20-16\emu80\rk86.rom
 
-exit
-
-echo MONITOR 2.00 32KB
+echo ROM-DISK
 asw -lUa -i roms\romctrl -D BASE=07600H -D STUB=1 mon580-2-rom.asm > mon580-2-32-rom-1.lst
-p2bin mon580-2-rom.p roms\2.00-32\b2m\romdisk.rom
-p2bin mon580-2-rom.p roms\2.00-32\emu80\romdisk.bin
-
-asw -lUa -D BASE=07600H mon580-2.asm > mon580-2-32.lst
-p2bin mon580-2.p roms\2.00-32\b2m\radiorom.rom
-p2bin mon580-2.p roms\2.00-32\emu80\rk86.rom
-
-asw -lUa -i roms\romctrl -D BASE=07600H -D STUB=0 mon580-2-rom.asm > mon580-2-32-rom-2.lst
-p2bin mon580-2-rom.p roms\2.00-32\b2m\romdisk.rom
-p2bin mon580-2-rom.p roms\1.20-32\b2m\romdisk.rom
-p2bin mon580-2-rom.p roms\2.00-32\emu80\romdisk.bin
-p2bin mon580-2-rom.p roms\1.20-32\emu80\romdisk.bin
+p2bin mon580-2-rom.p roms\romdisk\b2m\romdisk.rom
+p2bin mon580-2-rom.p roms\romdisk\emu80\romdisk.bin
 

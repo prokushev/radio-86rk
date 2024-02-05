@@ -2467,7 +2467,57 @@ InitHandlers:
 	NOP
 	NOP
 
+	NOP			; 16 bytes
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	
+	NOP			; 16 bytes
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
 
+	NOP			; 16 bytes
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	if 0
 	SHARED	FARJMP
 FARJMP:	
 	EX	(SP), HL		; Сохраняем HL в стек, а в HL адрес возврата
@@ -2518,7 +2568,7 @@ BDOSRET:				; Точка возврата из функции BDOS
 	LD	H, B
 	RET
 
-
+	endif 
 	CHK	10000H, "* Size not 2K ! *"
 
 	END
