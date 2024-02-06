@@ -46,7 +46,7 @@ p2bin src\monitor\mon580-1.p roms\1.20-16\b2m\radiorom.rom
 p2bin src\monitor\mon580-1.p roms\1.20-16\emu80\rk86.rom
 
 echo ROM-DISK
-asw -lUa -i roms\romctrl -D BASE=07600H -D STUB=1 mon580-2-rom.asm > mon580-2-32-rom-1.lst
-p2bin mon580-2-rom.p roms\romdisk\b2m\romdisk.rom
-p2bin mon580-2-rom.p roms\romdisk\emu80\romdisk.bin
+asw -lUa -i . -i basic\bin\radio-86rk -i roms\romctrl -D BASE=07600H -D STUB=1 src\romdisk\romdisk.asm > romdisk.lst
+p2bin src\romdisk\romdisk.p roms\romdisk\b2m\romdisk.rom
+p2bin src\romdisk\rodisk.p roms\romdisk\emu80\romdisk.bin
 
