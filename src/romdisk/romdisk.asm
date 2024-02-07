@@ -50,7 +50,6 @@ MsgRKOnly:
 ; Файловая система в формате ORDOS
 ; ───────────────────────────────────────────────────────────────────────
 	ORG 0800H
-	if 0
 FILE	MACRO name, start, size
 	DB	(0fff0h-$) & 0fh dup (0)	; выравнивание по границе 16
 s	SET	$
@@ -71,11 +70,12 @@ ENDOFFILES	MACRO
 DUMPCOM:
 	BINCLUDE "dump.com"
 ENDDUMPCOM:
-
+	
 	FILE "BASIC$", 0, 02000H
 BASICROM:
 	BINCLUDE "basic-rk86-micron-32kb.bin"
 
+	if 0
 	FILE "ASM$", 0, 01000H
 EDASMROM:
 	BINCLUDE "edasm.rom"

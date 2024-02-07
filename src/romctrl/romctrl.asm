@@ -33,52 +33,44 @@ Start:
 	EX	DE, HL			; DE=(0)
 	LD	HL, 0E9E1H		; POP HL ! JP(HL)
 	LD	(0), HL
-	RST	0
+	RST	0			; HL=BaseAddress
 BaseAddress:
-	EX	DE, HL			; DE=BaseAddress, HL=(0)
-	;LD	(0), HL
-
 ; ───────────────────────────────────────────────────────────────────────
 ; Устанавливаем по адресу RST 0 переход на обработчик относительного
 ; адреса
 ; ───────────────────────────────────────────────────────────────────────
-	;LD	HL, (0)			; Сохраняем данные
-	LD	B, H
-	LD	C, L
 	LD	A, 0C3H			; JMP ...
 	LD	(0), A
 	LD	A, (2)			; Сохраняем данные
-	LD	HL, RST0-BaseAddress	; Смещение до обработчика
-	ADD	HL, DE			; HL=RST0
+	LD	BC, RST0-BaseAddress	; Смещение до обработчика
+	ADD	HL, BC			; HL=RST0
 	LD	(1), HL			; Адрес обработчика RST 0
-	LD	H, B			; Запоминаем данные для
-	LD	L, C			; последующего восстановления
+	EX	DE, HL			; DE=RST0, HL=(0)
+; ───────────────────────────────────────────────────────────────────────
+; Сохраняем данные адресов 0-2 для последующего восстановления
+; ───────────────────────────────────────────────────────────────────────
 	RST	0
 	LD	(RST0_0-$), HL
 	RST	0
 	LD	(RST0_2-$), A
-
 ; ───────────────────────────────────────────────────────────────────────
 ; Настраиваем стек
 ; ───────────────────────────────────────────────────────────────────────
 	RST	0
 	LD	SP, Stack-$
-
 ; ───────────────────────────────────────────────────────────────────────
 ; Проверяем наличие Микро-80 (Монитор РК)
 ; ───────────────────────────────────────────────────────────────────────
-
 	LD	A, (0FFD8H)		; Проверяем наличие Микро-80 с М/80К
 	CP	038H			; Букава 'm' от приветствия
 	RST	0
 	JP	NZ, RK86-$		; Если есть, то запускаем её
-
 ; ───────────────────────────────────────────────────────────────────────
-; Патчим адрес директивы чтения из ПЗУ
+; Патчим адрес директивы чтения из ПЗУ МИКРО-80
 ; ───────────────────────────────────────────────────────────────────────
 	RST	0
 	LD	HL, (Patch1+1)-$
-	LD	DE, 0F9E6H
+	LD	DE, 0F9E6H		; Адрес копирования ROM-диска в Микро-80
 	LD	(HL), E
 	INC	HL
 	LD	(HL), D
@@ -87,102 +79,91 @@ BaseAddress:
 	LD	(HL), E
 	INC	HL
 	LD	(HL), D
-	RST	0
-	JP	M80-$			; Пропускаем проверку РК-ДОС
-
+;	RST	0
+;	JP	M80-$			; Пропускаем проверку РК-ДОС
 ; ───────────────────────────────────────────────────────────────────────
 ; Проверяем наличие РК-ДОС
 ; (байт по 0E000H содержит AFH)
+; @todo запуск РК-ДОС
 ; ───────────────────────────────────────────────────────────────────────
 RK86:
-	LD	A, (0E000H)		; Проверяем наличие РК-ДОС
-	CP	0AFH
-	JP	Z, 0E000H		; Если есть, то запускаем её
-
+;	LD	A, (0E000H)		; Проверяем наличие РК-ДОС
+;	CP	0AFH
+;	JP	Z, 0E000H		; Если есть, то запускаем её
 ; ───────────────────────────────────────────────────────────────────────
 ; Выводим приветствие
 ; ───────────────────────────────────────────────────────────────────────
 M80:
 	RST	0
-	CALL	RST_18-$
-SO1:	DB 	0AH,0DH,"*ROM-DISK/32K* V3.0-24"
-	DB 	0AH,0AH,0DH,"DIRECTORY:"
-SO2:	DB	0AH,0DH, 0
-
+	LD	HL, SO1-$
+	CALL	PrintString
 ; ───────────────────────────────────────────────────────────────────────
 ; Выводим каталог диска
 ; ───────────────────────────────────────────────────────────────────────
-	LD	B, 0FFH
+	LD	B, 0			; Первый элемент выбран
+
+InputLoop:
 	RST	0
 	CALL	SEARCHS-$
-
+	RST	0
+	LD	HL, SO3-$		; Печатаем перевод строки
+	CALL	PrintString
 ; ───────────────────────────────────────────────────────────────────────
 ; Выводим приглашение и ждем номер программы
 ; ───────────────────────────────────────────────────────────────────────
-	LD	C, '>'
-	CALL	PrintCharFromC
+	;if 0
+	;LD	C, '>'
+	;CALL	PrintCharFromC
+
 	CALL	InputSymbol
-	LD	C, A
-	CALL	PrintCharFromC
-	CP	03h
-	JP	Z,WarmBoot
-	SUB	30H
+	CP	1AH
+	RST	0
+	JP	NZ, Next1-$
+	INC	B
+Next1:
+	CP	19H
+	RST	0
+	JP	NZ, Next2-$
+	DEC	B
+Next2:
+	CP	0DH
+	RST	0
+	JP	Z, ExitLoop-$
 
-	LD	B, A
-
+	RST	0
+	LD	HL, SO1-$
+	CALL	PrintString
+	RST	0
+	JP	InputLoop-$
+ExitLoop:
+	;LD	C, A
+	;CALL	PrintCharFromC
+	;CP	03h
+	;JP	Z,WarmBoot
+	;SUB	30H
+	;endif
+	;LD	B, A
 ; ───────────────────────────────────────────────────────────────────────
 ; Изменяем функцию вызова печати, на функцию запуска программы
 ; ───────────────────────────────────────────────────────────────────────
 	RST	0
-	LD	HL, (FUNC+1)-$
+	LD	HL, (Patch3+1)-$
 	RST	0
 	LD	DE, EXECN-$
 	LD	(HL), E
 	INC	HL
 	LD	(HL), D
-	
 ; ───────────────────────────────────────────────────────────────────────
 ; Запускаем выбранную программу
 ; ───────────────────────────────────────────────────────────────────────
-	RST	0
-	CALL	SEARCHS-$
-	RST	0
-	CALL	RESTORERST-$
-	JP	WarmBoot
-
-; ───────────────────────────────────────────────────────────────────────
-; Подпрограмма модификации относительного адреса перехода
-; ───────────────────────────────────────────────────────────────────────
-
-RST0:	ex	(sp),hl		; Save H,L and get next PC
-	push	de		; Save D,E.
-	push	af		; Save condition codes.
-	dec	hl		; Change RST 0 to NOP.
-	ld	(hl),00h
-	inc	hl
-
-	inc	hl
-	ld	e,(hl)		; Get relative addr. in D, E.
-	inc	hl
-	ld	d,(hl)
-	ex	de,hl		; Add offset for abs. addr.
-	add	hl,de
-	ex	de,hl
-	dec	de		; Set to beginning of instr
-	dec	de
-	ld	(hl),d		; Store absolute addr.
-	dec	hl
-	ld	(hl),e
-	pop	af		; Restore condition codes.
-	pop	de		; Restore D,E.
-	dec	hl		; Set H,L to start of instr
-	ex	(sp),hl		; Restore H,L
-	ret
-
+	;RST	0
+	;JP	SEARCHS-$
+;	RST	0
+;	CALL	RESTORERST-$
+;	JP	WarmBoot
 ; ───────────────────────────────────────────────────────────────────────
 ; Подпрограмма перебора каталога диска
 ; ───────────────────────────────────────────────────────────────────────
-
 SEARCHS:
 	LD	HL, 0800H		; Начало ROM-диска
 	LD	C, L			; LD C, 0
@@ -214,7 +195,7 @@ Patch1:
 	RET	Z
 
 	RST	0
-FUNC:	CALL	PRINTN-$
+Patch3:	CALL	PRINTN-$
 
 	PUSH	DE			; (5)
 ;---------------------
@@ -238,7 +219,6 @@ SKIP:
 
 	RST	0
 	JP	SEARCH-$
-
 ; ───────────────────────────────────────────────────────────────────────
 ; Подпрограмма печати записи каталога
 ; ───────────────────────────────────────────────────────────────────────
@@ -246,21 +226,23 @@ PRINTN:
 	PUSH	HL
 	PUSH	BC
 
-	LD	A, C			; Печатаем порядковый номер
-	ADD	A, 30H
-	LD	C, A
+	LD	A, C
+
+	LD	C, 06H
 	CALL	PrintCharFromC
+
+	SUB	B
 	LD	C, ' '
+	RST	0
+	JP	NZ, NotActive1-$
+	LD	C, 0EH
+NotActive1:
 	CALL	PrintCharFromC
 
 	LD	B, 8
 	RST	0
 	LD	HL, T-$
-PLOOP:	LD	A, (HL)			; Печатаем имя
-	CP	"$"
-	RST	0
-	CALL	Z, PrintCOM-$
-	LD	C, A
+PLOOP:	LD	C, (HL)			; Печатаем имя
 	CALL	PrintCharFromC
 	INC	HL
 	DEC	B
@@ -268,31 +250,45 @@ PLOOP:	LD	A, (HL)			; Печатаем имя
 	JP	NZ, PLOOP-$
 
 	INC	HL
-	LD	C, ' '			; Печатаем стартовый адрес
+	
+	POP	BC
+	PUSH	BC
+	
+	LD	A, C
+	SUB	B
+	LD	C, ' '
+	RST	0
+	JP	NZ, NotActive2-$
+	LD	C, 1DH
+NotActive2:
 	CALL	PrintCharFromC
-	LD	A, (HL)
-	CALL	PrintHexByte
-	DEC	HL
-	LD	A, (HL)
-	CALL	PrintHexByte
+	RST	0			; Печатаем стартовый адрес
+	CALL	PrintHexWord-$
 
 	INC	HL
 	INC	HL
 	INC	HL
 	LD	C, ' '			; Печатаем размер
 	CALL	PrintCharFromC
+	RST	0
+	CALL	PrintHexWord-$
+
+	LD	C, 11h
+	CALL	PrintCharFromC
+	RST	0
+	LD	HL, SO2-$		; Печатаем перевод строки
+	CALL	PrintString
+
+	POP	BC
+	POP	HL
+	RET
+
+PrintHexWord:
 	LD	A, (HL)
 	CALL	PrintHexByte
 	DEC	HL
 	LD	A, (HL)
-	CALL	PrintHexByte
-
-	RST	0
-	LD	HL, SO2-$		; Печатаем перевод строки
-	CALL	PrintString
-	POP	BC
-	POP	HL
-	RET
+	JP	PrintHexByte
 
 ; ───────────────────────────────────────────────────────────────────────
 ; Подпрограмма запуска программы
@@ -309,7 +305,13 @@ EXECN:
 	RST	0
 	LD	SP, (T+8)-$	; Используя стек, читаем...
 	RST	0		
-	CALL	RESTORERST-$	; Восстанавливаем память
+;	CALL	RESTORERST-$	; Восстанавливаем память
+	RST	0
+	LD	HL, ((RST0_0-$) & 0ffffh)
+	RST	0
+	LD	A, ((RST0_2-$) & 0ffffh)
+	LD	(0), HL
+	LD	(2), A
 	POP	BC		; Начальный адрес
 	POP	HL		; Размер
 
@@ -318,36 +320,55 @@ EXECN:
 
 	PUSH	BC		; Адрес запуска
 Patch2:
-	CALL	ReadROM		; Читаем в ОЗУ
-	RET			; Запускаем программу
-
+	JP	ReadROM		; Читаем в ОЗУ
+;	RET			; Запускаем программу
 ; ───────────────────────────────────────────────────────────────────────
 ; Подпрограмма восстановления вектора RST 0
 ; ───────────────────────────────────────────────────────────────────────
-RESTORERST:
-	RST	0
-	LD	HL, ((RST0_0-$) & 0ffffh)
-	RST	0
-	LD	A, ((RST0_2-$) & 0ffffh)
-	LD	(0), HL
-	LD	(2), A
-	RET
-
-RST_18:	EX	(SP),HL		; 6 bytes
-	CALL	PrintString
-	EX	(SP),HL
-	RET
+;RESTORERST:
+;	RST	0
+;	LD	HL, ((RST0_0-$) & 0ffffh)
+;	RST	0
+;	LD	A, ((RST0_2-$) & 0ffffh)
+;	LD	(0), HL
+;	LD	(2), A
+;	RET
 
 RST0_0:	DW	0
 RST0_2:	DB	0
 T:	DB	8+2+2 DUP 0
+SO1:	DB 	1FH,0AH,0DH,"*ROM-DISK/32K* V3.0-24"
+	DB 	0AH,0DH," \x14\x14\x14\x14\x14\x14\x14\x14\x14\x14\x14\x14\x14\x14\x14\x14\x14\x14\x14"
+SO2:	DB	0AH,0DH, 0
+SO3:	DB 	" \x3\x3\x3\x3\x3\x3\x3\x3\x3\x3\x3\x3\x3\x3\x3\x3\x3\x3\x3",0
 
-PrintCOM:
-	PUSH	HL
-	RST	0
-	CALL	RST_18-$
-SO0:	DB	".COM", ' ', 0
-	POP	HL
+
+; ───────────────────────────────────────────────────────────────────────
+; Подпрограмма модификации относительного адреса перехода
+; ───────────────────────────────────────────────────────────────────────
+RST0:	EX	(SP),HL		; Save H,L and get next PC
+	PUSH	DE		; Save D,E.
+	PUSH	AF		; Save condition codes.
+	DEC	HL		; Change RST 0 to NOP.
+	LD	(HL),00H
+	INC	HL
+
+	INC	HL
+	LD	E,(HL)		; Get relative addr. in D, E.
+	INC	HL
+	LD	D,(HL)
+	EX	DE,HL		; Add offset for abs. addr.
+	ADD	HL,DE
+	EX	DE,HL
+	DEC	DE		; Set to beginning of instr
+	DEC	DE
+	LD	(HL),D		; Store absolute addr.
+	DEC	HL
+	LD	(HL),E
+	POP	AF		; Restore condition codes.
+	POP	DE		; Restore D,E.
+	DEC	HL		; Set H,L to start of instr
+	EX	(SP),HL		; Restore H,L
 	RET
 
 	DB	BASE-$ DUP (0FFH)
