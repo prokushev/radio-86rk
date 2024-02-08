@@ -126,9 +126,13 @@ InputLoop:
 	CP	1BH
 	JP	Z, WarmBoot
 
+	CP	0CH
+	JP	Z, WarmBoot
+
 	CP	1AH
 	RST	0
 	JP	NZ, Next1-$
+	
 	LD	A, B
 	RST	0
 	LD	HL, MaxItems-$
@@ -304,10 +308,14 @@ EXECN:
 	LD	A, C
 	SUB	B
 	RET	NZ
+
+	LD	C, 1Fh		; Очищаем экран перед запуском
+	CALL	PrintCharFromC
 	
 	LD	HL, 010H
 	ADD	HL, DE		; DE - это адрес на ROM-диске
 	EX	DE, HL
+
 
 ; Восстанавливаем память 0-2
 	RST	0
@@ -320,7 +328,6 @@ EXECN:
 
 	LD	(0), HL
 	LD	(2), A
-
 
 	POP	BC		; Начальный адрес
 	POP	HL		; Размер
