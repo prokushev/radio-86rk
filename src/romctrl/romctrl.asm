@@ -109,6 +109,10 @@ InputLoop:
 	RST	0
 	CALL	SEARCHS-$
 	RST	0
+	LD	HL, MaxItems-$
+	DEC	C
+	LD	(HL), C
+	RST	0
 	LD	HL, SO3-$		; Печатаем перевод строки
 	CALL	PrintString
 ; ───────────────────────────────────────────────────────────────────────
@@ -119,10 +123,21 @@ InputLoop:
 	RST	0
 	JP	Z, ExitLoop-$
 
+	CP	1BH
+	JP	Z, WarmBoot
+
 	CP	1AH
 	RST	0
 	JP	NZ, Next1-$
+	LD	A, B
+	RST	0
+	LD	HL, MaxItems-$
+	CP	(HL)
+	RST	0
+	JP	Z, Next2-$
 	INC	B
+	RST	0
+	JP	Next2-$
 Next1:
 	CP	19H
 	RST	0
@@ -323,7 +338,10 @@ T:	DB	8+2+2 DUP 0
 SO1:	DB 	1FH,0AH,0DH,"*ROM-DISK/32K* V3.0-24"
 	DB 	0AH,0DH," \x14\x14\x14\x14\x14\x14\x14\x14\x14\x14\x14\x14\x14\x14\x14\x14\x14\x14\x14"
 SO2:	DB	0AH,0DH, 0
-SO3:	DB 	" \x3\x3\x3\x3\x3\x3\x3\x3\x3\x3\x3\x3\x3\x3\x3\x3\x3\x3\x3",0
+SO3:	DB 	" \x3\x3\x3\x3\x3\x3\x3\x3\x3\x3\x3\x3\x3\x3\x3\x3\x3\x3\x3",0dh,0ah
+	DB	"ar2-wyhod, ",0bh,0fh,"-wybor, wk-zapusk ",0
+MaxItems:
+	DB	0
 
 
 ; ───────────────────────────────────────────────────────────────────────
