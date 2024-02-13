@@ -12,10 +12,6 @@ cd basic
 call make
 cd ..
 
-echo DUMP.COM
-asw -lU src\dump\dump.asm > dump.lst
-p2bin src\dump\dump.p roms\romctrl\dump.com
-
 echo TEST.COM
 asw -lU src\test\test.asm > test.lst
 p2bin src\test\test.p roms\romctrl\test.com
