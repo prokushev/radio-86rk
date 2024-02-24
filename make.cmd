@@ -2,11 +2,6 @@
 
 SET PATH=tools;%PATH%
 
-:echo BDOS proto
-:asw -lU src\bdos\cpm64-bdos.asm > cpm64-bdos.lst
-:p2bin src\bdos\cpm64-bdos.p cpm64-bdos.bin
-
-:xit
 
 echo ROM-disk Control Program 3.0
 asw -lU -i . -D BASE=07600H src\romctrl\romctrl.asm > romctrl.lst
@@ -16,10 +11,6 @@ echo BASIC
 cd basic
 call make
 cd ..
-
-echo DUMP.COM
-asw -lU src\dump\dump.asm > dump.lst
-p2bin src\dump\dump.p roms\romctrl\dump.com
 
 echo TEST.COM
 asw -lU src\test\test.asm > test.lst
@@ -51,4 +42,3 @@ p2bin src\romdisk\romdisk.p roms\romdisk\b2m\romdisk.rom
 p2bin src\romdisk\romdisk.p roms\romdisk\emu80\romdisk.bin
 
 
-:asw -l comheader.asm > comheader.lst

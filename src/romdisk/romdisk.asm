@@ -66,11 +66,6 @@ ENDOFFILES	MACRO
 	DB	0FFH				; признак конца диска
 	ENDM
 
-	FILE "DUMP$", 100H, ENDDUMPCOM-DUMPCOM
-DUMPCOM:
-	BINCLUDE "dump.com"
-ENDDUMPCOM:
-	
 	FILE "BASIC$", 0, 02000H
 BASICROM:
 	BINCLUDE "basic-rk86-micron-32kb.bin"
