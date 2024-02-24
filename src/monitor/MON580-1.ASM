@@ -1490,8 +1490,12 @@ AFB4D:	CALL	TapeWriteByte
 
 ; После 15H вызовов GetKeyboardStatus при нажатой клавише выставляется флаг KBDFLG
 
-GetKeyboardStatusHandler:
-	LD	A,(PC)		; 38 bytes
+GetKeyboardStatusHandler:	; 45 bytes
+	LD	A, (IDENT)	; Если есть что-то в буфере идентификации, то выходим
+	OR	A
+	LD	A, 0
+	RET	NZ
+	LD	A,(PC)		
 	RLA
 	JP	NC,AFE0E	; если нажат RUS/LAT
 	LD	A,(KBDFLG)
@@ -1547,12 +1551,6 @@ IncHLAndRetIfEqDE:
 POPAF:	POP	AF
 	RET
 
-
-; ──────────────────────────────────────────────
-
-AFEF3:	LD	A,H			; 7 bytes
-	LD	HL,TABK1
-	JP	AFEFE
 
 ; ──────────────────────────────────────────────
 ; Подача звукового сигнала
@@ -2410,24 +2408,14 @@ InitHandlers:
 	LD	(BeepHandler+1), HL
 
 	JP	ColdBootHandler
+
+; ──────────────────────────────────────────────
+
+AFEF3:	LD	A,H			; 7 bytes
+	LD	HL,TABK1
+	JP	AFEFE
 	
-	NOP			; 61 bytes
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
+	NOP			; 45 bytes
 	NOP
 	NOP
 	NOP
