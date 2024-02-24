@@ -49,7 +49,7 @@ PAR_DE	EQU	BASE+1AH		; 2 Второй параметр
 PAR_BC	EQU	BASE+1CH		; 2 Третий параметр
 FLG_P2	EQU	BASE+1EH		; 1 флаг, что есть параметры 2 или 2,3
 INV_MG	EQU	BASE+1FH		; 1 флаг инверсии магнитофона
-TRK		EQU	BASE+20H		; 2 Номер трека
+IDENT	EQU	BASE+20H		; 1 Символ для ответа на Esc-Z
 SECT	EQU	BASE+22H		; 2 Номер сектора
 DMA		EQU	BASE+24H		; 2 Адрес буфера обмена с диском
 

@@ -2042,7 +2042,14 @@ skip_ESC_e:
 	INC	A		; CP	'a'
 	JP	Z, CursorDisable
 
-	ADD	A, 'a'-'Y'	;CP	'Y'
+	ADD	A, 'a'-'Z'	;CP	'Z'
+	JP	NZ, skip_ESC_Z
+
+	LD	A, 1BH
+	LD	(IDENT), A
+
+skip_ESC_Z:
+	INC	A	;CP	'Y'
 	JP	NZ, skip_ESC_Y
 
 	;esc_Y
