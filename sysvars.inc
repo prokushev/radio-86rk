@@ -35,21 +35,20 @@ COUNT	EQU	BASE+08H		; 1 счётчик опросов (вначале 15)
 APVFLG	EQU	BASE+09H		; 1 флаг автоповтора
 TMPSTK	EQU	BASE+0AH		; 2 временно храним стек при МГ п/п-ммах и функциях BDOS
 XYSTOR	EQU	BASE+0CH		; 2 Сохраненные координаты курсора
-LAST_K	EQU	BASE+10H		; 1 BUGBUG!! Тут два байта TODO
-WRPFLG	EQU	BASE+11H		; 1 Автоперенос строк
-
+LAST_K	EQU	BASE+10H		; 2 Код последней клавиши и что-то еще
 ESC_FL	EQU	BASE+12H		; 1 Флаг текущего статуса обработки Esc-последовательности (0,1,2)
 KBDFLG	EQU	BASE+13H		; 1 если =0, то есть символ в SYMBUF
 
 ; Эти две переменные должны идти подряд
-POSX	EQU	BASE+16H		; 1 Координаты курсора
-POSY	EQU	BASE+17H		; 1
+POSX	EQU	BASE+16H		; 1 Координата курсора X
+POSY	EQU	BASE+17H		; 1 Координата курсора Y
 PAR_HL	EQU	BASE+18H		; 2 Первый параметр
 PAR_DE	EQU	BASE+1AH		; 2 Второй параметр
 PAR_BC	EQU	BASE+1CH		; 2 Третий параметр
 FLG_P2	EQU	BASE+1EH		; 1 флаг, что есть параметры 2 или 2,3
 INV_MG	EQU	BASE+1FH		; 1 флаг инверсии магнитофона
-IDENT		EQU	BASE+20H		; 1 Флаг обработки Esc-Z
+IDENT	EQU	BASE+20H		; 1 Флаг обработки Esc-Z
+WRPFLG	EQU	BASE+21H		; 1 Автоперенос строк
 SECT	EQU	BASE+22H		; 2 Номер сектора
 DMA		EQU	BASE+24H		; 2 Адрес буфера обмена с диском
 
@@ -71,9 +70,6 @@ BUFCNT	EQU	BASE+32H		; 1 FIXED Число введенных символов в
 COMBUF	EQU	BASE+33H		; COMBUFMAX FIXED буфер ввода директивы
 
 COMBUFMAX	EQU	10H			; Максимальный размер буфера ввода команд
-
-ROMBUF	EQU	COMBUF;+COMBUFMAX		; ROMBUFMAX буфер подкачки кода из ROM-диска
-ROMBUFMAX	EQU	80H			; размер буфера подкачки из ROM-диск
 
 STACK	EQU	BASE+0D0H		; стек монитора
 
