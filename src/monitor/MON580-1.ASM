@@ -1860,13 +1860,38 @@ AFE4C:	LD	A,0FFH
 ;	AF		 TODO: проверить, что изменяет GetKeyboardStatus
 ; ──────────────────────────────────────────────
 
-InputSymbolHandler:			; 15 bytes
+InputSymbolHandler:			; 15+?? bytes
 	CALL	GetKeyboardStatus
 	OR	A
 	JP	Z,InputSymbolHandler
+	PUSH	HL
+	LD	HL, IDENT
+	LD	A, 1BH
+	CP	(HL)
+	JP	Z, VT52_CI1
+	LD	A, '/'
+	CP	(HL)
+	JP	Z, VT52_CI2
+	LD	A, 'K'
+	CP	(HL)
+	JP	Z, VT52_CI3
+	POP	HL
 	XOR	A
 	LD	(KBDFLG),A
 	LD	A,(LAST_K)
+	RET
+
+VT52_CI1:
+	LD	(HL), '/'
+	POP	HL
+	RET
+VT52_CI2:
+	LD	(HL), 'K'
+	POP	HL
+	RET
+VT52_CI3:
+	LD	(HL), 0
+	POP	HL
 	RET
 
 
@@ -1892,6 +1917,7 @@ InputSymbolHandler:			; 15 bytes
 ;		ESC L	- Insert line (not VT52)
 ;		ESC M	- Delete line (not VT52)
 ;		ESC Y	- Direct Cursor Addressing
+;		ESC Z	- Ident terminal
 ;		ESC a	- Disable cursor (M/80K extension)
 ;		ESC b	- Enable cursor(M/80K extension)
 ;		ESC e	- Enable cursor (GEMDOS/TOS extension)
@@ -2415,10 +2441,7 @@ AFEF3:	LD	A,H			; 7 bytes
 	LD	HL,TABK1
 	JP	AFEFE
 	
-	NOP			; 45 bytes
-	NOP
-	NOP
-	NOP
+	NOP			; 42 bytes
 	NOP
 	NOP
 	NOP
@@ -2479,39 +2502,6 @@ AFEF3:	LD	A,H			; 7 bytes
 	NOP
 	NOP
 	
-	NOP			; 16 bytes
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-
-	NOP			; 16 bytes
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
 	if 0
 	SHARED	FARJMP
 FARJMP:	
