@@ -39,7 +39,7 @@ DefaultPrintHandler	EQU	PrintCharFromCHandler
 ; ──────────────────────────────────────────────
 
 ColdBoot:
-	JP	InitHandlers		; F800
+	JP	ColdBootHandler		; F800
 InputSymbol:
 	JP	InputSymbolHandler	; F803
 TapeReadByte:
@@ -146,7 +146,7 @@ Beep:
 ; ──────────────────────────────────────────────
 
 Version:
-	DB	'R', 0+80h, 00001000b, 0000101b
+	DB	'R'
 
 INIT2:
 	LD	(HL), 099H		; Размер курсора
@@ -156,6 +156,7 @@ INIT2:
 	LD	DE, COMBUF+COMBUFMAX-1
 	CALL	DirectiveFill
 
+	CALL	InitHandlers
 ; ──────────────────────────────────────────────
 ; Инициализация ВВ55
 ; ──────────────────────────────────────────────
@@ -211,7 +212,10 @@ WarmBoot:
 	LD	A,(PDA)
 	CP	0CDH
 
-	JP	Z, ROMBoot		; Если все ОК, то игнорируем МОНИТОР и грузимся с ROM-диска
+;	JP	Z, ROMBoot		; Если все ОК, то игнорируем МОНИТОР и грузимся с ROM-диска
+	NOP
+	NOP
+	NOP
 
 ; ──────────────────────────────────────────────
 ; Проверяем наличие РК-ДОС
@@ -220,7 +224,10 @@ WarmBoot:
 
 	LD	A, (0E000H)		; Проверяем наличие РК-ДОС
 	CP	0AFH
-	JP	Z, 0E000H		; Если все ОК, то игнорируем МОНИТОР и грузимся в РК-ДОС
+;	JP	Z, 0E000H		; Если все ОК, то игнорируем МОНИТОР и грузимся в РК-ДОС
+	NOP
+	NOP
+	NOP
 
 ; ──────────────────────────────────────────────
 ; Читаем директиву
@@ -1855,9 +1862,6 @@ AFE4C:	LD	A,0FFH
 ; ──────────────────────────────────────────────
 
 InputSymbolHandler:			; 15+?? bytes
-	CALL	GetKeyboardStatus
-	OR	A
-	JP	Z,InputSymbolHandler
 	PUSH	HL
 	LD	HL, IDENT
 	LD	A, 1BH
@@ -1870,6 +1874,9 @@ InputSymbolHandler:			; 15+?? bytes
 	CP	(HL)
 	JP	Z, VT52_CI3
 	POP	HL
+	CALL	GetKeyboardStatus
+	OR	A
+	JP	Z,InputSymbolHandler
 	XOR	A
 	LD	(KBDFLG),A
 	LD	A,(LAST_K)
@@ -1940,6 +1947,8 @@ EscapeHandler:
 	PUSH	HL
 	LD	HL, EscapeHandlerEnd
 	EX	(SP), HL
+	CP	'/'		; Игнорирование последовательности Esc / ответа идентификации
+	RET	Z
 	SUB	'w'		;CP	'w'
 	JP	NZ, skip_ESC_w
 
@@ -2065,6 +2074,7 @@ skip_ESC_e:
 
 	LD	A, 1BH
 	LD	(IDENT), A
+	RET
 
 skip_ESC_Z:
 	INC	A	;CP	'Y'
@@ -2427,7 +2437,7 @@ InitHandlers:
 	LD	HL, DefaultBeepHandler
 	LD	(BeepHandler+1), HL
 
-	JP	ColdBootHandler
+	RET
 
 ; ──────────────────────────────────────────────
 
@@ -2435,9 +2445,7 @@ AFEF3:	LD	A,H			; 7 bytes
 	LD	HL,TABK1
 	JP	AFEFE
 	
-	NOP			; 42 bytes
-	NOP
-	NOP
+	NOP			; 40 bytes
 	NOP
 	NOP
 	NOP
