@@ -40,6 +40,7 @@ CURST	EQU	BASE+13H		; 1 Отображать/прятать курсор
 ListHandler	EQU	BASE+14H	; 3 JP DefaultListHandler
 PrintHandler	EQU	BASE+17H	; 3 JP DefaultPrintHandler
 BeepHandler	EQU	BASE+1AH	; 3 JP DefaultBeepHandler
+GetKeyboardStatusHandler		EQU	BASE+1DH	; 3 JP DefaultGetKeyboardStatusHandler
 
 PAR_HL	EQU	BASE+27H		; 2 FIXED Первый параметр
 PAR_DE	EQU	BASE+29H		; 2 FIXED Второй параметр

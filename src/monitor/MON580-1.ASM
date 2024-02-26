@@ -6,6 +6,7 @@
 ; todo Добавить поддержку Esc-последовательностей управления графсимволами (VT-52)
 ; todo Возможно, добавить обработку Esc-последовательностей для работы с принтером (Эмуляция VT-52 с принтером)
 ; todo Переработка обработчика контрольных символов. Они должны обрабатываться _до_ esc последовательностей, не зависимо от текущей активной последовательности
+; todo Если нет ROM-диска, то просто ВК ничего не грузит
 
 	CPU	8080
 	Z80SYNTAX	EXCLUSIVE
@@ -115,36 +116,15 @@ COD_0D:	LD	L, MARGIN_LEFT
 
 	RET				; F839
 
-	NOP
-	NOP
+; ──────────────────────────────────────────────
+AF91A:	SUB	B			; 2 bytes
+	RET
+; ──────────────────────────────────────────────
 
 SetCursorPos:
 	JP	SetCursorPosHandler	; F83C
 Beep:
 	JP	BeepHandler		; F83F
-
-; ──────────────────────────────────────────────
-; Идентификационная строка версии МОНИТОРа
-; 
-; WXYZ
-; ^^^^
-; !!!`----- Битовая маска возможностей
-; !!!       0 - клавиатура MC-7007 (1) или РК86 (0)
-; !!!       1 - Поддержка звука ВИ
-; !!!       2-3 - схема цветности  00 - ч/б, 01 - схема 1, 10 - схема 2, 11 - схема 3
-; !!!       4-7 - Количество ОЗУ (кратно 4кб)   1100 - 48кб, 1000 - 32кб, 0100 - 16кб, 0011 - 12кб
-; !!`------ Битовая маска возможностей
-; !!        0-7 - зарезервировано, должно быть 0
-; !`------ Номер версии от 0 до 127 (бит 7 установлен, если это экспериментальная версия)
-; `-------- R - РК86
-;           0 - Микро-80
-;           8 - ЮТ-88
-;           M - Микроша
-;           S - Спектр-001
-; ──────────────────────────────────────────────
-
-Version:
-	DB	'R'
 
 INIT2:
 	LD	L, CURST & 0FFH
@@ -180,6 +160,7 @@ INIT2:
 	DB	1Fh,"spektr-00",'1' + 80H
 	ENDIF
 	NOP
+	NOP
 
 ; ──────────────────────────────────────────────
 ; "Теплый" старт МОНИТОРа
@@ -200,50 +181,22 @@ WarmBoot:
 	LD	(PDU),A
 
 ; ──────────────────────────────────────────────
-; Проверяем наличие нашей версии ROM-диска 
-; (4-ый байт ROM-диска содержит CDH)
-; ──────────────────────────────────────────────
-
-	LD	HL, 3
-	LD	(PDB),HL
-	LD	A,(PDA)
-	CP	0CDH
-
-;	JP	Z, ROMBoot		; Если все ОК, то игнорируем МОНИТОР и грузимся с ROM-диска
-	NOP
-	NOP
-	NOP
-
-; ──────────────────────────────────────────────
-; Проверяем наличие РК-ДОС
-; (байт по 0E000H содержит AFH)
-; ──────────────────────────────────────────────
-
-	LD	A, (0E000H)		; Проверяем наличие РК-ДОС
-	CP	0AFH
-;	JP	Z, 0E000H		; Если все ОК, то игнорируем МОНИТОР и грузимся в РК-ДОС
-	NOP
-	NOP
-	NOP
-
-; ──────────────────────────────────────────────
 ; Читаем директиву
 ; ──────────────────────────────────────────────
 
 	CALL	RST_18
-	DB	13,10,'>'+80H
+	DB	13,10,'-->'+80H
 
-	CALL	InputDirective
-
-	LD	HL,WarmBoot
-	PUSH	HL			; в стеке лежит адрес возрата в МОНИТОР
+	CALL	InputDirective		; На выходе В DE - COMBUF
 
 	JP	NC,ROMBoot		; Просто нажали <ВК> -> грузим ROMDISK
 
-	CALL	ParseParameters
+	LD	HL,WarmBoot
+	PUSH	HL			; в стеке лежит адрес возврата в МОНИТОР
+
 
 	; Обработка директив. DIRTABLE должна находится по адресу xx00H
-	LD	A, (COMBUF)
+	LD	A, (DE)			;LD	A, (COMBUF)
 	SUB	'C'
 	JP	C, SyntaxError		; < 'C'
 	CP	'U'-'C'
@@ -252,13 +205,43 @@ WarmBoot:
 	LD	L, A
 	LD	L,(HL)
 	PUSH	HL			; Адрес вызова обработчика директивы
-	LD	HL,(PAR_BC)		; Z80: LD BC,(PAR_BC)
+
+
+	CALL	ParseParameters		; На выходе в HL, то, что должно быть в BC
+
 	LD	C,L
 	LD	B,H
+
 	LD	HL,(PAR_DE)		; Z80: LD DE,(PAR_DE)
 	EX	DE,HL
 	LD	HL,(PAR_HL)
 	RET				; Переход в обработчик директивы
+
+	NOP		; 25 bytes
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
 
 ; ──────────────────────────────────────────────
 ; Загрузка BC с поиском синхробайта
@@ -314,7 +297,6 @@ ReadVideoRAMHandler:
 	LD	A,(HL)
 	POP	HL
 	RET
-
 
 ; ──────────────────────────────────────────────
 ; Возвращает в HL координаты курсора
@@ -382,7 +364,7 @@ PrintHexByteAndSpace:
 ; ──────────────────────────────────────────────
 
 PrintSpace:
-	LD	A, ' '+2
+	LD	A, ' '+2	; С установленным старшим битом
 	DEC	HL
 	DB	0C6H		; ADD A, 07EH
 	;JP	PrintCharFromA
@@ -399,7 +381,7 @@ PrintSpace:
 ; ──────────────────────────────────────────────
 
 PrintStringHandler:
-	LD	A,(HL)
+	LD	A,(HL)		; 07EH
 	OR	A
 	RET	Z
 	CALL	PrintCharFromA
@@ -446,9 +428,8 @@ AF8F3:	CALL    InputSymbol	; используется в DIR_M
 	INC	HL
 	JP	AF8F3
 
-AF91A:	SUB	B			; 2 bytes
-	RET
-
+	NOP			; 6 bytes 
+	NOP
 	NOP
 	NOP
 	NOP
@@ -491,7 +472,7 @@ ParseParameters:		; 43 bytes
 	RET	C
 
 	CALL	GET_HL
-	LD	(PAR_BC),HL
+	LD	(PAR_BC),HL		; Чисто теоретически, это лишнее, но кто-то эту п/п использует и может нужно...
 	RET	C
 	JP	SyntaxError
 	else
@@ -508,7 +489,7 @@ ParseParameters:		; 33 bytes
 	LD	(PAR_DE),HL
 	LD	HL, 0
 	CALL	NC, GET_HL
-	LD	(PAR_BC),HL
+	LD	(PAR_BC),HL		; Чисто теоретически, это лишнее, но кто-то эту п/п использует и может нужно...
 	RET	C
 	JP	SyntaxError
 	endif
@@ -826,10 +807,10 @@ AFB19:	LD	A,(HL)
 ;	Не определено
 ; ──────────────────────────────────────────────
 
-ColdBootHandler:			; 14 bytes
+ColdBootHandler:			; 16 bytes
 	LD	HL, POSADDR
 	LD	SP, HL			; 7600H/3600H
-	LD	DE, COMBUF+COMBUFMAX-1
+	LD	DE, STACK-1
 	LD	C,L			; LD C, 0
 	CALL	DirectiveFill
 	JP	INIT2
@@ -910,7 +891,7 @@ AFAE1:	LD	A,(HL)		; read status
 
 GET_HL:	XOR	A		;LD	HL,0		; 47 bytes
 	LD	H, A
-AF95D:	LD	L,A
+AF95D:	LD	L, A
 	LD	A,(DE)		; Выход: CY=1 если разделитель <ВК>
 	INC	DE
 	CP	13
@@ -950,7 +931,6 @@ AF982:
 	POP	BC
 	JP	AF95D
 
-	NOP
 ; ──────────────────────────────────────────────
 
 NO_ESC:	LD	A,C
@@ -993,6 +973,8 @@ ProcessBackspace:
 	CALL	RST_18
 	DB	8,' ',8+80H
 	JP	AF8F3;InputNextSymbol
+
+	NOP
 	NOP
 
 ; ──────────────────────────────────────────────
@@ -1465,7 +1447,7 @@ AFB4D:	CALL	TapeWriteByte
 
 ; После 15H вызовов GetKeyboardStatus при нажатой клавише выставляется флаг KBDFLG
 
-GetKeyboardStatusHandler:	; 45 bytes
+DefaultGetKeyboardStatusHandler:	; 45 bytes
 	LD	A, (IDENT)	; Если есть что-то в буфере идентификации, то выходим
 	OR	A
 	LD	A, 0
@@ -1836,9 +1818,9 @@ AFE4C:	LD	A,0FFH
 ; ──────────────────────────────────────────────
 
 InputSymbolHandler:			; 15+?? bytes
-	PUSH	HL
-	LD	HL, IDENT
-	LD	A, 1BH
+	PUSH	HL			
+	LD	HL, IDENT		
+	LD	A, 1BH			
 	CP	(HL)
 	JP	Z, VT52_CI1
 	LD	A, '/'
@@ -1858,12 +1840,10 @@ InputSymbolHandler:			; 15+?? bytes
 
 VT52_CI1:
 	LD	(HL), '/'
-	POP	HL
-	RET
+	DB	11H		; LD HL,...
 VT52_CI2:
 	LD	(HL), 'K'
-	POP	HL
-	RET
+	DB	11H		; LD HL,...
 VT52_CI3:
 	LD	(HL), 0
 	POP	HL
@@ -2411,6 +2391,10 @@ InitHandlers:
 	LD	HL, DefaultBeepHandler
 	LD	(BeepHandler+1), HL
 
+	LD	(GetKeyboardStatusHandler), A
+	LD	HL, DefaultGetKeyboardStatusHandler
+	LD	(GetKeyboardStatusHandler+1), HL
+
 	RET
 
 ; ──────────────────────────────────────────────
@@ -2419,7 +2403,7 @@ AFEF3:	LD	A,H			; 7 bytes
 	LD	HL,TABK1
 	JP	AFEFE
 	
-	NOP			; 40 bytes
+	NOP			; 49 bytes
 	NOP
 	NOP
 	NOP
@@ -2454,14 +2438,6 @@ AFEF3:	LD	A,H			; 7 bytes
 	NOP
 	NOP
 	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-
-	NOP			; 16 bytes
 	NOP
 	NOP
 	NOP
