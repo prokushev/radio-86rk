@@ -3,7 +3,6 @@
 ;  поддержкой VT-52
 ; ═══════════════════════════════════════════════════════════════════════
 ; todo Передвинуть обработчики директив и таблицу директив в адреса FAXX (возможно, даст выигрыш 3 байта на DirectiveReadROM)
-; todo Добавить поддержку Esc-последовательностей управления графсимволами (VT-52)
 ; todo Возможно, добавить обработку Esc-последовательностей для работы с принтером (Эмуляция VT-52 с принтером)
 ; todo Переработка обработчика контрольных символов. Они должны обрабатываться _до_ esc последовательностей, не зависимо от текущей активной последовательности
 ; todo Если нет ROM-диска, то просто ВК ничего не грузит
@@ -1733,6 +1732,15 @@ skip_TAB:
 	JP	Z, Beep
 	PUSH	HL		;
 	CALL	SetCursorPos	; Получаем адрес символа
+	LD	A,(AltChars)
+	OR	A
+	JP	Z, skip_AltChars
+	LD	A, C		; В режиме вывода графики - выводим
+	CP	5Eh
+	JP	C, skip_AltChars; < 5Eh
+	SUB	A, 5Eh		; Вместо русских букв теперь псевдографика
+	LD	C, A
+skip_AltChars:
 	LD	(HL),C		; Видимый на экране символ
 	POP	HL		;
 
@@ -1865,6 +1873,8 @@ VT52_CI3:
 ;		ESC C	- Cursor Right
 ;		ESC D	- Cursor Left
 ;		ESC E	- Clear screen (GEMDOS/TOS extension)
+;		ESC F	- Switch to graphics mode
+;		ESC G	- Switch off graphics mode
 ;		ESC H	- Cursor Home
 ;		ESC I	- Reverse Line Feed
 ;		ESC J	- Erase to End Of Screen
@@ -2222,7 +2232,18 @@ RLFLOOP:
 skip_ESC_I:
 	INC	A		;CP	'H'
 	JP	Z, CursorHome
-	ADD	A, 'H'-'E'	;CP	'E'
+skip_ESC_H:
+	INC	A		;CP     'G'
+	JP	NZ, skip_ESC_G
+	LD	(AltChars), A
+skip_ESC_G:
+	INC	A		;CP     'F'
+	JP	NZ, skip_ESC_F
+	DEC	A
+	LD	(AltChars), A
+	INC	A
+skip_ESC_F:
+	INC	A		;CP	'E'
 	JP	NZ, skip_ESC_E
 
 ; ──────────────────────────────────────────────
@@ -2403,38 +2424,7 @@ AFEF3:	LD	A,H			; 7 bytes
 	LD	HL,TABK1
 	JP	AFEFE
 	
-	NOP			; 49 bytes
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
+	NOP			; 19 bytes
 	NOP
 	NOP
 	NOP

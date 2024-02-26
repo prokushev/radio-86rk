@@ -32,15 +32,19 @@ COUNT	EQU	BASE+0AH		; 1 FIXED счётчик опросов (вначале 15)
 APVFLG	EQU	BASE+0BH		; 1 FIXED флаг автоповтора
 TMPSTK	EQU	BASE+0DH		; 2 FIXED временно храним стек при МГ п/п-ммах
 
+; ---- нестандарт ----------
 IDENT	EQU	BASE+0FH		; 1 Флаг обработки Esc-Z
 WRPFLG	EQU	BASE+10H		; 1 Автоперенос строк
 XYSTOR	EQU	BASE+11H		; 2 Сохраненные координаты курсора
 CURST	EQU	BASE+13H		; 1 Отображать/прятать курсор
+AltChars	EQU	BASE+14H	; 1 Вкл/выкл алтернативный знакогенератор
 
-ListHandler	EQU	BASE+14H	; 3 JP DefaultListHandler
-PrintHandler	EQU	BASE+17H	; 3 JP DefaultPrintHandler
-BeepHandler	EQU	BASE+1AH	; 3 JP DefaultBeepHandler
-GetKeyboardStatusHandler		EQU	BASE+1DH	; 3 JP DefaultGetKeyboardStatusHandler
+ListHandler	EQU	BASE+15H	; 3 JP DefaultListHandler
+PrintHandler	EQU	BASE+18H	; 3 JP DefaultPrintHandler
+BeepHandler	EQU	BASE+1BH	; 3 JP DefaultBeepHandler
+GetKeyboardStatusHandler		EQU	BASE+1EH	; 3 JP DefaultGetKeyboardStatusHandler
+
+; ---- нестандарт ----------
 
 PAR_HL	EQU	BASE+27H		; 2 FIXED Первый параметр
 PAR_DE	EQU	BASE+29H		; 2 FIXED Второй параметр
@@ -52,9 +56,7 @@ KNS_WR	EQU	BASE+30H		; 1 FIXED константа записи
 RAMTOP	EQU	BASE+31H		; 2 FIXED Верхняя граница ОЗУ
 
 COMBUF	EQU	BASE+33H		; ? FIXED буфер ввода директивы
-COMBUFMAX	EQU	10H			; Максимальный размер буфера ввода команд
-
-STACK	EQU	BASE+0D0H		; стек монитора
+STACK	EQU	BASE+0D0H		; стек монитора (растет в сторону буфера ввода директив)
 
 SA		EQU	BASE+0D0H		; 76D0 начало экранной области
 SCBASE  EQU	BASE+01C2H		; 77C2 ЛЕВ.ВЕРХН.УГОЛ ЭКР.
