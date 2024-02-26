@@ -2,6 +2,7 @@
 
 SET PATH=tools;%PATH%
 
+md logs
 
 echo ROM-disk Control Program 3.0
 cd src\romctrl

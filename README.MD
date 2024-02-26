@@ -47,11 +47,11 @@
 
 - УС-G Должен прозвучать звуковой сигнал
 
-- АР2 C cursor should move to right; repeat until cursor is in the center of screen.
-- УС-J cursor should move down one line.
-- АР2 A cursor should move up one line.
-- УС-H cursor should move left one position.
-- УС-I cursor should move to the next TAB stop.
+- АР2 C курсор должен переместиться вправо; повторяйте пока курсор не окажется в центре экрана.
+- УС-J курсор должен переместиться вниз на одну строку.
+- АР2 A курсор должен переместиться на одну строку вверх.
+- УС-H курсор должен переместиться на одну колонку влево.
+- УС-I курсор должен переместиться на следующую позицию табулятора.
 - АР2 I cursor should move up one line; this performs a downward scroll if the cursor was on the top line.
 - АР2 B cursor should move down one line.
 - АР2 D cursor should move left one position.
