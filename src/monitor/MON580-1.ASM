@@ -3,9 +3,7 @@
 ;  поддержкой VT-52
 ; ═══════════════════════════════════════════════════════════════════════
 ; todo Передвинуть обработчики директив и таблицу директив в адреса FAXX (возможно, даст выигрыш 3 байта на DirectiveReadROM)
-; todo Провести ревизию системных переменных по совместимости
 ; todo Добавить поддержку Esc-последовательностей управления графсимволами (VT-52)
-; todo Добавить обработку Esc / (Для более корректной обработки идентификации терминала)
 ; todo Возможно, добавить обработку Esc-последовательностей для работы с принтером (Эмуляция VT-52 с принтером)
 ; todo Переработка обработчика контрольных символов. Они должны обрабатываться _до_ esc последовательностей, не зависимо от текущей активной последовательности
 
@@ -149,13 +147,12 @@ Version:
 	DB	'R'
 
 INIT2:
+	LD	L, CURST & 0FFH
 	LD	(HL), 099H		; Размер курсора
+	LD	L,C			; LD L, 0
+	DEC	HL			; 75FFH/35FFH
+	LD	(RAMTOP),HL
 	CALL	InitVideo		; Запускаем ВГ75
-
-	INC	HL			; LD	HL, RUSLAT
-	LD	DE, COMBUF+COMBUFMAX-1
-	CALL	DirectiveFill
-
 	CALL	InitHandlers
 ; ──────────────────────────────────────────────
 ; Инициализация ВВ55
@@ -241,7 +238,7 @@ WarmBoot:
 	LD	HL,WarmBoot
 	PUSH	HL			; в стеке лежит адрес возрата в МОНИТОР
 
-	JP	NC,DirectiveReadROM	; Просто нажали <ВК>
+	JP	NC,ROMBoot		; Просто нажали <ВК> -> грузим ROMDISK
 
 	CALL	ParseParameters
 
@@ -424,59 +421,38 @@ PrintStringHandler:
 	CHK	0F8EEH, "* Internal subroutine InputDirective shifted ! *"
 
 InputDirective:
-	LD	HL,COMBUF-2
-	LD	(HL), COMBUFMAX	; Размер буфера
-	EX	DE, HL
-
-; ──────────────────────────────────────────────
-; Ввод строки в буфер DE (CP/M совместимо)
-; ВХОД:
-;	DE	- адрес буфера
-;	Буффер содержит структуру:
-;		DB	?			; Размер буфера
-;		DB	?			; Количество введенных символов
-;		DB	(Размер буфера) DUP (?)	; Введенные данные
-; ВЫХОД:
-;	COMBUF	- введенная строка
-;	CY	- 1 - есть данные, 0 - пустая строка
-; ИЗМЕНЯЕТ:
-;	AF, DE, HL, BC
-; ──────────────────────────────────────────────
-
-C_READSTR:
-	PUSH	DE
-	POP	HL
-	LD	C, (HL)
-	INC	HL
-GotoCmdLineBegin:
+	LD	HL,COMBUF	; ВЫХОД: CY=1, если непустая строка
+	LD	D,H
+	LD	E,L
+AF8F1:
 	XOR	A
-	LD	B, A
-	CALL	SET_RL			; Включить латинский регистр
-InputNextSymbol:
-	CALL	InputSymbol		; используется в DirectiveModify
-	CP	7FH
+	LD	B,A		; чтобы на выходе получить флаг пустой строки
+	CALL	SET_RL
+AF8F3:	CALL    InputSymbol	; используется в DIR_M
+	CP      8
 	JP	Z,ProcessBackspace
-	CP	03
-	JP	Z,WarmBoot
+	CP      7FH
+	JP	Z,ProcessBackspace
+	LD	(HL),A
+	CALL    PrintCharFromA
+	CP      13
+	JP	Z,AF91A
+	CP      '.'
+	JP      Z,WarmBoot
+	LD	B,E			; B=76H --> бит D7=0
+	LD	A,(COMBUF & 0ffh)+31
+	CP	L
+	JP      Z,SyntaxError
 	INC	HL
-	LD	(HL), A
-	CALL	PrintCharFromA
-	CP	13
-	JP	Z,Enter
-	INC	B
-	LD	A, C
-	CP	B
-	JP	NZ, InputNextSymbol;	SyntaxError
-	LD	B, C
-Enter:	INC	DE
-	EX	DE, HL
-	LD	(HL), B
-	LD	A, 0FFH			;
-	ADD	A, B			; Установить флаг переполнения, если что-то ввели
-	INC	HL
-	EX	DE, HL			; DE на выходе содержит адрес буфера
+	JP	AF8F3
+
+AF91A:	SUB	B			; 2 bytes
 	RET
 
+	NOP
+	NOP
+	NOP
+	NOP
 ; ──────────────────────────────────────────────
 TABK2:	DB	09,0AH,0DH,7FH,08H,19H,18H,1AH	; 8 bytes
 
@@ -519,15 +495,16 @@ ParseParameters:		; 43 bytes
 	RET	C
 	JP	SyntaxError
 	else
-; Версия парсера от Ruslan Alikberov
+; Версия парсера based on Ruslan Alikberov work
 ParseParameters:		; 33 bytes
-	LD	DE, COMBUF
+	LD	DE, COMBUF+1
 	CALL	GET_HL
-	CCF
+	;CCF
 	SBC	A
+	INC	A
 	LD	(FLG_P2), A
 	LD	(PAR_HL),HL
-	CALL	C, GET_HL
+	CALL	NC, GET_HL
 	LD	(PAR_DE),HL
 	LD	HL, 0
 	CALL	NC, GET_HL
@@ -850,14 +827,11 @@ AFB19:	LD	A,(HL)
 ; ──────────────────────────────────────────────
 
 ColdBootHandler:			; 14 bytes
-	LD	HL,BASE-1		; 75FFH/35FFH
-	LD	(RAMTOP),HL
-	INC	HL
-	LD	SP,HL			; 7600H/3600H
-
+	LD	HL, POSADDR
+	LD	SP, HL			; 7600H/3600H
+	LD	DE, COMBUF+COMBUFMAX-1
 	LD	C,L			; LD C, 0
-	LD	L, CURST & 0FFH		; LD HL, CURST
-
+	CALL	DirectiveFill
 	JP	INIT2
 
 ; ──────────────────────────────────────────────
@@ -1012,14 +986,14 @@ TAB:	LD	A, L
 ; ──────────────────────────────────────────────
 
 ProcessBackspace:
-	LD	A,B			; 16 bytes
-	OR	A			; начало буфера ввода ?
-	JP	Z,GotoCmdLineBegin	; GotoCmdLineBegin
-	DEC	B
+	LD	A,E			; 15 bytes
+	CP	L			; начало буфера ввода ?
+	JP	Z,AF8F1;GotoCmdLineBegin	; GotoCmdLineBegin
 	DEC	HL
 	CALL	RST_18
 	DB	8,' ',8+80H
-	JP	InputNextSymbol
+	JP	AF8F3;InputNextSymbol
+	NOP
 
 ; ──────────────────────────────────────────────
 ; Печать перевода строки, числа из HL в 16-ричном формате, пробела,
