@@ -235,6 +235,10 @@ InitHandlers2:
 	LD	(ListHandler), A	; Глушим принтер по умолчанию
 	RET
 
+	NOP	; 3 bytes
+	NOP
+	NOP
+
 ; ──────────────────────────────────────────────
 ; Загрузка BC с поиском синхробайта
 ; ВХОД:
@@ -284,8 +288,8 @@ TapeReadWord:
 
 ReadVideoRAMHandler:
 	PUSH	HL				; 10 bytes
-	LD	HL, (POSX)
-	CALL	SetCursorPos
+	LD	HL, (POSADDR)
+;	CALL	SetCursorPos
 	LD	A,(HL)
 	POP	HL
 	RET
@@ -904,7 +908,6 @@ AF982:
 	RET	C		; JP C,SyntaxError
 
 	OR	L
-	;LD	L,A
 	
 	POP	BC
 	JP	AF95D
@@ -1893,7 +1896,8 @@ VT52_CI3:
 ;	После чего происходит для каждого символа увеличение на дельту.
 ;	По JP NZ осуществляется обход кода обработчика, если он нам не нужен.
 ;	Сам обработчик должен обеспечить только, чтобы регистр A на выходе
-;	был меньше, чем 0A0H. Тогда не будет фальш-сработок. При вызове обработчика
+;	был меньше, чем 0A0H (зависит максимального упр. символа).
+;       Тогда не будет фальш-сработок. При вызове обработчика
 ;	будет осущетсвляться перебор и обход кода всех обработчисков и в конце будет
 ;	возврат через EscapeHandlerEnd. Такой метод позволит сэкономить на команде
 ;	RET для каждого обработчика. Если использовать таблицы, то каждый вызов
@@ -2183,7 +2187,7 @@ skip_ESC_K:
 ClearEOS:
 	PUSH	HL
 	CALL	SetCursorPos	; Получаем адрес курсора
-CLSLOO:	XOR	A
+CLSLOO:	;XOR	A		; Здесь уже ноль
 	LD	(HL),A
 	INC	HL
 	OR	H
@@ -2417,6 +2421,8 @@ InitHandlers:
 	LD	HL, DefaultTapeInHandler
 
 	JP	InitHandlers2
+
+	NOP
 
 	CHK	10000H, "* Size not 2K ! *"
 
