@@ -2422,10 +2422,9 @@ InitHandlers:
 	LD	(ListHandler), A	; Глушим принтер по умолчанию
 
 	LD	A, 0C3H
-
 	LD	(PrintHandler), A
 	LD	HL, DefaultPrintHandler
-
+	LD	(PrintHandler+1), HL
 
 	LD	(BeepHandler), A
 	LD	HL, DefaultBeepHandler
@@ -2437,9 +2436,6 @@ InitHandlers:
 
 	RET
 
-	NOP
-	NOP
-	NOP
 	NOP
 	NOP
 	NOP
