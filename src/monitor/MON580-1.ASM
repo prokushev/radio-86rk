@@ -225,6 +225,7 @@ AFEF3:	LD	A,H			; 7 bytes
 ; ──────────────────────────────────────────────
 
 InitHandlers2:
+	LD	(TapeInHandler+1), HL
 
 	LD	(TapeOutHandler), A
 	LD	HL, DefaultTapeOutHandler
@@ -233,9 +234,6 @@ InitHandlers2:
 	LD	A, 0C9H
 	LD	(ListHandler), A	; Глушим принтер по умолчанию
 	RET
-	NOP		; 3 bytes
-	NOP
-	NOP
 
 ; ──────────────────────────────────────────────
 ; Загрузка BC с поиском синхробайта
@@ -1507,6 +1505,8 @@ POPAF:	POP	AF
 
 	CHK	0FD27H, "* Standard subroutine Beep shifted ! *"
 
+	JP	BeepHandler
+	
 DefaultBeepHandler:
 	LD	BC,05F0H		; 20 bytes
 SND_BC:	LD	A,B
@@ -2415,11 +2415,9 @@ InitHandlers:
 
 	LD	(TapeInHandler), A
 	LD	HL, DefaultTapeInHandler
-	LD	(TapeInHandler+1), HL
 
 	JP	InitHandlers2
 
-	
 	CHK	10000H, "* Size not 2K ! *"
 
 	END
