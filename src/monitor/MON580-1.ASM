@@ -6,7 +6,6 @@
 ; todo Печать экрана (Эмуляция VT-52 с копиром)
 ; todo Переработка обработчика контрольных символов. Они должны обрабатываться _до_ esc последовательностей, не зависимо от текущей активной последовательности
 ; todo Если нет ROM-диска, то просто ВК ничего не грузит
-; todo Обновление адреса курсора
 
 	CPU	8080
 	Z80SYNTAX	EXCLUSIVE
@@ -429,12 +428,13 @@ AF8F3:	CALL    InputSymbol	; используется в DIR_M
 	INC	HL
 	JP	AF8F3
 
-	NOP			; 6 bytes 
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
+; ──────────────────────────────────────────────
+
+RST_18:	EX	(SP),HL			; 6 bytes
+	CALL	PrintString
+	EX	(SP),HL
+	RET
+
 ; ──────────────────────────────────────────────
 TABK2:	DB	09,0AH,0DH,7FH,08H,19H,18H,1AH	; 8 bytes
 
@@ -650,18 +650,16 @@ SetCursorPosHandler:
 	ADD	HL, DE		; КООРДИНАТ 0. 0.
 	LD	B, 0		; СЛОЖИТЬ С АДРЕСОМ НАЧАЛА
 	ADD	HL, BC		; И ПРИБАВИТЬ X
+	LD	(POSADDR), HL	; Сохраняем адрес
 	POP	BC		; ВОССТАНОВИТЬ
 	POP	DE		; РЕГИСТРЫ
 	POP	AF
 	RET
 
-; ──────────────────────────────────────────────
-
-RST_18:	EX	(SP),HL			; 6 bytes
-	CALL	PrintString
-	EX	(SP),HL
-	RET
-	        
+	NOP
+	NOP
+	NOP
+	
 ; ──────────────────────────────────────────────
 ; Ввод символа без ожидания с проверкой нажатия Ctrl-C. 
 ; При нажатии Ctrl-C выход в МОНИТОР с переинцициализацией ВГ.
@@ -2420,14 +2418,14 @@ S1:;				;ФОРМУЛЕ:
 ; ──────────────────────────────────────────────
 
 InitHandlers:
+	LD	A, 0C9H
+	LD	(ListHandler), A	; Глушим принтер по умолчанию
+
 	LD	A, 0C3H
-	LD	(ListHandler), A
-	LD	HL, DefaultListHandler
-	LD	(ListHandler+1), HL
 
 	LD	(PrintHandler), A
 	LD	HL, DefaultPrintHandler
-	LD	(PrintHandler+1), HL
+
 
 	LD	(BeepHandler), A
 	LD	HL, DefaultBeepHandler
@@ -2439,6 +2437,13 @@ InitHandlers:
 
 	RET
 
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
 	
 	CHK	10000H, "* Size not 2K ! *"
 
