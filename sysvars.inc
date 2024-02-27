@@ -45,7 +45,7 @@ AltChars	EQU	BASE+11H	; 1 Вкл/выкл алтернативный знако�
 Echo	EQU	BASE+12H		; 1 Вкл/выкл Auto-Copy
 CURST	EQU	BASE+13H		; 1 Вкл/выкл курсор
 
-ListHandler	EQU	BASE+14H	; 3 JP DefaultListHandler
+; Дырка 3 байта
 PrintHandler	EQU	BASE+17H	; 3 JP DefaultPrintHandler
 BeepHandler	EQU	BASE+1AH	; 3 JP DefaultBeepHandler
 ReadKeyCodeHandler		EQU	BASE+1DH	; 3 JP DefaultReadKeyCodeHandler
@@ -65,6 +65,9 @@ KNS_WR	EQU	BASE+30H		; 1 FIXED константа записи
 RAMTOP	EQU	BASE+31H		; 2 FIXED Верхняя граница ОЗУ
 
 COMBUF	EQU	BASE+33H		; ? FIXED буфер ввода директивы
+
+ListHandler	EQU	BASE+53H	; 3 JP DefaultListHandler
+
 STACK	EQU	BASE+0D0H		; стек монитора (растет в сторону буфера ввода директив)
 
 SA		EQU	BASE+0D0H		; 76D0 начало экранной области
