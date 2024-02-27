@@ -4,6 +4,7 @@
 ; ───────────────────────────────────────────────────────────────────────
 ;  Системные переменные МОНИТОРа по адресам 7600H-76СFH или 3600H-36СFH
 ; ═══════════════════════════════════════════════════════════════════════
+; todo Сверить введенные переходы на обработчики со стандартными мониторами из журнала (в основном - принтер)
 
 ; ──────────────────────────────────────────────
 RABADR	EQU	0F800H		; Адрес начала ПЗУ
@@ -27,6 +28,11 @@ POSY	EQU	BASE+03H		; 1 FIXED Координата курсора Y
 ESC_FL	EQU	BASE+04H		; 1 FIXED Флаг текущего статуса обработки Esc-последовательности (0,1,2)
 KBDFLG	EQU	BASE+05H		; 1 FIXED если =0, то есть символ в LAST_K
 RUSLAT	EQU	BASE+06H		; 1 FIXED допустимо только 0 или FF  !! Адрес должен быть xx06h иначе править SET_RL !!
+
+; ---- нестандарт ----------
+XYSTOR	EQU	BASE+07H		; 2 Сохраненные координаты курсора
+; ---- нестандарт ----------
+
 LAST_K	EQU	BASE+09H		; 1 FIXED Код последней клавиши
 COUNT	EQU	BASE+0AH		; 1 FIXED счётчик опросов (вначале 15)
 APVFLG	EQU	BASE+0BH		; 1 FIXED флаг автоповтора
@@ -34,17 +40,19 @@ TMPSTK	EQU	BASE+0DH		; 2 FIXED временно храним стек при М�
 
 ; ---- нестандарт ----------
 IDENT	EQU	BASE+0FH		; 1 Флаг обработки Esc-Z
-WRPFLG	EQU	BASE+10H		; 1 Автоперенос строк
-XYSTOR	EQU	BASE+11H		; 2 Сохраненные координаты курсора
-CURST	EQU	BASE+13H		; 1 Отображать/прятать курсор
-AltChars	EQU	BASE+14H	; 1 Вкл/выкл алтернативный знакогенератор
-Echo	EQU	BASE+15H
+WRPFLG	EQU	BASE+10H		; 1 Вкл/выкл Автоперенос строк
+AltChars	EQU	BASE+11H	; 1 Вкл/выкл алтернативный знакогенератор
+Echo	EQU	BASE+12H		; 1 Вкл/выкл Auto-Copy
+CURST	EQU	BASE+13H		; 1 Вкл/выкл курсор
 
-ListHandler	EQU	BASE+16H	; 3 JP DefaultListHandler
-PrintHandler	EQU	BASE+19H	; 3 JP DefaultPrintHandler
-BeepHandler	EQU	BASE+1CH	; 3 JP DefaultBeepHandler
-GetKeyboardStatusHandler		EQU	BASE+1FH	; 3 JP DefaultGetKeyboardStatusHandler
+ListHandler	EQU	BASE+14H	; 3 JP DefaultListHandler
+PrintHandler	EQU	BASE+17H	; 3 JP DefaultPrintHandler
+BeepHandler	EQU	BASE+1AH	; 3 JP DefaultBeepHandler
+ReadKeyCodeHandler		EQU	BASE+1DH	; 3 JP DefaultReadKeyCodeHandler
+TapeInHandler	EQU	BASE+20H	; 3 JP DefaultTapeInHandler
+TapeOutHandler	EQU	BASE+23H	; 3 JP DefaultTapeOutHandler
 
+; 1 байт - дырка
 ; ---- нестандарт ----------
 
 PAR_HL	EQU	BASE+27H		; 2 FIXED Первый параметр

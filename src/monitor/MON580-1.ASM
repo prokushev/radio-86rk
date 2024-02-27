@@ -6,6 +6,7 @@
 ; todo Печать экрана (Эмуляция VT-52 с копиром)
 ; todo Переработка обработчика контрольных символов. Они должны обрабатываться _до_ esc последовательностей, не зависимо от текущей активной последовательности
 ; todo Если нет ROM-диска, то просто ВК ничего не грузит
+; todo Автокопир должен выводить строку только при появлении LF, а не сразу
 
 	CPU	8080
 	Z80SYNTAX	EXCLUSIVE
@@ -41,11 +42,11 @@ ColdBoot:
 InputSymbol:
 	JP	InputSymbolHandler	; F803
 TapeReadByte:
-	JP	TapeReadByteHandler	; F806
+	JP	TapeInHandler		; F806
 PrintCharFromC:
 	JP	PrintHandler		; F809
 TapeWriteByte:
-	JP	TapeWriteByteHandler	; F80C
+	JP	TapeOutHandler		; F80C
 ListCharFromC:
 	JP	ListHandler		; F80F
 GetKeyboardStatus:
@@ -132,6 +133,7 @@ INIT2:
 	DEC	HL			; 75FFH/35FFH
 	LD	(RAMTOP),HL
 	CALL	InitVideo		; Запускаем ВГ75
+	LD	A, 0C3H
 	CALL	InitHandlers
 ; ──────────────────────────────────────────────
 ; Инициализация ВВ55
@@ -158,8 +160,6 @@ INIT2:
 	IF	SPEKTR
 	DB	1Fh,"spektr-00",'1' + 80H
 	ENDIF
-	NOP
-	NOP
 
 ; ──────────────────────────────────────────────
 ; "Теплый" старт МОНИТОРа
@@ -224,22 +224,16 @@ AFEF3:	LD	A,H			; 7 bytes
 	
 ; ──────────────────────────────────────────────
 
-	NOP		; 18 bytes
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
+InitHandlers2:
+
+	LD	(TapeOutHandler), A
+	LD	HL, DefaultTapeOutHandler
+	LD	(TapeOutHandler+1), HL
+
+	LD	A, 0C9H
+	LD	(ListHandler), A	; Глушим принтер по умолчанию
+	RET
+	NOP		; 3 bytes
 	NOP
 	NOP
 
@@ -656,29 +650,16 @@ SetCursorPosHandler:
 	POP	AF
 	RET
 
-	NOP
-	NOP
-	NOP
-	
-; ──────────────────────────────────────────────
-; Ввод символа без ожидания с проверкой нажатия Ctrl-C. 
-; При нажатии Ctrl-C выход в МОНИТОР с переинцициализацией ВГ.
-; ВХОД:
-;	Нет
-; ВЫХОД:
-;	A=0FFH - не нажата
-;	A=0FEH - РУС/ЛАТ
-;	A - код клавиши
-; ИЗМЕНЯЕТ:
-;	AF		 TODO: проверить, что изменяет ReadKeyCode и InitVideo
 ; ──────────────────────────────────────────────
 
-ReadKeyCodeChkBrk:
-	CALL	ReadKeyCode			; 12 bytes
-	CP	3
-	RET	NZ
-	CALL	InitVideo
-	JP	SyntaxError
+ProcessBackspace:
+	LD	A,E			; 15 bytes
+	CP	L			; начало буфера ввода ?
+	JP	Z,AF8F1;GotoCmdLineBegin	; GotoCmdLineBegin
+	DEC	HL
+	CALL	RST_18
+	DB	8,' ',8+80H
+	JP	AF8F3;InputNextSymbol
 
 
 ; ──────────────────────────────────────────────
@@ -963,16 +944,28 @@ TAB:	LD	A, L
 	RET
 
 ; ──────────────────────────────────────────────
+; Ввод символа без ожидания с проверкой нажатия Ctrl-C. 
+; При нажатии Ctrl-C выход в МОНИТОР с переинцициализацией ВГ.
+; ВХОД:
+;	Нет
+; ВЫХОД:
+;	A=0FFH - не нажата
+;	A=0FEH - РУС/ЛАТ
+;	A - код клавиши
+; ИЗМЕНЯЕТ:
+;	AF		 TODO: проверить, что изменяет ReadKeyCode и InitVideo
+; ──────────────────────────────────────────────
 
-ProcessBackspace:
-	LD	A,E			; 15 bytes
-	CP	L			; начало буфера ввода ?
-	JP	Z,AF8F1;GotoCmdLineBegin	; GotoCmdLineBegin
-	DEC	HL
-	CALL	RST_18
-	DB	8,' ',8+80H
-	JP	AF8F3;InputNextSymbol
+ReadKeyCodeChkBrk:
+	CALL	ReadKeyCode			; 12 bytes
+	CP	3
+	RET	NZ
+	CALL	InitVideo
+	JP	SyntaxError
 
+	NOP	; 5 bytes
+	NOP
+	NOP
 	NOP
 	NOP
 
@@ -1050,9 +1043,6 @@ PrintHexWordAndSpace:
 	JP	PrintHexByteAndSpace
 
 ; ──────────────────────────────────────────────
-
-
-; ──────────────────────────────────────────────
 ; Загрузка A без поиска синхробайта
 ; ВХОД:
 ;	Нет
@@ -1076,7 +1066,7 @@ TapeReadByteNoSync:
 ;	AF
 ; ──────────────────────────────────────────────
 
-TapeReadByteHandler:
+DefaultTapeInHandler:
 	PUSH	BC
 	PUSH	DE
 	PUSH	HL
@@ -1142,7 +1132,6 @@ AFBDD:	POP	AF		; Регенерация ОЗУ
 	JP	SETINV
 
 ; ──────────────────────────────────────────────
-
 
 AFC34:	LD	HL,(TMPSTK)		; 18 bytes
 	LD	SP,HL
@@ -1441,12 +1430,11 @@ AFB4D:	CALL	TapeWriteByte
 
 	JP	InitVideo
 
-
 ; ──────────────────────────────────────────────
 
 ; После 15H вызовов GetKeyboardStatus при нажатой клавише выставляется флаг KBDFLG
 
-DefaultGetKeyboardStatusHandler:	; 45 bytes
+GetKeyboardStatusHandler:	; 45 bytes
 	LD	A, (IDENT)	; Если есть что-то в буфере идентификации, то выходим
 	OR	A
 	LD	A, 0
@@ -1471,7 +1459,6 @@ AFE22:	LD	(LAST_K),HL
 	POP	HL
 	LD	(KBDFLG),A
 	RET
-
 
 ; ──────────────────────────────────────────────
 ; Увеличивает HL и вызывает второй RET, если равен DE
@@ -1506,7 +1493,6 @@ IncHLAndRetIfEqDE:
 	DEC	HL
 POPAF:	POP	AF
 	RET
-
 
 ; ──────────────────────────────────────────────
 ; Подача звукового сигнала
@@ -1574,7 +1560,7 @@ TapeWriteSync:
 ;	Нет
 ; ──────────────────────────────────────────────
 
-TapeWriteByteHandler:
+DefaultTapeOutHandler:
 	PUSH	BC
 	PUSH	DE
 	PUSH	HL
@@ -1863,7 +1849,6 @@ VT52_CI3:
 	LD	(HL), 0
 	POP	HL
 	RET
-
 
 ; ──────────────────────────────────────────────
 ; Обработчик ESC-последовательности
@@ -2360,7 +2345,7 @@ CursorUp:
 ;	AF		 TODO: проверить, что изменяет ReadKeyCode и InitVideo
 ; ──────────────────────────────────────────────
 
-ReadKeyCodeHandler:
+DefaultReadKeyCodeHandler:
 	LD	A,(PC)		; 30 bytes
 	RLA
 	LD	A,0FEH
@@ -2398,8 +2383,6 @@ AFF2A:	LD	A,H
 	POP	HL
 	RET
 
-
-
 ; ──────────────────────────────────────────────
 
 CALC:				; 13 bytes
@@ -2418,10 +2401,6 @@ S1:;				;ФОРМУЛЕ:
 ; ──────────────────────────────────────────────
 
 InitHandlers:
-	LD	A, 0C9H
-	LD	(ListHandler), A	; Глушим принтер по умолчанию
-
-	LD	A, 0C3H
 	LD	(PrintHandler), A
 	LD	HL, DefaultPrintHandler
 	LD	(PrintHandler+1), HL
@@ -2430,16 +2409,16 @@ InitHandlers:
 	LD	HL, DefaultBeepHandler
 	LD	(BeepHandler+1), HL
 
-	LD	(GetKeyboardStatusHandler), A
-	LD	HL, DefaultGetKeyboardStatusHandler
-	LD	(GetKeyboardStatusHandler+1), HL
+	LD	(ReadKeyCodeHandler), A
+	LD	HL, DefaultReadKeyCodeHandler
+	LD	(ReadKeyCodeHandler+1), HL
 
-	RET
+	LD	(TapeInHandler), A
+	LD	HL, DefaultTapeInHandler
+	LD	(TapeInHandler+1), HL
 
-	NOP
-	NOP
-	NOP
-	NOP
+	JP	InitHandlers2
+
 	
 	CHK	10000H, "* Size not 2K ! *"
 
