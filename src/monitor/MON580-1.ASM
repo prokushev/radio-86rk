@@ -1693,9 +1693,9 @@ PrintCharFromCHandler:
 	; Эхо-печать на принтер
 	LD	A,(Echo)
 	OR	A
-	JP	Z, skip_Echo
-	CALL	ListCharFromC	; Печать на принтер
-skip_Echo:	
+;	JP	Z, skip_Echo
+	CALL	NZ, ListCharFromC	; Печать на принтер
+;skip_Echo:	
 
 	CALL	GetKeyboardStatus
 	LD	HL,TOBACK
@@ -1732,9 +1732,9 @@ skip_TAB:
 	OR	A
 	JP	Z, skip_AltChars
 	LD	A, C		; В режиме вывода графики - выводим
-	CP	5Eh
+	SUB	5Eh		; CP 5eh
 	JP	C, skip_AltChars; < 5Eh
-	SUB	A, 5Eh		; Вместо русских букв теперь псевдографика
+;	SUB	A, 5Eh		; Вместо русских букв теперь псевдографика
 	LD	C, A
 skip_AltChars:
 	LD	(HL),C		; Видимый на экране символ
@@ -2422,6 +2422,11 @@ InitHandlers:
 
 	JP	InitHandlers2
 
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
 	NOP
 
 	CHK	10000H, "* Size not 2K ! *"
