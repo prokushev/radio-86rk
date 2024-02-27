@@ -217,14 +217,15 @@ WarmBoot:
 	LD	HL,(PAR_HL)
 	RET				; Переход в обработчик директивы
 
-	NOP		; 25 bytes
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
+; ──────────────────────────────────────────────
+
+AFEF3:	LD	A,H			; 7 bytes
+	LD	HL,TABK1
+	JP	AFEFE
+	
+; ──────────────────────────────────────────────
+
+	NOP		; 18 bytes
 	NOP
 	NOP
 	NOP
@@ -1702,6 +1703,13 @@ PrintCharFromCHandler:
 	PUSH	HL
 	PUSH	AF
 
+	; Эхо-печать на принтер
+	LD	A,(Echo)
+	OR	A
+	JP	Z, skip_Echo
+	CALL	ListCharFromC	; Печать на принтер
+skip_Echo:	
+
 	CALL	GetKeyboardStatus
 	LD	HL,TOBACK
 	PUSH	HL
@@ -1869,6 +1877,7 @@ VT52_CI3:
 ;	AF, B, DE, HL
 ; ОПИСАНИЕ:
 ;	Поддерживаемые ESC-последовательности:
+;		ESC /	- Do nothing (ident response protection)
 ;		ESC A	- Cursor Up
 ;		ESC B	- Cursor Down
 ;		ESC C	- Cursor Right
@@ -1892,10 +1901,12 @@ VT52_CI3:
 ;		ESC k	- Restore cursor(GEMDOS/TOS extension)
 ;		ESC v	- Wrap off (GEMDOS/TOS extension)
 ;		ESC w	- Wrap on (GEMDOS/TOS extension)
+;		ESC ^	- Enable Auto-Copy mode
+;		ESC _	- Disable Auto-Copy mode
 ;	Здесь используется немного нестандартная схема выбора обработчика.
 ;	Обработчики не вызываются для каждого символа отдельно, а встроены
 ;	непосредственно в логику ветвления. Для этого символ в A
-;	уменьшаетя на величину 'w' (максимальный управляющий символ).
+;	уменьшаетя на величину '_' (максимальный управляющий символ).
 ;	После чего происходит для каждого символа увеличение на дельту.
 ;	По JP NZ осуществляется обход кода обработчика, если он нам не нужен.
 ;	Сам обработчик должен обеспечить только, чтобы регистр A на выходе
@@ -1914,7 +1925,16 @@ EscapeHandler:
 	EX	(SP), HL
 	CP	'/'		; Игнорирование последовательности Esc / ответа идентификации
 	RET	Z
-	SUB	'w'		;CP	'w'
+	SUB	'_'		;CP	'_'
+	JP	NZ, skip_ESC__
+	LD	(Echo), A	; Тут уже 0
+skip_ESC__:
+	INC	A		;CP	'^'
+	JP	NZ, skip_ESC_
+	DEC	A	; LD A, 0FFh Тут 0 на входе
+	LD	(Echo), A
+skip_ESC_:
+	ADD	A,'^'-'w'		;CP	'w'
 	JP	NZ, skip_ESC_w
 
 ; ──────────────────────────────────────────────
@@ -2419,31 +2439,6 @@ InitHandlers:
 
 	RET
 
-; ──────────────────────────────────────────────
-
-AFEF3:	LD	A,H			; 7 bytes
-	LD	HL,TABK1
-	JP	AFEFE
-	
-	NOP			; 19 bytes
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
 	
 	CHK	10000H, "* Size not 2K ! *"
 

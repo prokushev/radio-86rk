@@ -38,11 +38,12 @@ WRPFLG	EQU	BASE+10H		; 1 Автоперенос строк
 XYSTOR	EQU	BASE+11H		; 2 Сохраненные координаты курсора
 CURST	EQU	BASE+13H		; 1 Отображать/прятать курсор
 AltChars	EQU	BASE+14H	; 1 Вкл/выкл алтернативный знакогенератор
+Echo	EQU	BASE+15H
 
-ListHandler	EQU	BASE+15H	; 3 JP DefaultListHandler
-PrintHandler	EQU	BASE+18H	; 3 JP DefaultPrintHandler
-BeepHandler	EQU	BASE+1BH	; 3 JP DefaultBeepHandler
-GetKeyboardStatusHandler		EQU	BASE+1EH	; 3 JP DefaultGetKeyboardStatusHandler
+ListHandler	EQU	BASE+16H	; 3 JP DefaultListHandler
+PrintHandler	EQU	BASE+19H	; 3 JP DefaultPrintHandler
+BeepHandler	EQU	BASE+1CH	; 3 JP DefaultBeepHandler
+GetKeyboardStatusHandler		EQU	BASE+1FH	; 3 JP DefaultGetKeyboardStatusHandler
 
 ; ---- нестандарт ----------
 
