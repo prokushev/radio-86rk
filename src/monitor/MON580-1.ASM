@@ -1734,6 +1734,7 @@ skip_TAB:
 	LD	A, C		; В режиме вывода графики - выводим
 	SUB	5Eh		; CP 5eh
 	JP	C, skip_AltChars; < 5Eh
+	DEC	A
 ;	SUB	A, 5Eh		; Вместо русских букв теперь псевдографика
 	LD	C, A
 skip_AltChars:
@@ -2426,7 +2427,7 @@ InitHandlers:
 	NOP
 	NOP
 	NOP
-	NOP
+;	NOP
 
 	CHK	10000H, "* Size not 2K ! *"
 
