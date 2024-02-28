@@ -142,9 +142,26 @@ RES10:	XTHL 		; КООРДИНАТЫ ОКНА В (H.L)
 	INR H 		; ГОТОВИМСЯ К СЛЕД.СТРОКЕ 
 	XTHL 		; АДРЕС 08Л.СОХР. В (H,L)
 	MOV B,E 	; счетчик ширины окна
-RES20:	MOV C,M 	; ВОССТАНАВЛИВАЕМ СОДЕР".
+RES20:	MOV C,M 	; ВОССТАНАВЛИВАЕМ СОДЕРЖ.
+	MOV	A, C	; Проверяем на графсимволы
+	CPI	20H
+	JNC	NOTGRAPH
+	Z80SYNTAX EXCLUSIVE
+	PUSH	HL
+	LD	HL, GRON
+	CALL	PRINT
+	LD	A, 5Fh
+	ADD	A, C
+	LD	C, A
+	CALL	PRINTC
+	LD	HL, GROFF
+	CALL	PRINT
+	POP	HL
+	JP	NEXT
+	Z80SYNTAX OFF
+NOTGRAPH:	
 	CALL PRINTC 	; ЭКРАНА
-	INX H 		; УВЕЛИЧИВАЕМ АДРЕС
+NEXT:	INX H 		; УВЕЛИЧИВАЕМ АДРЕС
 	DCR B 		; НИКЛ ПО СТРОКЕ
 	JNZ RES20
 	DCR D 		; ЦИКЛ ПО СТРОКАМ
@@ -396,6 +413,32 @@ PRINTI:	EX	(SP),HL			; 6 bytes
 ;***************** ТЕСТОВАЯ ПРОГРАММА ************************
 	Z80SYNTAX EXCLUSIVE
 TEST:
+	CALL	PRINTI
+	DB	1fh, 'standartnye simwoly:', 0dh, 0ah,0
+
+	LD	C, ' '
+LLP:	CALL	PRINTC
+	INC	C
+	LD	A, 80h
+	CP	C
+	JP	NZ, LLP
+
+	CALL	PRINTI
+	DB	0dh,0ah,'grafi~eskie simwoly:', 0dh, 0ah,0
+
+	LD	HL, GRON
+	CALL	PRINT	; включаем графрежим
+
+	LD	C, ' '
+LLP2:	CALL	PRINTC
+	INC	C
+	LD	A, 80h
+	CP	C
+	JP	NZ, LLP2
+
+	LD	HL, GROFF
+	CALL	PRINT	; выключаем графрежим
+
 STEP1:	CALL	RESETW 		; ИНИЦИАЛИЗИРУЕМ ДРАЙВЕР
 	CALL	PRINTI		; выключаем курсор
 	DB	1bh, 'f',0	; Выкл. курсор
