@@ -30,6 +30,7 @@ WCURSR:	EQU	WHOME+2 	;ПОЛОЖЕНИЕ КУРСОРА
 NUMWND:	EQU	WCURSR+2	;НОМЕР АКТИВНОГО ОКНА
 ADRSP:	EQU	NUMWND+1	; АДРЕС СВОБОДНОЙ ОБЛАСТИ
 TXTCUR:	EQU	ADRSP+2 	; РАБОЧИЕ ЯЧ. ДЛЯ УСТ.КУСОРА
+
 INITSP:	DW	TXTCUR+5 	;АДРЕС ОБЛАСТИ СОХРАНЕНИЯ ЭК.
 
 ;********************************************
@@ -45,6 +46,10 @@ FOUND:	;XOR	A 		; ОБНУЛЕНИЕ НОМЕРА (уже 0)
 	LD	(NUMWND),A	; АКТИВНОГО ОКНА 
 	LD	HL, (INITSP) 	; ИНИЦИИРУЕМ АДРЕС НАЧАЛА ОЗУ 
 	LD	(ADRSP), HL 	; ДЛЯ СОХРАНЕНИЯ ЭКРАНОВ
+
+	LD	(TXTCUR+4), A	;; ПРИЗНАК КОНЦА СТРОКИ 
+	LD	HL, ('Y'<<8) | 1Bh
+	LD	(TXTCUR), HL
 	POP HL
 				; Подключаем нашу процедуру вывода символа
 	RET
@@ -148,13 +153,13 @@ RES20:	MOV C,M 	; ВОССТАНАВЛИВАЕМ СОДЕРЖ.
 	JNC	NOTGRAPH
 	Z80SYNTAX EXCLUSIVE
 	PUSH	HL
-	LD	HL, GRON
+	LD	HL, GRON	; Включаем графрежим
 	CALL	PRINT
-	LD	A, 5Fh
+	LD	A, 5Fh		; Корректируем код графсимвола
 	ADD	A, C
 	LD	C, A
 	CALL	PRINTC
-	LD	HL, GROFF
+	LD	HL, GROFF	; Выключаем графрежим
 	CALL	PRINT
 	POP	HL
 	JP	NEXT
@@ -344,16 +349,13 @@ CUROUT:	PUSH H 		; СОХРАНЯЕМ РЕГИСТРЫ
 	LXI D,2020H 	; ГОТОВИМ: 20H+<l ) И 20Н+(Н) 
 	DAD D
 	XCHG 		; ПЕРЕСЫЛАЕМ В <l),L> 
-	LXI H,TXTCUR+4 	; РАБОЧЕЕ ПОЛЕ В ОЗУ 
-	MVI M,0 	; ПРИЗНАК КОНЦА СТРОКИ 
-	DCX H 		; ФОРМИРУЕМ В TXTCUR 
+	LXI H, TXTCUR+3
+
+	;DCX H 		; ФОРМИРУЕМ В TXTCUR 
 	MOV M,E 	; ESCAPE ПОСЛЕДОВАТЕЛЬНОСТЬ 
 	DCX H 		; АР2,'Г',2вН+(Н>>20H+<L>,0 
-	MOV M,D 
-	DCX H 
-	MVI M,'Y' 
-	DCX H 
-	MVI M,1BH
+	MOV M,D
+	LXI H, TXTCUR
 	CALL PRINT 	; УСТАНАВЛИВАЕМ КУРСОР ЧЕРЕЗ 
 	POP B 		; МОНИТОР 
 	POP D 
