@@ -2187,7 +2187,7 @@ skip_ESC_K:
 ClearEOS:
 	PUSH	HL
 	CALL	SetCursorPos	; Получаем адрес курсора
-CLSLOO:	;XOR	A		; Здесь уже ноль
+CLSLOO:	XOR	A		; Здесь не всегда ноль
 	LD	(HL),A
 	INC	HL
 	OR	H
@@ -2422,7 +2422,6 @@ InitHandlers:
 
 	JP	InitHandlers2
 
-	NOP
 	NOP
 	NOP
 	NOP
