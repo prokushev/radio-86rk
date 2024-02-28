@@ -38,6 +38,14 @@ p2bin src\monitor\mon580-1.p roms\1.20-16\b2m\bios.rom
 p2bin src\monitor\mon580-1.p roms\1.20-16\b2m\radiorom.rom
 p2bin src\monitor\mon580-1.p roms\1.20-16\emu80\rk86.rom
 
+echo Window Driver
+asw -lUa -i . src\window\window.asm > logs\window.lst
+p2bin src\window\window.p
+
+echo Window Driver 2.0
+asw -lUa -i . src\window\window2.asm > logs\window2.lst
+p2bin src\window\window2.p
+
 echo ROM-DISK
 asw -lUa -i . -i basic\bin\radio-86rk -i roms\romctrl -D STUB=1 src\romdisk\romdisk.asm > logs\romdisk.lst
 p2bin src\romdisk\romdisk.p roms\romdisk\b2m\romdisk.rom
