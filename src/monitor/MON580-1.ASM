@@ -235,6 +235,10 @@ InitHandlers2:
 	LD	(ListHandler), A	; Глушим принтер по умолчанию
 	RET
 
+	NOP	; 3 bytes
+	NOP
+	NOP
+
 ; ──────────────────────────────────────────────
 ; Загрузка BC с поиском синхробайта
 ; ВХОД:
@@ -284,8 +288,8 @@ TapeReadWord:
 
 ReadVideoRAMHandler:
 	PUSH	HL				; 10 bytes
-	LD	HL, (POSX)
-	CALL	SetCursorPos
+	LD	HL, (POSADDR)
+;	CALL	SetCursorPos
 	LD	A,(HL)
 	POP	HL
 	RET
@@ -904,7 +908,6 @@ AF982:
 	RET	C		; JP C,SyntaxError
 
 	OR	L
-	;LD	L,A
 	
 	POP	BC
 	JP	AF95D
@@ -1690,9 +1693,9 @@ PrintCharFromCHandler:
 	; Эхо-печать на принтер
 	LD	A,(Echo)
 	OR	A
-	JP	Z, skip_Echo
-	CALL	ListCharFromC	; Печать на принтер
-skip_Echo:	
+;	JP	Z, skip_Echo
+	CALL	NZ, ListCharFromC	; Печать на принтер
+;skip_Echo:	
 
 	CALL	GetKeyboardStatus
 	LD	HL,TOBACK
@@ -1729,9 +1732,9 @@ skip_TAB:
 	OR	A
 	JP	Z, skip_AltChars
 	LD	A, C		; В режиме вывода графики - выводим
-	CP	5Eh
+	SUB	5Eh		; CP 5eh
 	JP	C, skip_AltChars; < 5Eh
-	SUB	A, 5Eh		; Вместо русских букв теперь псевдографика
+;	SUB	A, 5Eh		; Вместо русских букв теперь псевдографика
 	LD	C, A
 skip_AltChars:
 	LD	(HL),C		; Видимый на экране символ
@@ -1893,7 +1896,8 @@ VT52_CI3:
 ;	После чего происходит для каждого символа увеличение на дельту.
 ;	По JP NZ осуществляется обход кода обработчика, если он нам не нужен.
 ;	Сам обработчик должен обеспечить только, чтобы регистр A на выходе
-;	был меньше, чем 0A0H. Тогда не будет фальш-сработок. При вызове обработчика
+;	был меньше, чем 0A0H (зависит максимального упр. символа).
+;       Тогда не будет фальш-сработок. При вызове обработчика
 ;	будет осущетсвляться перебор и обход кода всех обработчисков и в конце будет
 ;	возврат через EscapeHandlerEnd. Такой метод позволит сэкономить на команде
 ;	RET для каждого обработчика. Если использовать таблицы, то каждый вызов
@@ -2183,7 +2187,7 @@ skip_ESC_K:
 ClearEOS:
 	PUSH	HL
 	CALL	SetCursorPos	; Получаем адрес курсора
-CLSLOO:	XOR	A
+CLSLOO:	;XOR	A		; Здесь уже ноль
 	LD	(HL),A
 	INC	HL
 	OR	H
@@ -2417,6 +2421,13 @@ InitHandlers:
 	LD	HL, DefaultTapeInHandler
 
 	JP	InitHandlers2
+
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
 
 	CHK	10000H, "* Size not 2K ! *"
 
