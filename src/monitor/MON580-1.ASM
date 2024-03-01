@@ -186,11 +186,10 @@ WarmBoot:
 
 	CALL	InputDirective		; На выходе В DE - COMBUF
 
-	JP	NC,ROMBoot		; Просто нажали <ВК> -> грузим ROMDISK
-
 	LD	HL,WarmBoot
 	PUSH	HL			; в стеке лежит адрес возврата в МОНИТОР
 
+	JP	NC,ROMBoot		; Просто нажали <ВК> -> грузим ROMDISK
 
 	; Обработка директив. DIRTABLE должна находится по адресу xx00H
 	LD	A, (DE)			;LD	A, (COMBUF)
@@ -202,7 +201,6 @@ WarmBoot:
 	LD	L, A
 	LD	L,(HL)
 	PUSH	HL			; Адрес вызова обработчика директивы
-
 
 	CALL	ParseParameters		; На выходе в HL, то, что должно быть в BC
 
@@ -216,95 +214,48 @@ WarmBoot:
 
 ; ──────────────────────────────────────────────
 
-AFEF3:	LD	A,H			; 7 bytes
-	LD	HL,TABK1
-	JP	AFEFE
-	
-; ──────────────────────────────────────────────
-
-
-	NOP	; 12	bytes
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-
-; ──────────────────────────────────────────────
-; Загрузка BC с поиском синхробайта
-; ВХОД:
-;	Нет
-; ВЫХОД:
-;	BC	- загруженные байта
-; ИЗМЕНЯЕТ:
-;	AF, BC
-; ──────────────────────────────────────────────
-
-TapeReadWordSync:
-	LD	A, 0FFH			; 14 bytes
-	DB	1			; LD BC, ..
-
-; ──────────────────────────────────────────────
-; Загрузка BC без поиска синхробайта
-; ВХОД:
-;	Нет
-; ВЫХОД:
-;	BC	- загруженные байта
-; ИЗМЕНЯЕТ:
-;	AF, BC
-; ──────────────────────────────────────────────
-
-TapeReadWordNoSync:
-	LD	A, 8
-
-; ──────────────────────────────────────────────
-; Загрузка слова в BC
-; ВХОД:
-;	A=008H	- без поиска синхробайта
-;	A=0FFH	- с поиском синхробайта
-; ВЫХОД:
-;	BC	- загруженные байта
-; ИЗМЕНЯЕТ:
-;	AF, BC
-; ──────────────────────────────────────────────
-
-TapeReadWord:
-	CALL	TapeReadByte
-	LD	B, A
-	CALL	TapeReadByteNoSync
-	LD	C, A
+AFF1A:	LD	A,(RUSLAT)		; 33 bytes
+	OR	A
+	JP	Z,AFF2A
+	LD	A,L
+	CP	40H
+	JP	M,AFF2A
+	OR	20H
+	LD	L,A
+AFF2A:	LD	A,H
+	AND	20H
+	JP	NZ,AFF3F
+	LD	A,L
+	CP	40H
+	JP	M,AFF3B
+	LD	A,L
+	XOR	20H
+	POP	HL
 	RET
+
+; ──────────────────────────────────────────────
+
+CALC:				; 13 bytes
+	INC	A
+	LD	DE, SC_WIDTH	;В DE ДЛИНУ СТРОКИ
+	LD	HL, -SC_WIDTH	;ВЫЧИСЛЕНИЕ
+				;АДРЕСА ПО
+S1:;				;ФОРМУЛЕ:
+	ADD	HL, DE		;АДРЕС=SC_WIDTH*Y
+	DEC	A
+	JP	NZ,S1
+	RET
+
 
 ; ──────────────────────────────────────────────
 
 ReadVideoRAMHandler:
 	PUSH	HL				; 10 bytes
 	LD	HL, (POSADDR)
-;	CALL	SetCursorPos
 	LD	A,(HL)
 	POP	HL
 	RET
 
-; ──────────────────────────────────────────────
-; Возвращает в HL координаты курсора
-; ВХОД:
-;	Нет
-; ВЫХОД:
-;	H - Y
-;	L - X
-; ИЗМЕНЯЕТ:
-;	HL
-; ──────────────────────────────────────────────
-
-GetCursorPosHandler:
-	LD	HL,(POSX)		; 4 bytes
-	RET
 
 ; ──────────────────────────────────────────────
 ; Печать с новой строки знаение HL в 16-м формате, пробела и
@@ -381,16 +332,6 @@ PrintStringHandler:
 	INC	HL
 	RET	M			; RET if high bit set
 	JP	PrintStringHandler
-
-	NOP		; 9 bytes
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
 
 ; ──────────────────────────────────────────────
 ; Ввод строки в буфер COMBUF
@@ -787,20 +728,49 @@ AFB19:	LD	A,(HL)
 	JP	AFB19
 
 ; ──────────────────────────────────────────────
+; Загрузка BC с поиском синхробайта
+; ВХОД:
+;	Нет
+; ВЫХОД:
+;	BC	- загруженные байта
+; ИЗМЕНЯЕТ:
+;	AF, BC
+; ──────────────────────────────────────────────
 
-CALC:				; 13 bytes
-	INC	A
-	LD	DE, SC_WIDTH	;В DE ДЛИНУ СТРОКИ
-	LD	HL, -SC_WIDTH	;ВЫЧИСЛЕНИЕ
-				;АДРЕСА ПО
-S1:;				;ФОРМУЛЕ:
-	ADD	HL, DE		;АДРЕС=SC_WIDTH*Y
-	DEC	A
-	JP	NZ,S1
+TapeReadWordSync:
+	LD	A, 0FFH			; 14 bytes
+	DB	1			; LD BC, ..
+
+; ──────────────────────────────────────────────
+; Загрузка BC без поиска синхробайта
+; ВХОД:
+;	Нет
+; ВЫХОД:
+;	BC	- загруженные байта
+; ИЗМЕНЯЕТ:
+;	AF, BC
+; ──────────────────────────────────────────────
+
+TapeReadWordNoSync:
+	LD	A, 8
+
+; ──────────────────────────────────────────────
+; Загрузка слова в BC
+; ВХОД:
+;	A=008H	- без поиска синхробайта
+;	A=0FFH	- с поиском синхробайта
+; ВЫХОД:
+;	BC	- загруженные байта
+; ИЗМЕНЯЕТ:
+;	AF, BC
+; ──────────────────────────────────────────────
+
+TapeReadWord:
+	CALL	TapeReadByte
+	LD	B, A
+	CALL	TapeReadByteNoSync
+	LD	C, A
 	RET
-
-
-	NOP
 
 ; ──────────────────────────────────────────────
 
@@ -949,6 +919,12 @@ TAB:	LD	A, L
 	LD	L, A
 	RET
 
+	NOP	; 5 bytes
+	NOP
+	NOP
+	NOP
+	NOP
+
 ; ──────────────────────────────────────────────
 ; Ввод символа без ожидания с проверкой нажатия Ctrl-C. 
 ; При нажатии Ctrl-C выход в МОНИТОР с переинцициализацией ВГ.
@@ -968,12 +944,6 @@ ReadKeyCodeChkBrk:
 	RET	NZ
 	CALL	InitVideo
 	JP	SyntaxError
-
-	NOP	; 5 bytes
-	NOP
-	NOP
-	NOP
-	NOP
 
 ; ──────────────────────────────────────────────
 ; Печать перевода строки, числа из HL в 16-ричном формате, пробела,
@@ -1829,28 +1799,28 @@ AFE4C:	LD	A,0FFH
 ;	AF		 TODO: проверить, что изменяет GetKeyboardStatus
 ; ──────────────────────────────────────────────
 
-InputSymbolHandler:			; 15+?? bytes
-	PUSH	HL			
-	LD	HL, IDENT		
-	LD	A, 1BH			
-	CP	(HL)
-	JP	Z, VT52_CI1
-	LD	A, '/'
-	CP	(HL)
-	JP	Z, VT52_CI2
-	LD	A, 'K'
-	CP	(HL)
-	JP	Z, VT52_CI3
-	POP	HL
-	CALL	GetKeyboardStatus
-	OR	A
-	JP	Z,InputSymbolHandler
-	XOR	A
-	LD	(KBDFLG),A
-	LD	A,(LAST_K)
-	RET
+InputSymbolHandler:			; 38 bytes
+	PUSH	HL			; 1
+	LD	HL, IDENT		; 3
+	LD	A, 1BH			; 2
+	CP	(HL)			; 1
+	JP	Z, VT52_CI1		; 3
+	LD	A, '/'			; 2
+	CP	(HL)			; 1
+	JP	Z, VT52_CI2		; 3
+	LD	A, 'K'			; 2
+	CP	(HL)			; 1
+	JP	Z, VT52_CI3		; 3
+	POP	HL			; 1
+	CALL	GetKeyboardStatus	; 3
+	OR	A			; 1
+	JP	Z,InputSymbolHandler	; 3
+	XOR	A			; 1
+	LD	(KBDFLG),A		; 3
+	LD	A,(LAST_K)		; 3
+	RET				; 1
 
-VT52_CI1:
+VT52_CI1:				; 11 bytes
 	LD	(HL), '/'
 	DB	11H		; LD HL,...
 VT52_CI2:
@@ -2375,26 +2345,26 @@ DefaultReadKeyCodeHandler:
 	RET
 
 ; ──────────────────────────────────────────────
+; Возвращает в HL координаты курсора
+; ВХОД:
+;	Нет
+; ВЫХОД:
+;	H - Y
+;	L - X
+; ИЗМЕНЯЕТ:
+;	HL
+; ──────────────────────────────────────────────
 
-AFF1A:	LD	A,(RUSLAT)		; 33 bytes
-	OR	A
-	JP	Z,AFF2A
-	LD	A,L
-	CP	40H
-	JP	M,AFF2A
-	OR	20H
-	LD	L,A
-AFF2A:	LD	A,H
-	AND	20H
-	JP	NZ,AFF3F
-	LD	A,L
-	CP	40H
-	JP	M,AFF3B
-	LD	A,L
-	XOR	20H
-	POP	HL
+GetCursorPosHandler:
+	LD	HL,(POSX)		; 4 bytes
 	RET
 
+; ──────────────────────────────────────────────
+
+AFEF3:	LD	A,H			; 7 bytes
+	LD	HL,TABK1
+	JP	AFEFE
+	
 ; ──────────────────────────────────────────────
 ; Первичная инициализация МОНИТОРа
 ; ВХОД:
@@ -2406,15 +2376,15 @@ AFF2A:	LD	A,H
 ; ──────────────────────────────────────────────
 
 ColdBootHandler:
-	LD	SP, TapeOutHandler+3
+	LD	SP, TapeOutHandler+3	; Потом используется для заполнения хуков
 	LD	HL, POSADDR
 	LD	DE, CURST
 	LD	C,L			; LD C, 0
 	CALL	DirectiveFill
+	CALL	InitVideo		; Запускаем ВГ75
 	LD	L,C			; LD L, 0
 	DEC	HL			; 75FFH/35FFH
 	LD	(RAMTOP),HL
-	CALL	InitVideo		; Запускаем ВГ75
 
 ; ──────────────────────────────────────────────
 ; Инициализация ВВ55
@@ -2442,6 +2412,29 @@ ColdBootHandler:
 	PUSH	HL
 	LD	HL, DefaultReadKeyCodeHandler
 	JP	INIT2
+
+	NOP	; 22	bytes
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
 
 	CHK	10000H, "* Size not 2K ! *"
 
