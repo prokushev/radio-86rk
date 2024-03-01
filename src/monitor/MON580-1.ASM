@@ -133,8 +133,6 @@ INIT2:
 	DEC	HL			; 75FFH/35FFH
 	LD	(RAMTOP),HL
 	CALL	InitVideo		; Запускаем ВГ75
-	LD	A, 0C3H
-	CALL	InitHandlers
 ; ──────────────────────────────────────────────
 ; Инициализация ВВ55
 ; ──────────────────────────────────────────────
@@ -150,7 +148,15 @@ INIT2:
 	LD	(KNS_RD),HL
 
 ; ──────────────────────────────────────────────
-; Вывод приветсвия
+; Инициализация хуков
+; ──────────────────────────────────────────────
+
+	LD	A, 0C9H
+	JP	InitHandlers
+InitHandlersRet:	
+
+; ──────────────────────────────────────────────
+; Вывод приветствия
 ; ──────────────────────────────────────────────
 
 	CALL	RST_18
@@ -160,7 +166,7 @@ INIT2:
 	IF	SPEKTR
 	DB	1Fh,"spektr-00",'1' + 80H
 	ENDIF
-
+	
 ; ──────────────────────────────────────────────
 ; "Теплый" старт МОНИТОРа
 ; ВХОД:
@@ -225,20 +231,23 @@ AFEF3:	LD	A,H			; 7 bytes
 ; ──────────────────────────────────────────────
 
 InitHandlers2:
-	LD	HL, DefaultTapeInHandler
-	LD	(TapeInHandler+1), HL
 
-	LD	(TapeOutHandler), A
-	LD	HL, DefaultTapeOutHandler
-	LD	(TapeOutHandler+1), HL
+	LD	HL, (0C3H<<8) | 0
+	PUSH	HL
+	LD	(ListHandler), A
 
-	LD	A, 0C9H
-	LD	(ListHandler), A	; Глушим принтер по умолчанию
-	RET
+	LD	SP,STACK
+	
+	JP	InitHandlersRet
 
-;	NOP	; 3 bytes
-;	NOP
-;	NOP
+	NOP	; 8 bytes
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
 
 ; ──────────────────────────────────────────────
 ; Загрузка BC с поиском синхробайта
@@ -2407,28 +2416,29 @@ S1:;				;ФОРМУЛЕ:
 ; ──────────────────────────────────────────────
 
 InitHandlers:
-	LD	(PrintHandler), A
-	LD	HL, DefaultPrintHandler
-	LD	(PrintHandler+1), HL
-
-	LD	(BeepHandler), A
-	LD	HL, DefaultBeepHandler
-	LD	(BeepHandler+1), HL
-
-	LD	(ReadKeyCodeHandler), A
+	LD	SP, TapeOutHandler+3
+	LD	HL, DefaultTapeOutHandler
+	PUSH	HL
+	LD	HL, (0C3H<<8) | ((DefaultTapeInHandler & 0FF00H) >> 8)
+	PUSH	HL
+	LD	HL, ((DefaultTapeInHandler & 0FFH) << 8) | (0C3H)
+	PUSH	HL
 	LD	HL, DefaultReadKeyCodeHandler
-	LD	(ReadKeyCodeHandler+1), HL
-
-	LD	(TapeInHandler), A
-
+	PUSH	HL 
+	LD	HL, (0C3H<<8) | ((DefaultBeepHandler &0FF00H) >> 8)
+	PUSH	HL
+	LD	HL, ((DefaultBeepHandler & 0FFH) << 8) | (0C3H)
+	PUSH	HL
+	LD	HL, DefaultPrintHandler	
+	PUSH	HL
 	JP	InitHandlers2
+
 PrintCharFromAReal:
 	PUSH	BC
 	LD	C, A
 	CALL	PrintCharFromC
 	POP	BC
 	RET
-	NOP
 
 	CHK	10000H, "* Size not 2K ! *"
 
