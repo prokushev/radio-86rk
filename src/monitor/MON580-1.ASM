@@ -7,7 +7,7 @@
 ; todo Переработка обработчика контрольных символов. Они должны обрабатываться _до_ esc последовательностей, не зависимо от текущей активной последовательности
 ; todo Если нет ROM-диска, то просто ВК ничего не грузит
 ; todo Автокопир должен выводить строку только при появлении LF, а не сразу
-; todo п/п SetCursorPos должна просто делать 1bh+Y+..+.. , иначе драйвер вывода на экран не будет нормально работать 
+; todo п/п SetCursorPos должна просто делать 1bh+Y+..+.. , иначе драйвер вывода на экран не будет нормально работать
 
 	CPU	8080
 	Z80SYNTAX	EXCLUSIVE
@@ -128,33 +128,24 @@ Beep:
 	JP	BeepHandler		; F83F
 
 INIT2:
-	LD	L, CURST & 0FFH
-	LD	(HL), 099H		; Размер курсора
-	LD	L,C			; LD L, 0
-	DEC	HL			; 75FFH/35FFH
-	LD	(RAMTOP),HL
-	CALL	InitVideo		; Запускаем ВГ75
-; ──────────────────────────────────────────────
-; Инициализация ВВ55
-; ──────────────────────────────────────────────
-
-	LD	A,8AH
-	LD	(PU),A
-
-; ──────────────────────────────────────────────
-; Инициализация констант чтения/записи
-; ──────────────────────────────────────────────
-
-	LD	HL,1D2AH
-	LD	(KNS_RD),HL
-
-; ──────────────────────────────────────────────
-; Инициализация хуков
-; ──────────────────────────────────────────────
+	PUSH	HL 
+	LD	HL, (0C3H<<8) | ((DefaultBeepHandler &0FF00H) >> 8)
+	PUSH	HL
+	LD	HL, ((DefaultBeepHandler & 0FFH) << 8) | (0C3H)
+	PUSH	HL
+	LD	HL, DefaultPrintHandler	
+	PUSH	HL
+	LD	HL, (0C3H<<8) | 0
+	PUSH	HL
 
 	LD	A, 0C9H
-	JP	InitHandlers
-InitHandlersRet:	
+	LD	HL, ListHandler
+	LD	(HL), A
+
+	LD	SP,HL
+	
+	NOP
+	NOP
 
 ; ──────────────────────────────────────────────
 ; Вывод приветствия
@@ -162,10 +153,10 @@ InitHandlersRet:
 
 	CALL	RST_18
 	IF	RK86
-	DB	1Fh,"radio-86r",'k' + 80H
+	DB	1Fh, 1bh, "eradio-86r",'k' + 80H
 	ENDIF
 	IF	SPEKTR
-	DB	1Fh,"spektr-00",'1' + 80H
+	DB	1Fh, 1bh, "espektr-00",'1' + 80H
 	ENDIF
 	
 ; ──────────────────────────────────────────────
@@ -231,17 +222,12 @@ AFEF3:	LD	A,H			; 7 bytes
 	
 ; ──────────────────────────────────────────────
 
-InitHandlers2:
 
-	LD	HL, (0C3H<<8) | 0
-	PUSH	HL
-	LD	(ListHandler), A
-
-	LD	SP,STACK
-	
-	JP	InitHandlersRet
-
-	NOP	; 8 bytes
+	NOP	; 12	bytes
+	NOP
+	NOP
+	NOP
+	NOP
 	NOP
 	NOP
 	NOP
@@ -388,13 +374,23 @@ PrintSpace:
 ; ──────────────────────────────────────────────
 
 PrintStringHandler:
-	LD	A,(HL)		; 07EH
+	LD	A,(HL)		; opcode=07EH
 	OR	A
 	RET	Z
 	CALL	PrintCharFromA
 	INC	HL
 	RET	M			; RET if high bit set
 	JP	PrintStringHandler
+
+	NOP		; 9 bytes
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
 
 ; ──────────────────────────────────────────────
 ; Ввод строки в буфер COMBUF
@@ -791,22 +787,20 @@ AFB19:	LD	A,(HL)
 	JP	AFB19
 
 ; ──────────────────────────────────────────────
-; Первичная инициализация МОНИТОРа
-; ВХОД:
-;	Нет
-; ВЫХОД:
-;	Нет
-; ИЗМЕНЯЕТ:
-;	Не определено
-; ──────────────────────────────────────────────
 
-ColdBootHandler:			; 14 bytes
-	LD	HL, POSADDR
-	LD	SP, HL			; 7600H/3600H
-	LD	DE, STACK-1
-	LD	C,L			; LD C, 0
-	CALL	DirectiveFill
-	JP	INIT2
+CALC:				; 13 bytes
+	INC	A
+	LD	DE, SC_WIDTH	;В DE ДЛИНУ СТРОКИ
+	LD	HL, -SC_WIDTH	;ВЫЧИСЛЕНИЕ
+				;АДРЕСА ПО
+S1:;				;ФОРМУЛЕ:
+	ADD	HL, DE		;АДРЕС=SC_WIDTH*Y
+	DEC	A
+	JP	NZ,S1
+	RET
+
+
+	NOP
 
 ; ──────────────────────────────────────────────
 
@@ -1678,10 +1672,12 @@ PrintHexNibble:
 ;	Нет
 ; ──────────────────────────────────────────────
 
-PrintCharFromA: JP PrintCharFromAReal
-	;PUSH	BC		; 
-	;LD	C,A
-	;DB	06h		; LD B,..
+PrintCharFromA:
+	PUSH	BC
+	LD	C, A
+	CALL	PrintCharFromC
+	POP	BC
+	RET
 
 ; ──────────────────────────────────────────────
 ; Печать символа из C
@@ -2400,24 +2396,44 @@ AFF2A:	LD	A,H
 	RET
 
 ; ──────────────────────────────────────────────
-
-CALC:				; 13 bytes
-	INC	A
-	LD	DE, SC_WIDTH	;В DE ДЛИНУ СТРОКИ
-	LD	HL, -SC_WIDTH	;ВЫЧИСЛЕНИЕ
-				;АДРЕСА ПО
-S1:;				;ФОРМУЛЕ:
-	ADD	HL, DE		;АДРЕС=SC_WIDTH*Y
-	DEC	A
-	JP	NZ,S1
-	RET
-
-; ──────────────────────────────────────────────
-; Настрока обработчиков по умолчанию
+; Первичная инициализация МОНИТОРа
+; ВХОД:
+;	Нет
+; ВЫХОД:
+;	Нет
+; ИЗМЕНЯЕТ:
+;	Не определено
 ; ──────────────────────────────────────────────
 
-InitHandlers:
+ColdBootHandler:
 	LD	SP, TapeOutHandler+3
+	LD	HL, POSADDR
+	LD	DE, CURST
+	LD	C,L			; LD C, 0
+	CALL	DirectiveFill
+	LD	L,C			; LD L, 0
+	DEC	HL			; 75FFH/35FFH
+	LD	(RAMTOP),HL
+	CALL	InitVideo		; Запускаем ВГ75
+
+; ──────────────────────────────────────────────
+; Инициализация ВВ55
+; ──────────────────────────────────────────────
+
+	LD	A,8AH
+	LD	(PU),A
+
+; ──────────────────────────────────────────────
+; Инициализация констант чтения/записи
+; ──────────────────────────────────────────────
+
+	LD	HL,1D2AH
+	LD	(KNS_RD),HL
+
+; ──────────────────────────────────────────────
+; Инициализация хуков
+; ──────────────────────────────────────────────
+
 	LD	HL, DefaultTapeOutHandler
 	PUSH	HL
 	LD	HL, (0C3H<<8) | ((DefaultTapeInHandler & 0FF00H) >> 8)
@@ -2425,21 +2441,7 @@ InitHandlers:
 	LD	HL, ((DefaultTapeInHandler & 0FFH) << 8) | (0C3H)
 	PUSH	HL
 	LD	HL, DefaultReadKeyCodeHandler
-	PUSH	HL 
-	LD	HL, (0C3H<<8) | ((DefaultBeepHandler &0FF00H) >> 8)
-	PUSH	HL
-	LD	HL, ((DefaultBeepHandler & 0FFH) << 8) | (0C3H)
-	PUSH	HL
-	LD	HL, DefaultPrintHandler	
-	PUSH	HL
-	JP	InitHandlers2
-
-PrintCharFromAReal:
-	PUSH	BC
-	LD	C, A
-	CALL	PrintCharFromC
-	POP	BC
-	RET
+	JP	INIT2
 
 	CHK	10000H, "* Size not 2K ! *"
 
