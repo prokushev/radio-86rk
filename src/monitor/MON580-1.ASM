@@ -129,8 +129,7 @@ Beep:
 
 INIT2:
 	PUSH	HL 
-	LD	HL, (0C3H<<8) | ((DefaultBeepHandler &0FF00H) >> 8)
-	PUSH	HL
+	PUSH	DE
 	LD	HL, ((DefaultBeepHandler & 0FFH) << 8) | (0C3H)
 	PUSH	HL
 	LD	HL, DefaultPrintHandler	
@@ -142,10 +141,10 @@ INIT2:
 	LD	HL, ListHandler
 	LD	(HL), A
 
+	LD	L,C			; LD L, 0
 	LD	SP,HL
-	
-	NOP
-	NOP
+	DEC	HL			; 75FFH/35FFH
+	LD	(RAMTOP),HL
 
 ; ──────────────────────────────────────────────
 ; Вывод приветствия
@@ -2382,9 +2381,6 @@ ColdBootHandler:
 	LD	C,L			; LD C, 0
 	CALL	DirectiveFill
 	CALL	InitVideo		; Запускаем ВГ75
-	LD	L,C			; LD L, 0
-	DEC	HL			; 75FFH/35FFH
-	LD	(RAMTOP),HL
 
 ; ──────────────────────────────────────────────
 ; Инициализация ВВ55
@@ -2411,9 +2407,12 @@ ColdBootHandler:
 	LD	HL, ((DefaultTapeInHandler & 0FFH) << 8) | (0C3H)
 	PUSH	HL
 	LD	HL, DefaultReadKeyCodeHandler
+	LD	DE, (0C3H<<8) | ((DefaultBeepHandler &0FF00H) >> 8)
 	JP	INIT2
 
-	NOP	; 22	bytes
+	NOP	; 24	bytes
+	NOP
+	NOP
 	NOP
 	NOP
 	NOP
