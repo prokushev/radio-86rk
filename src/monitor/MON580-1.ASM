@@ -1760,7 +1760,12 @@ WRP:	INC	L		; POSX ++
 ;	Снизу добавляется пустая строка.
 ; ──────────────────────────────────────────────
 
-LF:	LD	A,H
+LF:
+;	LD	A,(Echo)
+;	OR	A
+;	CALL	NZ, PrintCurrentString	; Печать текущей строки принтер
+
+	LD	A,H
 	CP	MARGIN_TOP+24	; мы на последней строке ?
 	JP	NZ, CursorDown	; если не на последней строке
 	LD	A, MARGIN_TOP
@@ -2410,24 +2415,22 @@ ColdBootHandler:
 	LD	DE, (0C3H<<8) | ((DefaultBeepHandler &0FF00H) >> 8)
 	JP	INIT2
 
-	NOP	; 24	bytes
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
+PrintCurrentString:
+	PUSH	HL
+
+	LD	L, MARGIN_LEFT
+	
+; Печать текущей строки на принтер	
+PrintCSLoop:
+	CALL	ReadVideoRAM	; Тут надо адрес вычислить
+	CALL	PrintCharFromA
+	INC	L
+	CP	MARGIN_LEFT+64	; Конец строки?
+	JP	NZ, PrintCSLoop
+	POP	HL
+	RET
+	
+	NOP	; 7	bytes
 	NOP
 	NOP
 	NOP
