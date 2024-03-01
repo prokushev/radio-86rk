@@ -5,16 +5,19 @@
 	Z80SYNTAX EXCLUSIVE
 	ORG 0
 
+	include syscalls.inc
+	include sysvars.inc
+	
 	JP 	TEST		;ПЕРЕХОД НА ТЕСТИРОВАНИЕ ДР.
 PRINTC:	JP	0F809H		;ВЫВОД СИМВОЛА ЧЕРЕЗ МОНИТОР
-PRINT:	JP	0F818H		;ВЫВОД ТЕКСТА ЧЕРЕЗ МОНИТОР
+PrintCH	EQU	PRINTC+1	; Патч адреса
 INPUT:	PUSH	HL
-	CALL	PRINTI
-	DB	1bh, 'e',0	; Вкл. курсор
+	LD	HL, CURON
+	CALL	WRITE
 	CALL	0F803H		; ввод символа с клавиатуры 
 	PUSH	AF
-	CALL	PRINTI		; выключаем курсор
-	DB	1bh, 'f',0	; Выкл. курсор
+	LD	HL, CUROFF
+	CALL	WRITE		; выключаем курсор
 	POP	AF
 	POP	HL
 	RET
@@ -33,6 +36,7 @@ TXTCUR:	EQU	ADRSP+2 	; РАБОЧИЕ ЯЧ. ДЛЯ УСТ.КУСОРА
 
 INITSP:	DW	TXTCUR+5 	;АДРЕС ОБЛАСТИ СОХРАНЕНИЯ ЭК.
 
+
 ;********************************************
 ;* RESETW - инициализация драйвера оконного *
 ;* интерфейса                               *
@@ -47,11 +51,19 @@ FOUND:	;XOR	A 		; ОБНУЛЕНИЕ НОМЕРА (уже 0)
 	LD	HL, (INITSP) 	; ИНИЦИИРУЕМ АДРЕС НАЧАЛА ОЗУ 
 	LD	(ADRSP), HL 	; ДЛЯ СОХРАНЕНИЯ ЭКРАНОВ
 
-	LD	(TXTCUR+4), A	;; ПРИЗНАК КОНЦА СТРОКИ 
+	; Подготавливаем данные для строки установки координат
+	LD	(TXTCUR+4), A	; ПРИЗНАК КОНЦА СТРОКИ 
 	LD	HL, ('Y'<<8) | 1Bh
-	LD	(TXTCUR), HL
-	POP HL
-				; Подключаем нашу процедуру вывода символа
+	LD	(TXTCUR), HL	; 1BH 'Y'
+	
+	; Подключаем нашу процедуру вывода символа
+	LD	HL, (PrintHandler+1)
+	LD	(PrintCH), HL
+	
+	LD	HL, WRITEC
+	LD	(PrintHandler+1), HL
+	
+	POP	HL
 	RET
 
 NOTFOUND:
@@ -154,13 +166,13 @@ RES20:	MOV C,M 	; ВОССТАНАВЛИВАЕМ СОДЕРЖ.
 	Z80SYNTAX EXCLUSIVE
 	PUSH	HL
 	LD	HL, GRON	; Включаем графрежим
-	CALL	PRINT
+	CALL	WRITE
 	LD	A, 5Fh		; Корректируем код графсимвола
 	ADD	A, C
 	LD	C, A
 	CALL	PRINTC
 	LD	HL, GROFF	; Выключаем графрежим
-	CALL	PRINT
+	CALL	WRITE
 	POP	HL
 	JP	NEXT
 	Z80SYNTAX OFF
@@ -200,7 +212,7 @@ RESPP:	XCHG
 FRAME:	PUSH D 		; СОХРАНЯЕМ РЕГИСТРЫ 
 	PUSH H
 	LXI H, GRON
-	CALL	PRINT	; включаем графрежим
+	CALL	WRITE	; включаем графрежим
 	POP	H
 	PUSH	H
 	CALL CUROUT 	; КУРСОР В УГОЛ РАМКИ 
@@ -221,7 +233,7 @@ FRAME:	PUSH D 		; СОХРАНЯЕМ РЕГИСТРЫ
 	XCHG
 	SHLD WPARM 	; ЗАПИСЫВАЕМ РАЗМЕРЫ АКТ.
 	LXI H, GROFF
-	CALL	PRINT	; выключаем графрежим
+	CALL	WRITE	; выключаем графрежим
 	POP H 		; ОКНА
 	POP D 		; ВОССТАНАВЛИВАЕМ РЕГИСТРЫ
 	RET
@@ -230,13 +242,13 @@ FRAME:	PUSH D 		; СОХРАНЯЕМ РЕГИСТРЫ
 DRWFR:	DCR B 		; ЕСЛИ ДЛИНА 1
 	JZ DRR20 	; ОБХОДИМ ЦИКЛ ПО ДЛИНЕ СТОР. 
 DRW10:	PUSH H 		; РИСУЕМ В-1 СИМВОЛОВ СТОРОНЫ
-	CALL PRINT
+	CALL WRITE
 	POP H
 	DCR B
 	JNZ DRW10 
-DRR20:	CALL PRINT 	; РИСУЕМ ПОСЛЕДНИЙ СИМВОЛ
+DRR20:	CALL WRITE 	; РИСУЕМ ПОСЛЕДНИЙ СИМВОЛ
 	INX H
-	CALL PRINT 	; ПРОРИСОВЫВАЕМ УГОЛ
+	CALL WRITE 	; ПРОРИСОВЫВАЕМ УГОЛ
 	INX H 		; готовим адрес очереди. стор.
 	RET
 ; ДАННЫЕ ДЛЯ ПОСТРОЕНИЯ РАМКИ 
@@ -250,24 +262,30 @@ FRTEXT:	DB	03H+5fh, 0		; ВЕРХНЯЯ СТОРОНА
 	DB	18H,15h+5fh, 8,19H,0	; УГОЛ
 	DB	11H+5fh, 19H, 8, 0	;ЛЕВАЯ СТОРОНА
 	DB	13h+5fh, 1AH,0		; Угол+КУРСОР В ЛЕВЫЙ ВЕРХНИЙ УГОЛ
-;WRITE - ВЫВОД ТЕКСТА ЧЕРЕЗ ДРАЙВЕР ОКНА. +
+
+;WRITE - ВЫВОД ТЕКСТА ЧЕРЕЗ МОНИТОР. +
 ; АНАЛОГ П/П МОНИТОРА 0F818H )            +
 ;ВХОД: HL - АДРЕС НАЧАЛА ТЕКСТА.          +
 WRITE:	MOV A, M 	; ВЫВОДИМ ВСЕ СИМВОЛЫ
 	ORA A 		; ДО НУЛЯ
 	JZ WRTRET
+	PUSH B
 	MOV C, A 	; ЧЕРЕЗ
-	CALL WRITEC 	; ПОДПРОГРАММУ WRITEC
+	CALL PRINTC 	; ПОДПРОГРАММУ F809H
+	POP B
 	INX H
 	JMP WRITE 
-WRTRET:	INX H
+WRTRET:	;INX H
 	RET
+
+	
 ;++++++++++++++++++++++++++++++++++++++++++++
 ; WRITEC - ВЫВОД СИМВОЛА ЧЕРЕЗ ДРАЙВЕР ОКНА +
 ; АНАЛОГ П/П МОНИТОРА 0F809Н                +
 ; ВХОД: С - КОД СИМВОЛА                     +
 ;++++++++++++++++++++++++++++++++++++++++++++
-WRITEC:	LDA NUMWND 	; ПРОВЕРЯЕМ НАЛИЧИЕ
+WRITEC:	PUSH PSW
+	LDA NUMWND 	; ПРОВЕРЯЕМ НАЛИЧИЕ
 	ORA A 		; АКТИВНОГО ОКНА
 	JZ WRC30 	; ЕСЛИ НЕТ- ЧЕРЕЗ МОНИТОР
 	MOV A, C 	; РЕЗЕРВИРУЕМ ВОЗМОЖНОСТЬ
@@ -286,7 +304,8 @@ WRC20:	CPI 1FH 	; 1FH
 	CALL WR1F 	; ОБРАБАТЫВАЮТСЯ П/П ДРАЙВЕРА
 	JMP WRCRET
 WRC30:	CALL PRINTC 	; ОСТАЛЬНЫЕ СИМВОЛЫ В МОНИТОР 
-WRCRET: 	RET
+WRCRET:	POP PSW
+	RET
 ; WR0D - ОБРАБОТКА СИМВОЛА 0DН +
 WR0D:	PUSH B
 	MVI C, 0DH 	; КУРСОР В НАЧАЛО СТРОКИ 
@@ -351,12 +370,11 @@ CUROUT:	PUSH H 		; СОХРАНЯЕМ РЕГИСТРЫ
 	XCHG 		; ПЕРЕСЫЛАЕМ В <l),L> 
 	LXI H, TXTCUR+3
 
-	;DCX H 		; ФОРМИРУЕМ В TXTCUR 
 	MOV M,E 	; ESCAPE ПОСЛЕДОВАТЕЛЬНОСТЬ 
-	DCX H 		; АР2,'Г',2вН+(Н>>20H+<L>,0 
+	DCX H 		; АР2,'Y',20Н+(Н>>20H+<L>,0 
 	MOV M,D
 	LXI H, TXTCUR
-	CALL PRINT 	; УСТАНАВЛИВАЕМ КУРСОР ЧЕРЕЗ 
+	CALL WRITE 	; УСТАНАВЛИВАЕМ КУРСОР ЧЕРЕЗ 
 	POP B 		; МОНИТОР 
 	POP D 
 	POP H 
@@ -406,7 +424,7 @@ VDFOUND:XOR	A
 ; Печать строки сразу за вызовом
 ;---------------------------------------------------
 PRINTI:	EX	(SP),HL			; 6 bytes
-	CALL	PRINT
+	CALL	PrintString
 	EX	(SP),HL
 	RET
 
@@ -415,6 +433,8 @@ PRINTI:	EX	(SP),HL			; 6 bytes
 ;***************** ТЕСТОВАЯ ПРОГРАММА ************************
 	Z80SYNTAX EXCLUSIVE
 TEST:
+	CALL	RESETW 		; ИНИЦИАЛИЗИРУЕМ ДРАЙВЕР
+TESTLOOP:
 	CALL	PRINTI
 	DB	1fh, 'standartnye simwoly:', 0dh, 0ah,0
 
@@ -429,7 +449,7 @@ LLP:	CALL	PRINTC
 	DB	0dh,0ah,'grafi~eskie simwoly:', 0dh, 0ah,0
 
 	LD	HL, GRON
-	CALL	PRINT	; включаем графрежим
+	CALL	WRITE	; включаем графрежим
 
 	LD	C, ' '
 LLP2:	CALL	PRINTC
@@ -439,9 +459,9 @@ LLP2:	CALL	PRINTC
 	JP	NZ, LLP2
 
 	LD	HL, GROFF
-	CALL	PRINT	; выключаем графрежим
+	CALL	WRITE	; выключаем графрежим
 
-STEP1:	CALL	RESETW 		; ИНИЦИАЛИЗИРУЕМ ДРАЙВЕР
+STEP1:
 	CALL	PRINTI		; выключаем курсор
 	DB	1bh, 'f',0	; Выкл. курсор
 STEP2:	LD	HL,506H 	; КООРД.РАМКИ 1 ОКНА
@@ -449,21 +469,23 @@ STEP2:	LD	HL,506H 	; КООРД.РАМКИ 1 ОКНА
 	CALL	SAVEW 		; COXP.СОДЕРЖ.ЭКРАНА
 	CALL	FRAME 		; РИСУЕМ РАМКУ 
 STEP3:	LD	HL, TSTXT1 	; ВЫВОДИМ ТЕКСТ
-	CALL	WRITE 		; ЧЕРЕЗ ДРАЙВЕР
+	CALL	PrintString	; ЧЕРЕЗ ДРАЙВЕР
 	CALL	INPUT 		; ПАУЗА 
 STEP4:	LD	HL,80EH 	; КООРДИНАТЫ 2 ОКНА
 	LD	DE,512H 	; РАЗМЕРЫ 2 ОКНА
 	CALL	SAVEW		; OTKPЫBAEM 2 ОКНО
 	CALL	FRAME
 	LD	HL, TSTXT2 	; ВЫВОДИМ ТЕКСТ
-	CALL	WRITE 	; BO 2 ОКНО 
-STEP5:	CALL	INPUT 	; ПАУЗА
-	CALL	RESTW 	; СТИРАЕМ 2 OKHО
-STEP6:	CALL	INPUT 	; ПАУЗА
-	CALL	RESTW 	; СТИРАЕМ 1 ОКНО
-	CALL	INPUT 	; ПАУЗА
-	JP	TEST 	; НА ПОВТОР ТЕСТ-ПРОГРАММЫ 
+	CALL	PrintString 	; BO 2 ОКНО 
+STEP5:	CALL	INPUT		; ПАУЗА
+	CALL	RESTW		; СТИРАЕМ 2 OKHО
+STEP6:	CALL	INPUT		; ПАУЗА
+	CALL	RESTW		; СТИРАЕМ 1 ОКНО
+	CALL	INPUT		; ПАУЗА
+	JP	TESTLOOP	; НА ПОВТОР ТЕСТ-ПРОГРАММЫ 
 
+CURON:	DB	1bh, 'e',0	; Вкл. курсор
+CUROFF:	DB	1bh, 'f',0	; Выкл. курсор
 TSTXT1:	DB 1FH,'1 okno'
 	DB 0DH, 0AH, '2 stroka 1 okna',0 
 TSTXT2:	DB 1FH,'2 okno '

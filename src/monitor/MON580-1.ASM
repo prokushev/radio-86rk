@@ -225,6 +225,7 @@ AFEF3:	LD	A,H			; 7 bytes
 ; ──────────────────────────────────────────────
 
 InitHandlers2:
+	LD	HL, DefaultTapeInHandler
 	LD	(TapeInHandler+1), HL
 
 	LD	(TapeOutHandler), A
@@ -235,9 +236,9 @@ InitHandlers2:
 	LD	(ListHandler), A	; Глушим принтер по умолчанию
 	RET
 
-	NOP	; 3 bytes
-	NOP
-	NOP
+;	NOP	; 3 bytes
+;	NOP
+;	NOP
 
 ; ──────────────────────────────────────────────
 ; Загрузка BC с поиском синхробайта
@@ -1667,10 +1668,10 @@ PrintHexNibble:
 ;	Нет
 ; ──────────────────────────────────────────────
 
-PrintCharFromA:
-	PUSH	BC		; 
-	LD	C,A
-	DB	06h		; LD B,..
+PrintCharFromA: JP PrintCharFromAReal
+	;PUSH	BC		; 
+	;LD	C,A
+	;DB	06h		; LD B,..
 
 ; ──────────────────────────────────────────────
 ; Печать символа из C
@@ -2419,14 +2420,14 @@ InitHandlers:
 	LD	(ReadKeyCodeHandler+1), HL
 
 	LD	(TapeInHandler), A
-	LD	HL, DefaultTapeInHandler
 
 	JP	InitHandlers2
-
-	NOP
-	NOP
-	NOP
-	NOP
+PrintCharFromAReal:
+	PUSH	BC
+	LD	C, A
+	CALL	PrintCharFromC
+	POP	BC
+	RET
 	NOP
 
 	CHK	10000H, "* Size not 2K ! *"
