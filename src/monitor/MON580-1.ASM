@@ -2,11 +2,9 @@
 ;  МОНИТОР-1.20 для Радио-86РК для КР580, совместимый с Орион-128,
 ;  поддержкой VT-52
 ; ═══════════════════════════════════════════════════════════════════════
-; todo Передвинуть обработчики директив и таблицу директив в адреса FAXX (возможно, даст выигрыш 3 байта на DirectiveReadROM)
 ; todo Печать экрана (Эмуляция VT-52 с копиром)
-; todo Переработка обработчика контрольных символов. Они должны обрабатываться _до_ esc последовательностей, не зависимо от текущей активной последовательности
+; todo Переработка обработчика контрольных символов. Они должны обрабатываться _до_ esc последовательностей, независимо от текущей активной последовательности
 ; todo Если нет ROM-диска, то просто ВК ничего не грузит
-; todo Автокопир должен выводить строку только при появлении LF, а не сразу
 ; todo п/п SetCursorPos должна просто делать 1bh+Y+..+.. , иначе драйвер вывода на экран не будет нормально работать
 
 	CPU	8080
@@ -1718,13 +1716,6 @@ PrintCharFromCHandler:
 	PUSH	HL
 	PUSH	AF
 
-	; Эхо-печать на принтер
-	LD	A,(Echo)
-	OR	A
-;	JP	Z, skip_Echo
-	CALL	NZ, ListCharFromC	; Печать на принтер
-;skip_Echo:	
-
 	CALL	GetKeyboardStatus
 	LD	HL,TOBACK
 	PUSH	HL
@@ -1813,9 +1804,9 @@ WRP:	INC	L		; POSX ++
 ; ──────────────────────────────────────────────
 
 LF:
-;	LD	A,(Echo)
-;	OR	A
-;	CALL	NZ, PrintCurrentString	; Печать текущей строки принтер
+	LD	A,(Echo)
+	OR	A
+	CALL	NZ, PrintCurrentString	; Печать текущей строки принтер
 
 	LD	A,H
 	CP	MARGIN_TOP+24	; мы на последней строке ?
@@ -2467,25 +2458,23 @@ ColdBootHandler:
 	LD	DE, (0C3H<<8) | ((DefaultBeepHandler &0FF00H) >> 8)
 	JP	INIT2
 
+; Печать текущей строки на принтер	
 PrintCurrentString:
 	PUSH	HL
-
 	LD	L, MARGIN_LEFT
-	
-; Печать текущей строки на принтер	
 PrintCSLoop:
-	CALL	ReadVideoRAM	; Тут надо адрес вычислить
-	CALL	PrintCharFromA
+	PUSH	HL
+	CALL	SetCursorPos	; Вычисляем адрес
+	LD	C, (HL)
+	POP	HL
+	CALL	ListCharFromC	; Тут вставить проверку на контр. символы ВГ75
 	INC	L
 	CP	MARGIN_LEFT+64	; Конец строки?
 	JP	NZ, PrintCSLoop
 	POP	HL
 	RET
 	
-	NOP	; 7	bytes
-	NOP
-	NOP
-	NOP
+	NOP	; 4	bytes
 	NOP
 	NOP
 	NOP
