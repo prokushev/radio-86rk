@@ -571,32 +571,38 @@ AFF06:	LD	L,A
 ; ──────────────────────────────────────────────
 
 SetCursorPosHandler:
-	LD	(POSX),HL
+	LD	(POSX),HL	; Сохраняем POSX, POSY
 
-	PUSH	AF
 	PUSH	DE		;ЗАПОМНИТЬ 
 	PUSH	BC		;РЕГИСТРЫ 
+	PUSH	AF
 
+	EX	DE, HL		; +1
+	LD	HL, VG_75+1	; +3
 	; Выставляем курсор
-	LD	A,80H
-	LD	(VG_75+1),A
-	LD	A,L
-	LD	(VG_75),A
-	LD	A,H
-	LD	(VG_75),A
+;	LD	A,80H		; -2
+;	LD	(VG_75+1),A	; -3
+	LD	(HL), 80h	; +2
+;	LD	A,L		; -1
+	DEC	HL		; +1
+	LD	(HL), E		; +1
+;	LD	(VG_75),A	; -3
+;	LD	A,H		; -1
+;	LD	(VG_75),A	; -3
+	LD	(HL), D		; +1
 
 	; Вычисляем адрес видеопамяти
-	LD	C, L		;В С КООРДИНАТУ X
-	LD	A, H		;В А КООРДИНАТУ Y
+	LD	C, E		;В С КООРДИНАТУ X
+	LD	A, D		;В А КООРДИНАТУ Y
 	CALL	CALC
 	LD	DE, SA		; ЗАГРУЗИТЬ АДРЕС
 	ADD	HL, DE		; КООРДИНАТ 0. 0.
 	LD	B, 0		; СЛОЖИТЬ С АДРЕСОМ НАЧАЛА
 	ADD	HL, BC		; И ПРИБАВИТЬ X
 	LD	(POSADDR), HL	; Сохраняем адрес
+	POP	AF
 	POP	BC		; ВОССТАНОВИТЬ
 	POP	DE		; РЕГИСТРЫ
-	POP	AF
 	RET
 
 ; ──────────────────────────────────────────────
@@ -640,27 +646,68 @@ SETINV:	LD	(INV_MG),A 	; Tape inverse flag
 AFC0B:	DEC	D
 	JP	NZ,AFBB7
 
-	LD	HL,VT_57+4
-	LD	(HL), SA & 00FFH		; 0D0H
-	LD	(HL), SA >>8		; 076H/036H
-	INC	HL
-	LD	(HL),023H
-	LD	(HL),049H
-	LD	A,27H			; start display commando
-	LD	(VG_75+1),A
-	LD	A,0E0H			; reset count
-	LD	(VG_75+1),A
-	LD	L,8
-	LD	(HL),0A4H
-
 	LD	HL,(TMPSTK)
 	LD	SP,HL
 
 	LD	A,(INV_MG)
 	XOR	C			; with Tape Inverse flag
+	PUSH	AF	
+	JP	REINIT
+
+	if	0
+	LD	HL,VT_57+4
+	LD	(HL), SA & 00FFH		; 0D0H
+	LD	(HL), SA >>8		; 076H/036H
+	INC	HL			; VT_57+5
+	LD	(HL),023H
+	LD	(HL),049H
+	LD	HL, VG_75+1		;+3
+	LD	(HL), 27H		;+2; start display commando
+	LD	(HL), 0E0H		;+2; reset count
+	LD	HL, VT_57+8		;+3
+;	LD	A,27H			;-2; start display commando
+;	LD	(VG_75+1),A		;-3
+;	LD	A,0E0H			;-2; reset count
+;	LD	(VG_75+1),A             ;-3
+;	LD	L,8			;-2
+	LD	(HL),0A4H
+
+	LD	SP,HL
+
+	LD	A,(INV_MG)
+	XOR	C			; with Tape Inverse flag
 	JP	POPREG
+	endif
 
-
+	NOP				; 29 bytes
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
 
 ReadROM:
 	LD	A,(FLG_P2)		; 46 bytes
@@ -1577,17 +1624,24 @@ AFC7B:	POP	AF		; подъем стека на [рег.B] ячеек
 	JP	NZ,AFC58
 
 	LD	SP,HL
+REINIT:
 	LD	HL,VT_57+4
 	LD	(HL), SA & 00FFh	; 0D0H
 	LD	(HL), SA >> 8	; 076H/036H
 	INC	HL		; VT_57+5
 	LD	(HL),23H
 	LD	(HL),49H
-	LD	A,27H		; start display command
-	LD	(VG_75+1),A	; 001.sss.bb    001.001.11
-	LD	A,0E0H		; сброс счетчиков строк и знакомест ???
-	LD	(VG_75+1),A
-	LD	L,8
+
+	LD	HL, VG_75+1		;+3
+	LD	(HL), 27H		;+2; start display command 001.sss.bb    001.001.11
+	LD	(HL), 0E0H		;+2; reset count
+	LD	HL, VT_57+8		;+3
+
+;	LD	A,27H		;-2 start display command
+;	LD	(VG_75+1),A	;-3 001.sss.bb    001.001.11
+;	LD	A,0E0H		;-2 сброс счетчиков строк и знакомест ???
+;	LD	(VG_75+1),A	;-3
+;	LD	L,8		;-2
 	LD	(HL),0A4H	; VT_57+8
 POPREGA:
 	POP	AF
@@ -2430,7 +2484,9 @@ PrintCSLoop:
 	POP	HL
 	RET
 	
-	NOP	; 7	bytes
+	NOP	; 9	bytes
+	NOP
+	NOP
 	NOP
 	NOP
 	NOP
