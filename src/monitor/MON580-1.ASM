@@ -1559,7 +1559,7 @@ TapeWriteWord:
 	LD	C,H
 	CALL	TapeWriteByte
 	LD	C,L
-	DB	06H		; LD B,..
+	JP	TapeWriteByte
 
 ; ──────────────────────────────────────────────
 ; Запись синхробайта
@@ -2484,9 +2484,7 @@ PrintCSLoop:
 	POP	HL
 	RET
 	
-	NOP	; 9	bytes
-	NOP
-	NOP
+	NOP	; 7	bytes
 	NOP
 	NOP
 	NOP
