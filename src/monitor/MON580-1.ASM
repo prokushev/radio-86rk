@@ -2471,6 +2471,8 @@ PrintCSLoop:
 	INC	L
 	CP	MARGIN_LEFT+64	; Конец строки?
 	JP	NZ, PrintCSLoop
+;	LD	C, 0DH		; По идее - надо. Или надо CRLF?
+;	CALL	ListCharFromC
 	POP	HL
 	RET
 	
