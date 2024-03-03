@@ -965,10 +965,7 @@ TAB:	LD	A, L
 	LD	L, A
 	RET
 
-	NOP	; 5 bytes
-	NOP
-	NOP
-	NOP
+	NOP	; 2 bytes
 	NOP
 
 ; ──────────────────────────────────────────────
@@ -1013,12 +1010,13 @@ PrintCRAndHexWordAndSpaceAndCRAndHexWordAndSpace:
 ; ВЫХОД:
 ;	Нет
 ; ИЗМЕНЯЕТ:
-;	AF, B, DE, HL
+;	AF, B, HL
 ; ──────────────────────────────────────────────
 
 PrintCRAndHexWordBCAndSpace:
-	LD	D,B
-	LD	E,C
+	LD	H,B
+	LD	L,C
+	JP	PrintCRAndHexWordDEAndSpace
 
 ; ──────────────────────────────────────────────
 ; Печать перевода строки, числа из DE в 16-ричном формате и пробела
