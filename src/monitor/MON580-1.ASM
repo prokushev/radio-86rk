@@ -198,8 +198,8 @@ WarmBoot:
 	LD	H, DIRTABLE >> 8
 	LD	L, A
 	LD	L,(HL)
-	PUSH	HL			; Адрес вызова обработчика директивы
-;LD	(DirectiveHandle+1), L		; Адрес вызова обработчика директивы
+	PUSH	HL			;-1 Адрес вызова обработчика директивы
+;LD	(DirectiveHandle+1), L		;+3 Адрес вызова обработчика директивы
 
 	CALL	ParseParameters		; На выходе в HL, то, что должно быть в BC
 
@@ -209,11 +209,11 @@ WarmBoot:
 	LD	HL,(PAR_DE)		; Z80: LD DE,(PAR_DE)
 	EX	DE,HL
 	LD	HL,(PAR_HL)
-	RET				; Переход в обработчик директивы
+	RET				; -1 Переход в обработчик директивы
 ;UniversalDirective:			; Вызов обработчика директивы
-;	CALL	DirectiveHandle
-;	CALL	IncHLAndRetIfEqDE
-;	JP	UniversalDirective
+;	CALL	DirectiveHandle		; +3
+;	CALL	IncHLAndRetIfEqDE	; +3 Выход по WarmBoot
+;	JP	UniversalDirective	; +3
 
 ; ──────────────────────────────────────────────
 
