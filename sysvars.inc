@@ -44,7 +44,7 @@ AltChars	EQU	BASE+11H	; 1 Вкл/выкл алтернативный знако�
 Echo	EQU	BASE+12H		; 1 Вкл/выкл Auto-Copy
 CURST	EQU	BASE+13H		; 1 Вкл/выкл курсор
 
-; Дырка 3 байта
+DirectiveHandle	EQU	BASE+14H	; 3 JP DirectiveHandle Для опробации идеи одного цыкла и сменного обработчика
 PrintHandler	EQU	BASE+17H	; 3 JP DefaultPrintHandler
 BeepHandler	EQU	BASE+1AH	; 3 JP DefaultBeepHandler
 ReadKeyCodeHandler		EQU	BASE+1DH	; 3 JP DefaultReadKeyCodeHandler
