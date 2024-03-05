@@ -6,7 +6,7 @@
 ; todo Печать строки (Эмуляция VT-52 с принтером) (уже реализовано, надо просто Esc-V обработать)
 ; todo Переработка обработчика контрольных символов. Они должны обрабатываться _до_ esc последовательностей, независимо от текущей активной последовательности
 ; todo Если нет ROM-диска, то просто ВК ничего не грузит
-; todo п/п SetCursorPos должна просто делать 1bh+Y+..+.. , иначе драйвер вывода на экран не будет нормально работать
+; todo п/п SetCursorPos должна просто делать 1bh+Y+..+.. , иначе драйвер вывода на экран не будет нормально работать. Непонятно пока с адресом на выходе...
 
 	CPU	8080
 	Z80SYNTAX	EXCLUSIVE
@@ -1903,6 +1903,7 @@ VT52_CI3:
 ;		ESC K	- Erase to End Of Line
 ;		ESC L	- Insert line (not VT52)
 ;		ESC M	- Delete line (not VT52)
+;		ESC V	- Print current string on printer
 ;		ESC Y	- Direct Cursor Addressing
 ;		ESC Z	- Ident terminal
 ;		ESC a	- Disable cursor (M/80K extension)
@@ -2127,7 +2128,22 @@ SETESC:	LD	(ESC_FL),A
 	RET
 
 skip_ESC_Y:
-	ADD	A, 'Y'-'M'	;CP	'M'
+	ADD	A, 'Y'-'V'	;CP 'V'
+	PUSH	HL
+	LD	L, MARGIN_LEFT
+PrintCSLoop:
+	PUSH	HL
+	CALL	SetCursorPos	; Вычисляем адрес
+	LD	C, (HL)
+	POP	HL
+	CALL	ListCharFromC	; Тут вставить проверку на контр. символы ВГ75
+	INC	L
+	CP	MARGIN_LEFT+64	; Конец строки?
+	JP	NZ, PrintCSLoop
+;	LD	C, 0AH		; По идее - надо. Или надо CRLF?
+;	CALL	ListCharFromC
+	POP	HL
+	ADD	A, 'V'-'M'	;CP	'M'
 	JP	NZ, skip_ESC_M
 
 ; ──────────────────────────────────────────────
@@ -2459,26 +2475,8 @@ ColdBootHandler:
 	LD	DE, (0C3H<<8) | ((DefaultBeepHandler &0FF00H) >> 8)
 	JP	INIT2
 
-; Печать текущей строки на принтер	
-PrintCurrentString:
-	PUSH	HL
-	LD	L, MARGIN_LEFT
-PrintCSLoop:
-	PUSH	HL
-	CALL	SetCursorPos	; Вычисляем адрес
-	LD	C, (HL)
-	POP	HL
-	CALL	ListCharFromC	; Тут вставить проверку на контр. символы ВГ75
-	INC	L
-	CP	MARGIN_LEFT+64	; Конец строки?
-	JP	NZ, PrintCSLoop
-;	LD	C, 0DH		; По идее - надо. Или надо CRLF?
-;	CALL	ListCharFromC
-	POP	HL
-	RET
 	
-	NOP	; 4	bytes
-	NOP
+	NOP	; 3	bytes
 	NOP
 	NOP
 
