@@ -199,6 +199,7 @@ WarmBoot:
 	LD	L, A
 	LD	L,(HL)
 	PUSH	HL			; Адрес вызова обработчика директивы
+;LD	(DirectiveHandle+1), L		; Адрес вызова обработчика директивы
 
 	CALL	ParseParameters		; На выходе в HL, то, что должно быть в BC
 
@@ -209,6 +210,10 @@ WarmBoot:
 	EX	DE,HL
 	LD	HL,(PAR_HL)
 	RET				; Переход в обработчик директивы
+;UniversalDirective:			; Вызов обработчика директивы
+;	CALL	DirectiveHandle
+;	CALL	IncHLAndRetIfEqDE
+;	JP	UniversalDirective
 
 ; ──────────────────────────────────────────────
 
@@ -677,6 +682,7 @@ AFC0B:	DEC	D
 	XOR	C			; with Tape Inverse flag
 	JP	POPREG
 	endif
+
 
 	NOP				; 29 bytes
 	NOP
@@ -1207,8 +1213,9 @@ DIRTABLE:
 
 DirectiveFill:					; 7 bytes
 	LD	(HL),C
-	CALL	IncHLAndRetIfEqDE
-	JP	DirectiveFill
+	;RET					; +1
+	CALL	IncHLAndRetIfEqDE		; -3
+	JP	DirectiveFill			; -3
 
 ; ──────────────────────────────────────────────
 ; Выполняет переход по адресу HL
@@ -1226,6 +1233,7 @@ DirectiveGoto:
 	IF	(DirectiveGoto & 0FF00H) <> (DirectiveFill & 0FF00H)
 		ERROR	"DirectiveGoto and DirectiveFill must be in same page"
 	ENDIF
+	;POP	AF
 	JP	(HL)			; 1 bytes
 
 ; ──────────────────────────────────────────────
@@ -1249,6 +1257,7 @@ DirectiveTransferLoop:			; 9 bytes
 	LD	A,(HL)
 	LD	(BC),A
 	INC	BC
+	;RET
 	CALL	IncHLAndRetIfEqDE
 	JP	DirectiveTransferLoop
 
@@ -1290,6 +1299,7 @@ DirectiveSearch:					; 11 bytes
 	LD	A,C
 	CP	(HL)
 	CALL	Z,PrintCRAndHexWordAndSpace
+	;RET
 	CALL	IncHLAndRetIfEqDEWithBrk
 	JP	DirectiveSearch
 
@@ -1299,6 +1309,7 @@ DirectiveInputTape:
 	IF	(DirectiveInputTape & 0FF00H) <> (DirectiveTransfer & 0FF00H)
 		ERROR	"DirectiveInputTape and DirectiveTransfer must be in same page"
 	ENDIF
+	;POP	AF
 	LD	A,(FLG_P2)		; 46 bytes
 	OR	A
 	JP	Z,AFA91
@@ -1338,6 +1349,7 @@ DirectiveCompare:
 	CALL	PrintHexByteAndSpace
 BytesEqual:
 	INC	BC
+	;RET
 	CALL	IncHLAndRetIfEqDEWithBrk
 	JP	DirectiveCompare
 
@@ -1345,7 +1357,6 @@ DirectiveModify:
 	IF	(DIRTABLE & 0FF00H) <> (DirectiveModify & 0FF00H)
 		ERROR	"DirectiveModify and DIRTABLE must be in same page"
 	ENDIF
-
 	CALL	PrintCRAndHexWordAndSpaceAndHexByteMemAndSpace			; 22 bytes
 	PUSH	HL
 	CALL	InputDirective
@@ -1375,7 +1386,7 @@ DirectiveDump:
 	IF	(DIRTABLE & 0FF00H) <> (DirectiveDump & 0FF00H)
 		ERROR	"DirectiveDump and DIRTABLE must be in same page"
 	ENDIF
-
+	;POP	AF
 	CALL	PrintCRAndHexWordAndSpace
 	PUSH	HL
 	LD	BC,808H
@@ -1403,7 +1414,7 @@ DirectiveOutputTape:
 	IF	(DirectiveTransfer & 0FF00H) <> (DirectiveOutputTape & 0FF00H)
 		ERROR	"DirectiveOutputTape and DirectiveTransfer must be in same page"
 	ENDIF
-
+	;POP	AF
 	LD	A,C
 	OR	A
 	JP	Z,UseLastConst
