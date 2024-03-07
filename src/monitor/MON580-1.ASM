@@ -5,8 +5,8 @@
 ; todo Печать экрана (Эмуляция VT-52 с копиром)
 ; todo Переработка обработчика контрольных символов. Они должны обрабатываться _до_ esc последовательностей, независимо от текущей активной последовательности
 ; todo Если нет ROM-диска, то просто ВК ничего не грузит
-; todo Убрать расширение М80/К, т.к. конфликт с более распространенным расширением GEM/TOS
 ; todo п/п SetCursorPos должна просто делать 1bh+Y+..+.. , иначе драйвер вывода на экран не будет нормально работать. Непонятно пока с адресом на выходе...
+; todo Фикс п/п записи на мафон (накосячил с регистровыми парами)
 
 	CPU	8080
 	Z80SYNTAX	EXCLUSIVE
@@ -127,10 +127,8 @@ Beep:
 	JP	BeepHandler		; F83F
 
 INIT2:
-	PUSH	HL 
 	PUSH	DE
-	LD	HL, ((DefaultBeepHandler & 0FFH) << 8) | (0C3H)
-	PUSH	HL
+	PUSH	BC
 	LD	HL, DefaultPrintHandler	
 	PUSH	HL
 	LD	HL, (0C3H<<8) | 0
@@ -140,10 +138,17 @@ INIT2:
 	LD	HL, ListHandler
 	LD	(HL), A
 
+	LD	SP, RAMTOP+2
 	LD	L,C			; LD L, 0
-	LD	SP,HL
 	DEC	HL			; 75FFH/35FFH
-	LD	(RAMTOP),HL
+	PUSH	HL
+
+; ──────────────────────────────────────────────
+; Инициализация констант чтения/записи
+; ──────────────────────────────────────────────
+
+	LD	HL,1D2AH
+	PUSH	HL
 
 ; ──────────────────────────────────────────────
 ; Вывод приветствия
@@ -151,10 +156,10 @@ INIT2:
 
 	CALL	RST_18
 	IF	RK86
-	DB	1Fh, 1bh, "eradio-86r",'k' + 80H
+	DB	1Fh, 1Bh, "eradio-86r",'k' + 80H
 	ENDIF
 	IF	SPEKTR
-	DB	1Fh, 1bh, "espektr-00",'1' + 80H
+	DB	1Fh, 1Bh, "espektr-00",'1' + 80H
 	ENDIF
 	
 ; ──────────────────────────────────────────────
@@ -946,7 +951,7 @@ NO_ESC:	LD	A,C
 	SUB	1FH		;CP	1FH
 	JP	Z,ClearScreen
 	ADD	A, 1FH-1BH	;CP	1BH
-	JP	Z,EscapeHandlerStart
+	JP	Z,EscapeHandlerStart		; Это должно идти после управляющих кодов
 	INC	A		;CP	1AH
 	JP	Z,CursorDown
 	INC	A		;CP	19H
@@ -1021,7 +1026,7 @@ PrintCRAndHexWordAndSpaceAndCRAndHexWordAndSpace:
 PrintCRAndHexWordBCAndSpace:
 	LD	H,B
 	LD	L,C
-	JP	PrintCRAndHexWordDEAndSpace
+	JP	PrintCRAndHexWordAndSpace
 
 ; ──────────────────────────────────────────────
 ; Печать перевода строки, числа из DE в 16-ричном формате и пробела
@@ -1476,8 +1481,8 @@ GetKeyboardStatusHandler:	; 45 bytes
 	OR	A
 	RET	NZ		; если в SYMBUF уже есть символ
 AFE0E:	PUSH	HL
-	LD	HL,(LAST_K)
 	CALL	ReadKeyCode
+	LD	HL,(LAST_K)
 	CP	L
 	LD	L,A
 	JP	Z,AFE2A
@@ -1757,7 +1762,7 @@ skip_TAB:
 	JP	Z,CursorLeft
 	INC	A		;CP	07H
 	JP	Z, Beep
-	PUSH	HL		;
+	PUSH	HL
 	CALL	SetCursorPos	; Получаем адрес символа
 	LD	A,(AltChars)
 	OR	A
@@ -1765,9 +1770,7 @@ skip_TAB:
 	LD	A, C		; В режиме вывода графики - выводим
 	SUB	5Fh		; CP 5eh
 	JP	C, skip_AltChars; < 5Eh
-;	DEC	A
-;	SUB	A, 5Eh		; Вместо русских букв теперь псевдографика
-	LD	C, A
+	LD	C, A		; Вместо русских букв теперь псевдографика
 skip_AltChars:
 	LD	(HL),C		; Видимый на экране символ
 	POP	HL		;
@@ -1818,7 +1821,7 @@ WRP:	INC	L		; POSX ++
 LF:
 	LD	A,(Echo)
 	OR	A
-	CALL	NZ, PrintCurrentString	; Печать текущей строки принтер
+	CALL	NZ, ListCurrentString	; Печать текущей строки принтер
 
 	LD	A,H
 	CP	MARGIN_TOP+24	; мы на последней строке ?
@@ -2073,13 +2076,16 @@ SetCur:	LD	(CURST), A
 	JP	InitVideo
 
 skip_ESC_e:
-	ADD	A, 'e'-'b'	;CP	'b'
-	JP	Z, CursorEnable
+;	ADD	A, 'e'-'b'	;CP	'b'
+;	JP	Z, CursorEnable
 
-	INC	A		; CP	'a'
-	JP	Z, CursorDisable
+;	INC	A		; CP	'a'
+;	JP	Z, CursorDisable
 
-	ADD	A, 'a'-'Z'	;CP	'Z'
+	ADD	A, 'e'-']'	;CP	']'
+	JP	NZ, skip_ESC_PrSc
+skip_ESC_PrSc:
+	ADD	A, ']'-'Z'	;CP	'Z'
 	JP	NZ, skip_ESC_Z
 
 	LD	A, 1BH
@@ -2140,6 +2146,7 @@ SETESC:	LD	(ESC_FL),A
 
 skip_ESC_Y:
 	ADD	A, 'Y'-'V'	;CP 'V'
+ListCurrentString:
 	PUSH	HL
 	LD	L, MARGIN_LEFT
 PrintCSLoop:
@@ -2466,30 +2473,30 @@ ColdBootHandler:
 	LD	(PU),A
 
 ; ──────────────────────────────────────────────
-; Инициализация констант чтения/записи
-; ──────────────────────────────────────────────
-
-	LD	HL,1D2AH
-	LD	(KNS_RD),HL
-
-; ──────────────────────────────────────────────
 ; Инициализация хуков
 ; ──────────────────────────────────────────────
 
 	LD	HL, DefaultTapeOutHandler
+	LD	DE, (0C3H<<8) | ((DefaultTapeInHandler & 0FF00H) >> 8)
+	LD	BC, ((DefaultTapeInHandler & 0FFH) << 8) | (0C3H)
 	PUSH	HL
-	LD	HL, (0C3H<<8) | ((DefaultTapeInHandler & 0FF00H) >> 8)
-	PUSH	HL
-	LD	HL, ((DefaultTapeInHandler & 0FFH) << 8) | (0C3H)
-	PUSH	HL
+	PUSH	DE
+	PUSH	BC
 	LD	HL, DefaultReadKeyCodeHandler
 	LD	DE, (0C3H<<8) | ((DefaultBeepHandler &0FF00H) >> 8)
+	LD	BC, ((DefaultBeepHandler & 0FFH) << 8) | (0C3H)
+	PUSH	HL 
 	JP	INIT2
 
-	
-	NOP	; 3	bytes
-	NOP
-	NOP
+	NOP		; 9 bytes
+	NOP	
+	NOP	
+	NOP	
+	NOP	
+	NOP	
+	NOP	
+	NOP	
+	NOP	
 
 	CHK	10000H, "* Size not 2K ! *"
 
