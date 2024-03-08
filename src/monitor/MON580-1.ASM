@@ -2078,6 +2078,12 @@ skip_ESC_e:
 
 	ADD	A, 'e'-']'	;CP	']'
 	JP	NZ, skip_ESC_PrSc
+	PUSH	HL
+	LD	H, A
+	LD	L, A
+	CALL	ListCurrentString
+	INC	A
+	POP	HL
 skip_ESC_PrSc:
 	ADD	A, ']'-'Z'	;CP	'Z'
 	JP	NZ, skip_ESC_Z
@@ -2494,15 +2500,7 @@ ColdBootHandler:
 	LD	BC, ((DefaultTapeInHandler & 0FFH) << 8) | (0C3H)
 	JP	INIT2
 
-	NOP		; 9 bytes
-	NOP	
-	NOP	
-	NOP	
-	NOP	
-	NOP	
-	NOP	
-	NOP	
-	NOP	
+	NOP
 
 	CHK	10000H, "* Size not 2K ! *"
 
