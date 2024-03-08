@@ -127,40 +127,34 @@ Beep:
 	JP	BeepHandler		; F83F
 
 INIT2:
-	PUSH	DE
 	PUSH	BC
-	LD	HL, DefaultPrintHandler	
-	PUSH	HL
-	LD	HL, (0C3H<<8) | 0
-	PUSH	HL
+	LD	BC, DefaultReadKeyCodeHandler
+	PUSH	BC
+	LD	BC, (0C3H<<8) | ((DefaultBeepHandler &0FF00H) >> 8)
+	PUSH	BC
+	LD	BC, ((DefaultBeepHandler & 0FFH) << 8) | (0C3H)
+	PUSH	BC
+	LD	BC, DefaultPrintHandler	
+	PUSH	BC
+	LD	BC, (0C3H<<8) | 0
+	PUSH	BC
+
+; ──────────────────────────────────────────────
+; Вывод приветствия
+; ──────────────────────────────────────────────
+	LD	SP, HL
+	CALL	RST_18
+	IF	RK86
+	DB	1Fh, "radio-86r",'k' + 80H
+	ENDIF
+	IF	SPEKTR
+	DB	1Fh, "spektr-00",'1' + 80H
+	ENDIF
 
 	LD	A, 0C9H
 	LD	HL, ListHandler
 	LD	(HL), A
 
-	LD	SP, RAMTOP+2
-	LD	L,C			; LD L, 0
-	DEC	HL			; 75FFH/35FFH
-	PUSH	HL
-
-; ──────────────────────────────────────────────
-; Инициализация констант чтения/записи
-; ──────────────────────────────────────────────
-
-	LD	HL,1D2AH
-	PUSH	HL
-
-; ──────────────────────────────────────────────
-; Вывод приветствия
-; ──────────────────────────────────────────────
-
-	CALL	RST_18
-	IF	RK86
-	DB	1Fh, 1Bh, "eradio-86r",'k' + 80H
-	ENDIF
-	IF	SPEKTR
-	DB	1Fh, 1Bh, "espektr-00",'1' + 80H
-	ENDIF
 	
 ; ──────────────────────────────────────────────
 ; "Теплый" старт МОНИТОРа
@@ -374,7 +368,7 @@ AF8F3:	CALL    InputSymbol	; используется в DIR_M
 	CP      '.'
 	JP      Z,WarmBoot
 	LD	B,E			; B=76H --> бит D7=0
-	LD	A,(COMBUF & 0ffh)+31
+	LD	A,(COMBUF & 0ffh)+COMBUFSIZE
 	CP	L
 	JP      Z,SyntaxError
 	INC	HL
@@ -2458,12 +2452,28 @@ AFEF3:	LD	A,H			; 7 bytes
 ; ──────────────────────────────────────────────
 
 ColdBootHandler:
-	LD	SP, TapeOutHandler+3	; Потом используется для заполнения хуков
+	LD	SP, RAMTOP+2
 	LD	HL, POSADDR
 	LD	DE, CURST
 	LD	C,L			; LD C, 0
 	CALL	DirectiveFill
-	CALL	InitVideo		; Запускаем ВГ75
+	CALL	CursorEnable		;InitVideo; Запускаем ВГ75
+
+; ──────────────────────────────────────────────
+; Инициализация размера памяти
+; ──────────────────────────────────────────────
+
+	LD	L,C			; LD L, 0
+	DEC	HL			; 75FFH/35FFH
+	PUSH	HL
+	INC	HL			; 7600H/3600H - используется далее для указателя стека
+
+; ──────────────────────────────────────────────
+; Инициализация констант чтения/записи
+; ──────────────────────────────────────────────
+
+	LD	BC,1D2AH
+	PUSH	BC
 
 ; ──────────────────────────────────────────────
 ; Инициализация ВВ55
@@ -2476,16 +2486,12 @@ ColdBootHandler:
 ; Инициализация хуков
 ; ──────────────────────────────────────────────
 
-	LD	HL, DefaultTapeOutHandler
-	LD	DE, (0C3H<<8) | ((DefaultTapeInHandler & 0FF00H) >> 8)
-	LD	BC, ((DefaultTapeInHandler & 0FFH) << 8) | (0C3H)
-	PUSH	HL
-	PUSH	DE
+	LD	SP, TapeOutHandler+3
+	LD	BC, DefaultTapeOutHandler
 	PUSH	BC
-	LD	HL, DefaultReadKeyCodeHandler
-	LD	DE, (0C3H<<8) | ((DefaultBeepHandler &0FF00H) >> 8)
-	LD	BC, ((DefaultBeepHandler & 0FFH) << 8) | (0C3H)
-	PUSH	HL 
+	LD	BC, (0C3H<<8) | ((DefaultTapeInHandler & 0FF00H) >> 8)
+	PUSH	BC
+	LD	BC, ((DefaultTapeInHandler & 0FFH) << 8) | (0C3H)
 	JP	INIT2
 
 	NOP		; 9 bytes

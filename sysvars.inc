@@ -44,7 +44,7 @@ AltChars	EQU	BASE+11H	; 1 Вкл/выкл алтернативный знако�
 Echo	EQU	BASE+12H		; 1 Вкл/выкл Auto-Copy
 CURST	EQU	BASE+13H		; 1 Вкл/выкл курсор
 
-DirectiveHandle	EQU	BASE+14H	; 3 JP DirectiveHandle Для опробации идеи одного цыкла и сменного обработчика
+DirectiveHandle	EQU	BASE+14H	; 3 JP DirectiveHandle Для опробации идеи одного цикла и сменного обработчика
 PrintHandler	EQU	BASE+17H	; 3 JP DefaultPrintHandler
 BeepHandler	EQU	BASE+1AH	; 3 JP DefaultBeepHandler
 ReadKeyCodeHandler		EQU	BASE+1DH	; 3 JP DefaultReadKeyCodeHandler
@@ -63,8 +63,13 @@ KNS_RD	EQU	BASE+2FH		; 1 FIXED Константа чтения
 KNS_WR	EQU	BASE+30H		; 1 FIXED константа записи
 RAMTOP	EQU	BASE+31H		; 2 FIXED Верхняя граница ОЗУ
 
-COMBUF	EQU	BASE+33H		; ? FIXED буфер ввода директивы
+COMBUF	EQU	BASE+33H		; 16 FIXED буфер ввода директивы
+COMBUFSIZE	EQU	16		; 16 байт из расчета 15 символов на директиву+0dh
 
+;-------BASE+44H --------------------
+; ---- нестандарт ----------
+; Резерв для границ "окна"
+; ---- нестандарт ----------
 ListHandler	EQU	BASE+53H	; 3 JP DefaultListHandler
 
 STACK	EQU	BASE+0D0H		; стек монитора (растет в сторону буфера ввода директив)
