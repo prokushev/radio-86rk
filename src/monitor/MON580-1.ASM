@@ -2,7 +2,6 @@
 ;  МОНИТОР-1.20 для Радио-86РК/Спектр-001 для КР580, совместимый с Орион-128,
 ;  поддержкой VT-52
 ; ═══════════════════════════════════════════════════════════════════════
-; todo Печать экрана (Эмуляция VT-52 с копиром)
 ; todo Переработка обработчика контрольных символов. Они должны обрабатываться _до_ esc последовательностей, независимо от текущей активной последовательности
 ; todo Если нет ROM-диска, то просто ВК ничего не грузит
 ; todo п/п SetCursorPos должна просто делать 1bh+Y+..+.. , иначе драйвер вывода на экран не будет нормально работать. Непонятно пока с адресом на выходе...
@@ -110,7 +109,8 @@ SetFreeMemAddr:				; F833
 ;	Курсор перемещается в начало текущей строки.
 ; ──────────────────────────────────────────────
 
-COD_0D:	LD	L, MARGIN_LEFT
+COD_0D:	LD	L, E;MARGIN_LEFT
+	NOP
 
 ; ──────────────────────────────────────────────
 
@@ -130,19 +130,19 @@ INIT2:
 	PUSH	BC
 	LD	BC, DefaultReadKeyCodeHandler
 	PUSH	BC
-	LD	BC, (0C3H<<8) | ((DefaultBeepHandler &0FF00H) >> 8)
+	LD	BC, (0C3H<<8) | ((DefaultBeepHandler & 0FF00H) >> 8)
 	PUSH	BC
 	LD	BC, ((DefaultBeepHandler & 0FFH) << 8) | (0C3H)
 	PUSH	BC
 	LD	BC, DefaultPrintHandler	
 	PUSH	BC
-	LD	BC, (0C3H<<8) | 0
+	LD	BC, (0C3H<<8) | ((DIRTABLE & 0FF00H) >> 8)
 	PUSH	BC
 
 ; ──────────────────────────────────────────────
 ; Вывод приветствия
 ; ──────────────────────────────────────────────
-	LD	SP, HL
+	LD	SP, HL		; 7600H/3600H
 	CALL	RST_18
 	IF	RK86
 	DB	1Fh, "radio-86r",'k' + 80H
@@ -582,16 +582,9 @@ SetCursorPosHandler:
 
 	EX	DE, HL		; +1
 	LD	HL, VG_75+1	; +3
-	; Выставляем курсор
-;	LD	A,80H		; -2
-;	LD	(VG_75+1),A	; -3
 	LD	(HL), 80h	; +2
-;	LD	A,L		; -1
 	DEC	HL		; +1
 	LD	(HL), E		; +1
-;	LD	(VG_75),A	; -3
-;	LD	A,H		; -1
-;	LD	(VG_75),A	; -3
 	LD	(HL), D		; +1
 
 	; Вычисляем адрес видеопамяти
@@ -656,32 +649,6 @@ AFC0B:	DEC	D
 	XOR	C			; with Tape Inverse flag
 	PUSH	AF	
 	JP	REINIT
-
-	if	0
-	LD	HL,VT_57+4
-	LD	(HL), SA & 00FFH		; 0D0H
-	LD	(HL), SA >>8		; 076H/036H
-	INC	HL			; VT_57+5
-	LD	(HL),023H
-	LD	(HL),049H
-	LD	HL, VG_75+1		;+3
-	LD	(HL), 27H		;+2; start display commando
-	LD	(HL), 0E0H		;+2; reset count
-	LD	HL, VT_57+8		;+3
-;	LD	A,27H			;-2; start display commando
-;	LD	(VG_75+1),A		;-3
-;	LD	A,0E0H			;-2; reset count
-;	LD	(VG_75+1),A             ;-3
-;	LD	L,8			;-2
-	LD	(HL),0A4H
-
-	LD	SP,HL
-
-	LD	A,(INV_MG)
-	XOR	C			; with Tape Inverse flag
-	JP	POPREG
-	endif
-
 
 	NOP				; 29 bytes
 	NOP
@@ -1731,6 +1698,8 @@ PrintCharFromCHandler:
 	LD	HL,TOBACK
 	PUSH	HL
 	LD	HL,(POSX)
+;	LD	DE,(WINXY)
+	LD	DE, (MARGIN_TOP << 8) | MARGIN_LEFT
 	LD	A,(ESC_FL)
 	DEC	A
 	JP	M,NO_ESC	; BUG Для VT-52 факт обработки ESC-последовательности не значит, что он игнорирует контрольные коды
@@ -1794,7 +1763,7 @@ CursorRight:
 WRP:	INC	L		; POSX ++
 	CP	L		; последняя колонка ?
 	RET	NZ
-	LD	L,MARGIN_LEFT	; нач.позиция по X на новой строке
+	LD	L,E;MARGIN_LEFT	; нач.позиция по X на новой строке
 
 ; ──────────────────────────────────────────────
 ; Перевод строки
@@ -1820,7 +1789,7 @@ LF:
 	LD	A,H
 	CP	MARGIN_TOP+24	; мы на последней строке ?
 	JP	NZ, CursorDown	; если не на последней строке
-	LD	A, MARGIN_TOP
+	LD	A, D;MARGIN_TOP
 	JP	RLUP
 
 ; ──────────────────────────────────────────────
@@ -1922,6 +1891,7 @@ VT52_CI3:
 ;		ESC k	- Restore cursor(GEMDOS/TOS extension)
 ;		ESC v	- Wrap off (GEMDOS/TOS extension)
 ;		ESC w	- Wrap on (GEMDOS/TOS extension)
+;		ESC ]	- Copy screen on printer
 ;		ESC ^	- Enable Auto-Copy mode
 ;		ESC _	- Disable Auto-Copy mode
 ;	Здесь используется немного нестандартная схема выбора обработчика.
@@ -2079,10 +2049,14 @@ skip_ESC_e:
 	ADD	A, 'e'-']'	;CP	']'
 	JP	NZ, skip_ESC_PrSc
 	PUSH	HL
-	LD	H, A
-	LD	L, A
+	LD	H, D		;MARGIN_TOP
+	LD	L, E		;MARGIN_LEFT
+	LD	A, MARGIN_TOP+24	;MARGIN_TOP+SCREEN_HEIGHT
+ListScreenLoop:
 	CALL	ListCurrentString
-	INC	A
+	INC	H
+	CP	H
+	JP	NZ, ListScreenLoop
 	POP	HL
 skip_ESC_PrSc:
 	ADD	A, ']'-'Z'	;CP	'Z'
@@ -2148,7 +2122,7 @@ skip_ESC_Y:
 	ADD	A, 'Y'-'V'	;CP 'V'
 ListCurrentString:
 	PUSH	HL
-	LD	L, MARGIN_LEFT
+	LD	L, E;MARGIN_LEFT
 PrintCSLoop:
 	PUSH	HL
 	CALL	SetCursorPos	; Вычисляем адрес
@@ -2275,7 +2249,7 @@ skip_ESC_J:
 ; ──────────────────────────────────────────────
 
 RLF:	LD	A, H
-	CP	MARGIN_TOP	; это первая строка ?
+	CP	D ;MARGIN_TOP	; это первая строка ?
 	JP	NZ, CursorUp	; если не на первой строке
 
 RLDN:
@@ -2321,7 +2295,8 @@ ClearScreen:
 	LD	L,A
 	CALL	ClearEOS
 CursorHome:
-	LD	HL, MARGIN_TOP << 8 +MARGIN_LEFT
+	LD	H, D;MARGIN_TOP
+	LD	L, E;MARGIN_LEFT
 skip_ESC_E:
 	INC	A		;CP	'D'
 	JP	NZ, skip_ESC_D
@@ -2341,7 +2316,7 @@ skip_ESC_E:
 
 CursorLeft:
 	LD	A,L		; 7 bytes
-	CP	MARGIN_LEFT
+	CP	E;MARGIN_LEFT
 	JP	Z, skip_ESC_D
 	DEC	L		; POSX--
 
@@ -2392,7 +2367,7 @@ skip_ESC_B:
 
 CursorUp:
 	LD	A, H
-	CP	MARGIN_TOP	; это первая строка ?
+	CP	D;MARGIN_TOP	; это первая строка ?
 	RET	Z
 	DEC	H		; POSY--
 	RET
@@ -2406,7 +2381,7 @@ CursorUp:
 ;	A=0FEH - РУС/ЛАТ
 ;	A - код клавиши
 ; ИЗМЕНЯЕТ:
-;	AF		 TODO: проверить, что изменяет ReadKeyCode и InitVideo
+;	AF		 TODO: проверить, что изменяет ReadKeyCode
 ; ──────────────────────────────────────────────
 
 DefaultReadKeyCodeHandler:
@@ -2458,9 +2433,9 @@ AFEF3:	LD	A,H			; 7 bytes
 ; ──────────────────────────────────────────────
 
 ColdBootHandler:
-	LD	SP, RAMTOP+2
-	LD	HL, POSADDR
-	LD	DE, CURST
+	LD	HL, POSADDR		; 7600H/3600H
+	LD	SP, HL
+	LD	DE, RAMTOP+2
 	LD	C,L			; LD C, 0
 	CALL	DirectiveFill
 	CALL	CursorEnable		;InitVideo; Запускаем ВГ75
@@ -2469,6 +2444,7 @@ ColdBootHandler:
 ; Инициализация размера памяти
 ; ──────────────────────────────────────────────
 
+	LD	SP, HL			; RAMTOP+2
 	LD	L,C			; LD L, 0
 	DEC	HL			; 75FFH/35FFH
 	PUSH	HL
@@ -2500,7 +2476,6 @@ ColdBootHandler:
 	LD	BC, ((DefaultTapeInHandler & 0FFH) << 8) | (0C3H)
 	JP	INIT2
 
-	NOP
 
 	CHK	10000H, "* Size not 2K ! *"
 
