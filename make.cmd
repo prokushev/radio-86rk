@@ -14,7 +14,7 @@ cd ..\..
 
 echo BASIC
 cd basic
-call make
+:call make
 cd ..
 
 echo TEST.COM

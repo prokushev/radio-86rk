@@ -29,7 +29,7 @@ CHK	MACRO	adr, msg
 
 	ORG	RABADR
 
-DefaultListHandler	EQU	PrintCharFromCHandler
+;DefaultListHandler	EQU	PrintCharFromCHandler
 DefaultPrintHandler	EQU	PrintCharFromCHandler
 
 ; ──────────────────────────────────────────────
@@ -128,8 +128,6 @@ Beep:
 
 INIT2:
 	PUSH	BC
-	LD	BC, DefaultReadKeyCodeHandler
-	PUSH	BC
 	LD	BC, (0C3H<<8) | ((DefaultBeepHandler & 0FF00H) >> 8)
 	PUSH	BC
 	LD	BC, ((DefaultBeepHandler & 0FFH) << 8) | (0C3H)
@@ -137,6 +135,8 @@ INIT2:
 	LD	BC, DefaultPrintHandler	
 	PUSH	BC
 	LD	BC, (0C3H<<8) | ((DIRTABLE & 0FF00H) >> 8)
+	PUSH	BC
+	LD	BC, ((DIRTABLE & 0FFH) << 8) | (0C3H)
 	PUSH	BC
 
 ; ──────────────────────────────────────────────
@@ -171,8 +171,6 @@ INIT2:
 WarmBoot:
 	LD	SP,STACK
 
-	LD	A,90H
-	LD	(PDU),A
 
 ; ──────────────────────────────────────────────
 ; Читаем директиву
@@ -188,17 +186,16 @@ WarmBoot:
 
 	JP	NC,ROMBoot		; Просто нажали <ВК> -> грузим ROMDISK
 
-	; Обработка директив. DIRTABLE должна находится по адресу xx00H
-	LD	A, (DE)			;LD	A, (COMBUF)
+	LD	A, (DE)			; LD A, (COMBUF)
 	SUB	'C'
 	JP	C, SyntaxError		; < 'C'
 	CP	'U'-'C'
 	JP	NC, SyntaxError		; > 'U'
 	LD	H, DIRTABLE >> 8
+	ADD	A, DIRTABLE & 0FFH
 	LD	L, A
-	LD	L,(HL)
-	PUSH	HL			;-1 Адрес вызова обработчика директивы
-;LD	(DirectiveHandle+1), L		;+3 Адрес вызова обработчика директивы
+	LD	A,(HL)
+	LD	(DirectiveHandle+1), A	; Адрес вызова обработчика директивы
 
 	CALL	ParseParameters		; На выходе в HL, то, что должно быть в BC
 
@@ -208,11 +205,10 @@ WarmBoot:
 	LD	HL,(PAR_DE)		; Z80: LD DE,(PAR_DE)
 	EX	DE,HL
 	LD	HL,(PAR_HL)
-	RET				; -1 Переход в обработчик директивы
-;UniversalDirective:			; Вызов обработчика директивы
-;	CALL	DirectiveHandle		; +3
-;	CALL	IncHLAndRetIfEqDE	; +3 Выход по WarmBoot
-;	JP	UniversalDirective	; +3
+UniversalDirective:			; Вызов обработчика директивы
+	CALL	DirectiveHandle		; 
+	CALL	IncHLAndRetIfEqDE	; Выход по WarmBoot
+	JP	UniversalDirective	; 
 
 ; ──────────────────────────────────────────────
 
@@ -248,15 +244,6 @@ S1:;				;ФОРМУЛЕ:
 	JP	NZ,S1
 	RET
 
-
-; ──────────────────────────────────────────────
-
-ReadVideoRAMHandler:
-	PUSH	HL				; 10 bytes
-	LD	HL, (POSADDR)
-	LD	A,(HL)
-	POP	HL
-	RET
 
 
 ; ──────────────────────────────────────────────
@@ -427,10 +414,9 @@ ParseParameters:		; 43 bytes
 ParseParameters:		; 33 bytes
 	LD	DE, COMBUF+1
 	CALL	GET_HL
-	;CCF
 	SBC	A
 	INC	A
-	LD	(FLG_P2), A
+	LD	(FLG_P2),A
 	LD	(PAR_HL),HL
 	CALL	NC, GET_HL
 	LD	(PAR_DE),HL
@@ -563,161 +549,6 @@ AFF06:	LD	L,A
 	RET
 
 ; ──────────────────────────────────────────────
-; Устанавливает курсор в заданные координаты
-; ВХОД:
-;	H	- номер строки
-;	L	- номер позиции
-; ВЫХОД:
-;	HL	- адрес курсора
-; ИЗМЕНЯЕТ:
-;	HL
-; ──────────────────────────────────────────────
-
-SetCursorPosHandler:
-	LD	(POSX),HL	; Сохраняем POSX, POSY
-
-	PUSH	DE		;ЗАПОМНИТЬ 
-	PUSH	BC		;РЕГИСТРЫ 
-	PUSH	AF
-
-	EX	DE, HL		; +1
-	LD	HL, VG_75+1	; +3
-	LD	(HL), 80h	; +2
-	DEC	HL		; +1
-	LD	(HL), E		; +1
-	LD	(HL), D		; +1
-
-	; Вычисляем адрес видеопамяти
-	LD	C, E		;В С КООРДИНАТУ X
-	LD	A, D		;В А КООРДИНАТУ Y
-	CALL	CALC
-	LD	DE, SA		; ЗАГРУЗИТЬ АДРЕС
-	ADD	HL, DE		; КООРДИНАТ 0. 0.
-	LD	B, 0		; СЛОЖИТЬ С АДРЕСОМ НАЧАЛА
-	ADD	HL, BC		; И ПРИБАВИТЬ X
-	LD	(POSADDR), HL	; Сохраняем адрес
-	POP	AF
-	POP	BC		; ВОССТАНОВИТЬ
-	POP	DE		; РЕГИСТРЫ
-	RET
-
-; ──────────────────────────────────────────────
-
-ProcessBackspace:
-	LD	A,E			; 15 bytes
-	CP	L			; начало буфера ввода ?
-	JP	Z,AF8F1;GotoCmdLineBegin	; GotoCmdLineBegin
-	DEC	HL
-	CALL	RST_18
-	DB	8,' ',8+80H
-	JP	AF8F3;InputNextSymbol
-
-
-; ──────────────────────────────────────────────
-
-AFF3B:	LD	A,L			; 23 bytes
-	AND	2FH
-	LD	L,A
-AFF3F:	LD	A,L
-	CP	40H
-	POP	HL
-	RET	P
-	PUSH	HL
-	LD	L,A
-	AND	00FH
-	CP	00CH
-	LD	A,L
-	JP	M,AFF50
-	XOR	10H
-AFF50:	POP	HL
-	RET
-
-; ──────────────────────────────────────────────
-
-AFBFF:	CP	19H		; ОБРАТНЫЙ С/БАЙТ
-	JP	NZ,AFBB7	; 58 bytes
-	LD	A,0FFH
-SETINV:	LD	(INV_MG),A 	; Tape inverse flag
-	LD	D,9
-AFC0B:	DEC	D
-	JP	NZ,AFBB7
-
-	LD	HL,(TMPSTK)
-	LD	SP,HL
-
-	LD	A,(INV_MG)
-	XOR	C			; with Tape Inverse flag
-	PUSH	AF	
-	JP	REINIT
-
-	NOP				; 29 bytes
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-
-ReadROM:
-	LD	A,(FLG_P2)		; 46 bytes
-	OR	A
-	JP	NZ,DirectiveReadROMParms
-ROMBoot:
-	LD	HL, 07E00H
-	LD	DE, 07FFFH
-	LD	BC, BASE-0200H
-	PUSH	BC			; Адрес запуска
-	CHK	0FA68H, "* Internal subroutine DirectiveReadROMParams shifted ! *"
-DirectiveReadROMParms:
-	LD	(PDB), HL
-	LD	A,(PDA)
-	LD	(BC),A
-	INC	BC
-	CALL	IncHLAndRetIfEqDE
-	JP	DirectiveReadROMParms
-
-; ──────────────────────────────────────────────
-
-AFE97:	PUSH	HL			; 27 bytes
-	LD	HL,7 << 8 + 1
-AFE9C:	LD	A,L
-	RRCA
-	LD	L,A
-	CPL
-	LD	(PA),A
-	LD	A,(PB)
-	CPL
-	OR	A
-	JP	NZ,AFEB3
-	DEC	H
-	JP	P,AFE9C
-AFEAF:	LD	A,0FFH
-	POP	HL
-	RET
-
-; ──────────────────────────────────────────────
 ; Расчет контрольной суммы блока памяти с HL по DE
 ; ВХОД:
 ;	HL	- начальный адрес
@@ -744,50 +575,271 @@ AFB19:	LD	A,(HL)
 	CALL	IncHLAndRetIfEqDE
 	JP	AFB19
 
+DirectiveModifyLoop:
+	CALL	PrintCRAndHexWordAndSpaceAndHexByteMemAndSpace			; 22 bytes
+	PUSH	HL
+	CALL	InputDirective
+	POP	HL
+	JP	NC,AFA3B
+	PUSH	HL
+	CALL	GET_HL
+	LD	A,L
+	POP	HL
+	LD	(HL),A
+AFA3B:	INC	HL
+DirectiveModify:
+	CHK	0FA00H, "DirectiveModify must be at FA00h"
+	JP	DirectiveModifyLoop
+
 ; ──────────────────────────────────────────────
-; Загрузка BC с поиском синхробайта
+DIRTABLE:
+	IF	(DIRTABLE & 0FF00H) <> (DirectiveModify & 0FF00H)
+		ERROR	"DirectiveModify and DIRTABLE must be in same page"
+	ENDIF
+
+	DB	DirectiveCompare & 0FFH	;C
+	DB	DirectiveDump & 0FFH	;D
+	DB	SyntaxError & 0FFH	;E
+	DB	DirectiveFill & 0FFH	;F
+	DB	DirectiveGoto & 0FFH	;G
+	DB	SyntaxError & 0FFH	;H
+	DB	DirectiveInputTape & 0FFH;I
+	DB	DirectiveGoto & 0FFH	;J
+	DB	SyntaxError & 0FFH	;K
+	DB	DirectiveDump & 0FFH	;L
+	DB	DirectiveModify & 0FFH	;M
+	DB	SyntaxError & 0FFH	;N
+	DB	DirectiveOutputTape & 0FFH;	O
+	DB	SyntaxError & 0FFH	;P
+	DB	SyntaxError & 0FFH	;Q
+	DB	DirectiveReadROM & 0FFH	;R
+	DB	DirectiveSearch & 0FFH	;S
+	DB	DirectiveTransfer & 0FFH;T
+	DB	DirectiveReadROM & 0FFH	;U
+
+; ──────────────────────────────────────────────
+; Вывод дампа и текста области памяти с HL по DE
 ; ВХОД:
-;	Нет
+;	HL	- начальный адрес
+;	DE	- конечный адрес
 ; ВЫХОД:
-;	BC	- загруженные байта
+;	HL	- конечный адрес источника
 ; ИЗМЕНЯЕТ:
-;	AF, BC
+;	AF, HL
 ; ──────────────────────────────────────────────
 
-TapeReadWordSync:
-	LD	A, 0FFH			; 14 bytes
-	DB	1			; LD BC, ..
+DirectiveDump:
+	IF	(DIRTABLE & 0FF00H) <> (DirectiveDump & 0FF00H)
+		ERROR	"DirectiveDump and DIRTABLE must be in same page"
+	ENDIF
 
-; ──────────────────────────────────────────────
-; Загрузка BC без поиска синхробайта
-; ВХОД:
-;	Нет
-; ВЫХОД:
-;	BC	- загруженные байта
-; ИЗМЕНЯЕТ:
-;	AF, BC
-; ──────────────────────────────────────────────
+	POP	AF
+DirectiveDumpLoop:
+	CALL	PrintCRAndHexWordAndSpace
+	PUSH	HL
+	LD	BC,808H
+DIRL1:	CALL	PrintHexByteFromMemAndSpace
+	DEC	C
+	INC	HL
+	JP	NZ,DIRL1
+	POP	HL
+DIRL2:	LD	A,(HL)
+	OR	A
+	JP	M,AFA15
+	CP	20H
+	JP	NC,AFA17
+AFA15:	LD	A,'.'
+AFA17:	CALL	PrintCharFromA
+	CALL	IncHLAndRetIfEqDE
+	DEC	B
+	JP	NZ,DIRL2
+	JP	DirectiveDumpLoop
 
-TapeReadWordNoSync:
-	LD	A, 8
+DirectiveCompare:
+	IF	(DirectiveCompare & 0FF00H) <> (DIRTABLE & 0FF00H)
+		ERROR	"DirectiveCompare and DIRTABLE must be in same page"
+	ENDIF
 
-; ──────────────────────────────────────────────
-; Загрузка слова в BC
-; ВХОД:
-;	A=008H	- без поиска синхробайта
-;	A=0FFH	- с поиском синхробайта
-; ВЫХОД:
-;	BC	- загруженные байта
-; ИЗМЕНЯЕТ:
-;	AF, BC
-; ──────────────────────────────────────────────
-
-TapeReadWord:
-	CALL	TapeReadByte
-	LD	B, A
-	CALL	TapeReadByteNoSync
-	LD	C, A
+	LD	A,(BC)			; 19 bytes
+	CP	(HL)
+	JP	Z,BytesEqual
+	CALL	PrintCRAndHexWordAndSpaceAndHexByteMemAndSpace
+	LD	A,(BC)
+	CALL	PrintHexByteAndSpace
+BytesEqual:
+	INC	BC
 	RET
+
+; ──────────────────────────────────────────────
+; Выполняет переход по адресу HL
+; ВХОД:
+;	HL	- адрес
+; ВЫХОД:
+;	НЕТ
+; ИЗМЕНЯЕТ:
+;	Не определено
+; ОПИСАНИЕ:
+;	В стеке содержится адрес WarmBoot
+; ──────────────────────────────────────────────
+
+DirectiveGoto:
+	IF	(DirectiveGoto & 0FF00H) <> (DIRTABLE & 0FF00H)
+		ERROR	"DirectiveGoto and DIRTABLE must be in same page"
+	ENDIF
+	POP	AF
+	JP	(HL)			; 2 bytes
+
+; ──────────────────────────────────────────────
+; Ищет байт C в области памяти с HL по DE
+; ВХОД:
+;	HL	- начальный адрес
+;	DE	- конечный адрес
+;	C	- искомый байт
+; ВЫХОД:
+;	HL	- конечный адрес источника
+; ИЗМЕНЯЕТ:
+;	AF, HL
+; ──────────────────────────────────────────────
+
+DirectiveSearch:					; 6 bytes
+	IF	(DirectiveSearch & 0FF00H) <> (DIRTABLE & 0FF00H)
+		ERROR	"DIRTABLE and DirectiveSearch must be in same page"
+	ENDIF
+	LD	A,C
+	CP	(HL)
+	CALL	Z,PrintCRAndHexWordAndSpace
+	RET
+
+	NOP
+
+; ──────────────────────────────────────────────
+; Считывает область памяти ROM-диска с HL по DE в адреса BC ОЗУ
+; ВХОД:
+;	HL	- начальный адрес
+;	DE	- конечный адрес
+;	BC	- целевой адрес
+; ВЫХОД:
+;	HL	- конечный адрес источника
+;	BC	- целевой конечный адрес
+; ИЗМЕНЯЕТ:
+;	AF, HL, BC
+; ──────────────────────────────────────────────
+
+DirectiveReadROM:					; 3 bytes
+	IF	(DIRTABLE & 0FF00H) <> (DirectiveReadROM & 0FF00H)
+		ERROR	"DIRTABLE and DirectiveReadROM must be in same page"
+	ENDIF
+ReadROM:
+	LD	A,(FLG_P2)		; 46 bytes
+	OR	A
+	JP	NZ,DirectiveReadROMParms
+ROMBoot:
+	LD	HL, 07E00H
+	LD	DE, 07FFFH
+	LD	BC, BASE-0200H
+	PUSH	BC			; Адрес запуска
+	CHK	0FA68H, "* Internal subroutine DirectiveReadROMParams shifted ! *"
+	LD	A,90H
+	LD	(PDU),A
+DirectiveReadROMParms:
+	LD	(PDB), HL
+	LD	A,(PDA)
+	LD	(BC),A
+	INC	BC
+	RET
+;	CALL	IncHLAndRetIfEqDE
+;	JP	DirectiveReadROMParms
+
+DirectiveInputTape:
+	IF	(DirectiveInputTape & 0FF00H) <> (DIRTABLE & 0FF00H)
+		ERROR	"DirectiveInputTape and DIRTABLE must be in same page"
+	ENDIF
+	POP	AF
+	LD	A,(FLG_P2)		; 46 bytes
+	OR	A
+	JP	Z,AFA91
+	LD	A,E
+	LD	(KNS_RD),A
+AFA91:	CALL	TapeReadBlock
+
+	CALL	PrintCRAndHexWordAndSpaceAndCRAndHexWordAndSpace
+	EX	DE,HL
+
+	PUSH	BC
+	CALL	CalcChecksum
+	CALL	PrintCRAndHexWordBCAndSpace
+	POP	DE
+
+	CALL	Compare_HL_DE
+	RET	Z
+	CALL	PrintCRAndHexWordDEAndSpace
+SyntaxError:
+	IF	(SyntaxError & 0FF00H) <> (DIRTABLE & 0FF00H)
+		ERROR	"SyntaxError and DIRTABLE must be in same page"
+	ENDIF
+	CALL	RST_18
+	DB	'?'+80H
+	JP	WarmBoot
+
+; ──────────────────────────────────────────────
+; Заполняет память с HL по DE байтом C
+; ВХОД:
+;	HL	- начальный адрес
+;	DE	- конечный адрес
+;	C	- байт для записи
+; ВЫХОД:
+;	HL	- конечный адрес
+; ИЗМЕНЯЕТ:
+;	AF, HL
+; ──────────────────────────────────────────────
+
+DirectiveFill:					; 2 bytes
+	LD	(HL),C
+	RET					; +1
+
+; ──────────────────────────────────────────────
+; Перемещает область памяти с HL по DE в адреса BC
+; ВХОД:
+;	HL	- начальный адрес
+;	DE	- конечный адрес
+;	BC	- целевой адрес
+; ВЫХОД:
+;	HL	- конечный адрес источника
+;	BC	- целевой конечный адрес
+; ИЗМЕНЯЕТ:
+;	AF, HL, BC
+; ──────────────────────────────────────────────
+
+DirectiveTransfer:
+	IF	(DirectiveFill & 0FF00H) <> (DirectiveTransfer & 0FF00H)
+		ERROR	"DirectiveGoto and DirectiveTransfer must be in same page"
+	ENDIF
+DirectiveTransferLoop:			; 4 bytes
+	LD	A,(HL)
+	LD	(BC),A
+	INC	BC
+	RET
+
+
+; ──────────────────────────────────────────────
+
+	NOP				; 17 bytes
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
 
 ; ──────────────────────────────────────────────
 
@@ -853,91 +905,59 @@ AFAE1:	LD	A,(HL)		; read status
 	POP	HL
 	RET
 
-; ──────────────────────────────────────────────────────
-; Ввод в HL HEX-число из строки по (DE) до CR
-; ВХОД:
-;	DE	- адрес строки
-; ВЫХОД:
-;	Нет
-; ИЗМЕНЯЕТ:
-;	AF, BС, DE, HL
 ; ──────────────────────────────────────────────
 
-GET_HL:	XOR	A		;LD	HL,0		; 47 bytes
-	LD	H, A
-AF95D:	LD	L, A
-	LD	A,(DE)		; Выход: CY=1 если разделитель <ВК>
-	INC	DE
-	CP	13
-	SCF
-	RET	Z
-	CP	','
-	RET	Z
-	CP	20H
-	JP	Z,AF95D
+DirectiveOutputTape:
 
-	LD	BC,SyntaxError
-	PUSH	BC
-
-	SUB	'0'
-	RET	C		; JP C,SyntaxError
-
-	CP	9+1
-	JP	C,AF982
-
-	CP	'A'-'0'
-	RET	C		; JP C,SyntaxError
-
-	CP	'F'-'0'+1
-	RET	NC		; JP NC,SyntaxError
-
-	SUB	'A'-('9'+1)
-AF982:
-	ADD	HL,HL
-	ADD	HL,HL
-	ADD	HL,HL
-	ADD	HL,HL
-	RET	C		; JP C,SyntaxError
-
-	OR	L
+	IF	(DIRTABLE & 0FF00H) <> (DirectiveOutputTape & 0FF00H)
+		ERROR	"DirectiveOutputTape and DIRTABLE must be in same page"
+	ENDIF
+	;POP	AF
+	LD	A,C
+	OR	A
+	JP	Z,UseLastConst
+	LD	(KNS_WR),A
+UseLastConst:
+	PUSH	HL
+	CALL	CalcChecksum
+	POP	HL
 	
-	POP	BC
-	JP	AF95D
+	CALL	PrintCRAndHexWordAndSpaceAndCRAndHexWordAndSpace
+	EX	DE,HL
+	
+	PUSH	HL
+	CALL	PrintCRAndHexWordBCAndSpace
+	POP	HL
 
-; ──────────────────────────────────────────────
+TapeWriteBlockHandler:
+	PUSH	BC		; КС
 
-NO_ESC:	LD	A,C
-	AND	7FH
-	LD	C,A
-	SUB	1FH		;CP	1FH
-	JP	Z,ClearScreen
-	ADD	A, 1FH-1BH	;CP	1BH
-	JP	Z,EscapeHandlerStart		; Это должно идти после управляющих кодов
-	INC	A		;CP	1AH
-	JP	Z,CursorDown
-	INC	A		;CP	19H
-	JP	Z,CursorUp
-	INC	A		;CP	18H
-	JP	Z,CursorRight
-	ADD	A, 18H-0DH	;CP	0DH
-	JP	Z,COD_0D
-	INC	A		;CP	0CH
-	JP	Z,CursorHome
-	ADD	A, 0CH-0AH	;CP	0AH
-	JP	Z,LF
-	INC	A		;CP	09H
-	JP	NZ,skip_TAB
+	LD	BC,0		; выводим 256 байтов 00 (пилотон)
+AFB4D:	CALL	TapeWriteByte
+	EX	(SP),HL 	; это задержка 38 тактов
+	EX	(SP),HL
+	DEC	B
+	JP	NZ,AFB4D
 
-; ──────────────────────────────────────────────
+	CALL	TapeWriteSync
 
-TAB:	LD	A, L
-	ADD	A, 8
-	AND	11111000b
-	LD	L, A
-	RET
+	CALL	TapeWriteWord		; выводим НА
+	EX	DE,HL
+	CALL	TapeWriteWord		; выводим КА
 
-	NOP	; 2 bytes
-	NOP
+	EX	DE,HL
+	CALL	TapeWriteFromHLtoDE		; выводим блок
+
+	LD	HL,0
+	CALL	TapeWriteWord		; выводим 2 байта 00
+
+	CALL	TapeWriteSync
+
+	POP	HL
+	CALL	TapeWriteWord		; выводим КС
+
+	JP	InitVideo
+
 
 ; ──────────────────────────────────────────────
 ; Ввод символа без ожидания с проверкой нажатия Ctrl-C. 
@@ -958,6 +978,47 @@ ReadKeyCodeChkBrk:
 	RET	NZ
 	CALL	InitVideo
 	JP	SyntaxError
+
+	NOP
+
+; ──────────────────────────────────────────────
+; Устанавливает курсор в заданные координаты
+; ВХОД:
+;	H	- номер строки
+;	L	- номер позиции
+; ВЫХОД:
+;	HL	- адрес курсора
+; ИЗМЕНЯЕТ:
+;	HL
+; ──────────────────────────────────────────────
+
+SetCursorPosHandler:                 ; 34 bytes
+	LD	(POSX),HL	; Сохраняем POSX, POSY
+
+	PUSH	DE		;ЗАПОМНИТЬ 
+	PUSH	BC		;РЕГИСТРЫ 
+	PUSH	AF
+
+	EX	DE, HL		; +1
+	LD	HL, VG_75+1	; +3
+	LD	(HL), 80h	; +2
+	DEC	HL		; +1
+	LD	(HL), E		; +1
+	LD	(HL), D		; +1
+
+	; Вычисляем адрес видеопамяти
+	LD	C, E		;В С КООРДИНАТУ X
+	LD	A, D		;В А КООРДИНАТУ Y
+	CALL	CALC
+	LD	DE, SA		; ЗАГРУЗИТЬ АДРЕС
+	ADD	HL, DE		; КООРДИНАТ 0. 0.
+	LD	B, 0		; СЛОЖИТЬ С АДРЕСОМ НАЧАЛА
+	ADD	HL, BC		; И ПРИБАВИТЬ X
+	LD	(POSADDR), HL	; Сохраняем адрес
+	POP	AF
+	POP	BC		; ВОССТАНОВИТЬ
+	POP	DE		; РЕГИСТРЫ
+	RET
 
 ; ──────────────────────────────────────────────
 ; Печать перевода строки, числа из HL в 16-ричном формате, пробела,
@@ -1139,322 +1200,7 @@ TOBACK:					; 6 bytes
 	CALL	SetCursorPos
 	JP	POPREGA
 
-; ──────────────────────────────────────────────
-DIRTABLE:
-	IF	(DIRTABLE & 0FFH) <> 0
-		ERROR	"DIRTABLE must be at xx00h"
-	ENDIF
 
-	DB	DirectiveCompare & 0FFH	;C
-	DB	DirectiveDump & 0FFH	;D
-	DB	SyntaxError & 0FFH	;E
-	DB	DirectiveFill & 0FFH	;F
-	DB	DirectiveGoto & 0FFH	;G
-	DB	SyntaxError & 0FFH	;H
-	DB	DirectiveInputTape & 0FFH;I
-	DB	DirectiveGoto & 0FFH	;J
-	DB	SyntaxError & 0FFH	;K
-	DB	DirectiveDump & 0FFH	;L
-	DB	DirectiveModify & 0FFH	;M
-	DB	SyntaxError & 0FFH	;N
-	DB	DirectiveOutputTape & 0FFH;	O
-	DB	SyntaxError & 0FFH	;P
-	DB	SyntaxError & 0FFH	;Q
-	DB	DirectiveReadROM & 0FFH	;R
-	DB	DirectiveSearch & 0FFH	;S
-	DB	DirectiveTransfer & 0FFH;T
-	DB	DirectiveReadROM & 0FFH	;U
-
-; ──────────────────────────────────────────────
-; Заполняет память с HL по DE байтом C
-; ВХОД:
-;	HL	- начальный адрес
-;	DE	- конечный адрес
-;	C	- байт для записи
-; ВЫХОД:
-;	HL	- конечный адрес
-; ИЗМЕНЯЕТ:
-;	AF, HL
-; ──────────────────────────────────────────────
-
-DirectiveFill:					; 7 bytes
-	LD	(HL),C
-	;RET					; +1
-	CALL	IncHLAndRetIfEqDE		; -3
-	JP	DirectiveFill			; -3
-
-; ──────────────────────────────────────────────
-; Выполняет переход по адресу HL
-; ВХОД:
-;	HL	- адрес
-; ВЫХОД:
-;	НЕТ
-; ИЗМЕНЯЕТ:
-;	Не определено
-; ОПИСАНИЕ:
-;	В стеке содержится адрес WarmBoot
-; ──────────────────────────────────────────────
-
-DirectiveGoto:
-	IF	(DirectiveGoto & 0FF00H) <> (DirectiveFill & 0FF00H)
-		ERROR	"DirectiveGoto and DirectiveFill must be in same page"
-	ENDIF
-	;POP	AF
-	JP	(HL)			; 1 bytes
-
-; ──────────────────────────────────────────────
-; Перемещает область памяти с HL по DE в адреса BC
-; ВХОД:
-;	HL	- начальный адрес
-;	DE	- конечный адрес
-;	BC	- целевой адрес
-; ВЫХОД:
-;	HL	- конечный адрес источника
-;	BC	- целевой конечный адрес
-; ИЗМЕНЯЕТ:
-;	AF, HL, BC
-; ──────────────────────────────────────────────
-
-DirectiveTransfer:
-	IF	(DirectiveFill & 0FF00H) <> (DirectiveTransfer & 0FF00H)
-		ERROR	"DirectiveGoto and DirectiveTransfer must be in same page"
-	ENDIF
-DirectiveTransferLoop:			; 9 bytes
-	LD	A,(HL)
-	LD	(BC),A
-	INC	BC
-	;RET
-	CALL	IncHLAndRetIfEqDE
-	JP	DirectiveTransferLoop
-
-; ──────────────────────────────────────────────
-; Считывает область памяти ROM-диска с HL по DE в адреса BC ОЗУ
-; ВХОД:
-;	HL	- начальный адрес
-;	DE	- конечный адрес
-;	BC	- целевой адрес
-; ВЫХОД:
-;	HL	- конечный адрес источника
-;	BC	- целевой конечный адрес
-; ИЗМЕНЯЕТ:
-;	AF, HL, BC
-; ──────────────────────────────────────────────
-
-DirectiveReadROM:					; 3 bytes
-	IF	(DirectiveTransfer & 0FF00H) <> (DirectiveReadROM & 0FF00H)
-		ERROR	"DirectiveInputTape and DirectiveReadROM must be in same page"
-	ENDIF
-	JP	ReadROM
-
-; ──────────────────────────────────────────────
-; Ищет байт C в области памяти с HL по DE
-; ВХОД:
-;	HL	- начальный адрес
-;	DE	- конечный адрес
-;	C	- искомый байт
-; ВЫХОД:
-;	HL	- конечный адрес источника
-; ИЗМЕНЯЕТ:
-;	AF, HL
-; ──────────────────────────────────────────────
-
-DirectiveSearch:					; 11 bytes
-	IF	(DirectiveSearch & 0FF00H) <> (DirectiveReadROM & 0FF00H)
-		ERROR	"DirectiveReadROM and DirectiveSearch must be in same page"
-	ENDIF
-	LD	A,C
-	CP	(HL)
-	CALL	Z,PrintCRAndHexWordAndSpace
-	;RET
-	CALL	IncHLAndRetIfEqDEWithBrk
-	JP	DirectiveSearch
-
-; ──────────────────────────────────────────────
-
-DirectiveInputTape:
-	IF	(DirectiveInputTape & 0FF00H) <> (DirectiveTransfer & 0FF00H)
-		ERROR	"DirectiveInputTape and DirectiveTransfer must be in same page"
-	ENDIF
-	;POP	AF
-	LD	A,(FLG_P2)		; 46 bytes
-	OR	A
-	JP	Z,AFA91
-	LD	A,E
-	LD	(KNS_RD),A
-AFA91:	CALL	TapeReadBlock
-
-	CALL	PrintCRAndHexWordAndSpaceAndCRAndHexWordAndSpace
-	EX	DE,HL
-
-	PUSH	BC
-	CALL	CalcChecksum
-	CALL	PrintCRAndHexWordBCAndSpace
-	POP	DE
-
-	CALL	Compare_HL_DE
-	RET	Z
-	CALL	PrintCRAndHexWordDEAndSpace
-SyntaxError:
-	IF	(SyntaxError & 0FF00H) <> (DirectiveFill & 0FF00H)
-		ERROR	"SyntaxError and DirectiveFill must be in same page"
-	ENDIF
-	CALL	RST_18
-	DB	'?'+80H
-	JP	WarmBoot
-
-DirectiveCompare:
-	IF	(DirectiveCompare & 0FF00H) <> (DirectiveFill & 0FF00H)
-		ERROR	"DirectiveCompare and DirectiveFill must be in same page"
-	ENDIF
-
-	LD	A,(BC)			; 19 bytes
-	CP	(HL)
-	JP	Z,BytesEqual
-	CALL	PrintCRAndHexWordAndSpaceAndHexByteMemAndSpace
-	LD	A,(BC)
-	CALL	PrintHexByteAndSpace
-BytesEqual:
-	INC	BC
-	;RET
-	CALL	IncHLAndRetIfEqDEWithBrk
-	JP	DirectiveCompare
-
-DirectiveModify:
-	IF	(DIRTABLE & 0FF00H) <> (DirectiveModify & 0FF00H)
-		ERROR	"DirectiveModify and DIRTABLE must be in same page"
-	ENDIF
-	CALL	PrintCRAndHexWordAndSpaceAndHexByteMemAndSpace			; 22 bytes
-	PUSH	HL
-	CALL	InputDirective
-	POP	HL
-	JP	NC,AFA3B
-	PUSH	HL
-	CALL	GET_HL
-	LD	A,L
-	POP	HL
-	LD	(HL),A
-AFA3B:	INC	HL
-	JP	DirectiveModify
-
-; ──────────────────────────────────────────────
-; Вывод дампа и текста области памяти с HL по DE
-; ВХОД:
-;	HL	- начальный адрес
-;	DE	- конечный адрес
-; ВЫХОД:
-;	HL	- конечный адрес источника
-; ИЗМЕНЯЕТ:
-;	AF, HL
-; ──────────────────────────────────────────────
-
-DirectiveDump:
-
-	IF	(DIRTABLE & 0FF00H) <> (DirectiveDump & 0FF00H)
-		ERROR	"DirectiveDump and DIRTABLE must be in same page"
-	ENDIF
-	;POP	AF
-	CALL	PrintCRAndHexWordAndSpace
-	PUSH	HL
-	LD	BC,808H
-DIRL1:	CALL	PrintHexByteFromMemAndSpace
-	DEC	C
-	INC	HL
-	JP	NZ,DIRL1
-	POP	HL
-DIRL2:	LD	A,(HL)
-	OR	A
-	JP	M,AFA15
-	CP	20H
-	JP	NC,AFA17
-AFA15:	LD	A,'.'
-AFA17:	CALL	PrintCharFromA
-	CALL	IncHLAndRetIfEqDE
-	DEC	B
-	JP	NZ,DIRL2
-	JP	DirectiveDump
-
-; ──────────────────────────────────────────────
-
-DirectiveOutputTape:
-
-	IF	(DirectiveTransfer & 0FF00H) <> (DirectiveOutputTape & 0FF00H)
-		ERROR	"DirectiveOutputTape and DirectiveTransfer must be in same page"
-	ENDIF
-	;POP	AF
-	LD	A,C
-	OR	A
-	JP	Z,UseLastConst
-	LD	(KNS_WR),A
-UseLastConst:
-	PUSH	HL
-	CALL	CalcChecksum
-	POP	HL
-	
-	CALL	PrintCRAndHexWordAndSpaceAndCRAndHexWordAndSpace
-	EX	DE,HL
-	
-	PUSH	HL
-	CALL	PrintCRAndHexWordBCAndSpace
-	POP	HL
-
-TapeWriteBlockHandler:
-	PUSH	BC		; КС
-
-	LD	BC,0		; выводим 256 байтов 00 (пилотон)
-AFB4D:	CALL	TapeWriteByte
-	EX	(SP),HL 	; это задержка 38 тактов
-	EX	(SP),HL
-	DEC	B
-	JP	NZ,AFB4D
-
-	CALL	TapeWriteSync
-
-	CALL	TapeWriteWord		; выводим НА
-	EX	DE,HL
-	CALL	TapeWriteWord		; выводим КА
-
-	EX	DE,HL
-	CALL	TapeWriteFromHLtoDE		; выводим блок
-
-	LD	HL,0
-	CALL	TapeWriteWord		; выводим 2 байта 00
-
-	CALL	TapeWriteSync
-
-	POP	HL
-	CALL	TapeWriteWord		; выводим КС
-
-	JP	InitVideo
-
-; ──────────────────────────────────────────────
-
-; После 15H вызовов GetKeyboardStatus при нажатой клавише выставляется флаг KBDFLG
-
-GetKeyboardStatusHandler:	; 45 bytes
-	LD	A, (IDENT)	; Если есть что-то в буфере идентификации, то выходим
-	OR	A
-	LD	A, 0
-	RET	NZ
-	LD	A,(PC)		
-	RLA
-	JP	NC,AFE0E	; если нажат RUS/LAT
-	LD	A,(KBDFLG)
-	OR	A
-	RET	NZ		; если в SYMBUF уже есть символ
-AFE0E:	PUSH	HL
-	CALL	ReadKeyCode
-	LD	HL,(LAST_K)
-	CP	L
-	LD	L,A
-	JP	Z,AFE2A
-AFE1A:	LD	A,1
-	LD	(APVFLG),A
-	LD	H,15H		; число опросов, чтобы зафиксировать код
-AFE21:	XOR	A
-AFE22:	LD	(LAST_K),HL
-	POP	HL
-	LD	(KBDFLG),A
-	RET
 
 ; ──────────────────────────────────────────────
 ; Увеличивает HL и вызывает второй RET, если равен DE
@@ -1491,20 +1237,11 @@ POPAF:	POP	AF
 	RET
 
 ; ──────────────────────────────────────────────
-; Подача звукового сигнала
-; ВХОД:
-;	Нет
-; ВЫХОД:
-;	Нет
-; ИЗМЕНЯЕТ:
-;	AF, BC
-; ОПИСАНИЕ:
-; ──────────────────────────────────────────────
 
-	CHK	0FD27H, "* Standard subroutine Beep shifted ! *"
+AFEF3:	LD	A,H			; 7 bytes
+	LD	HL,TABK1
+	JP	AFEFE
 
-	JP	BeepHandler
-	
 DefaultBeepHandler:
 	LD	BC,05F0H		; 20 bytes
 SND_BC:	LD	A,B
@@ -1518,6 +1255,17 @@ BPLOO2:	DI
 	DEC	C
 	JP	NZ,SND_BC
 	RET
+
+
+; ──────────────────────────────────────────────
+
+ReadVideoRAMHandler:
+	PUSH	HL				; 10 bytes
+	LD	HL, (POSADDR)
+	LD	A,(HL)
+	POP	HL
+	RET
+	
 
 ; ──────────────────────────────────────────────
 ; Запись слова
@@ -1792,6 +1540,82 @@ LF:
 	LD	A, D;MARGIN_TOP
 	JP	RLUP
 
+
+; ──────────────────────────────────────────────
+; Возвращает в HL координаты курсора
+; ВХОД:
+;	Нет
+; ВЫХОД:
+;	H - Y
+;	L - X
+; ИЗМЕНЯЕТ:
+;	HL
+; ──────────────────────────────────────────────
+
+GetCursorPosHandler:
+	LD	HL,(POSX)		; 4 bytes
+	RET
+
+; ──────────────────────────────────────────────
+; Загрузка BC с поиском синхробайта
+; ВХОД:
+;	Нет
+; ВЫХОД:
+;	BC	- загруженные байта
+; ИЗМЕНЯЕТ:
+;	AF, BC
+; ──────────────────────────────────────────────
+
+TapeReadWordSync:
+	LD	A, 0FFH			; 14 bytes
+	DB	1			; LD BC, ..
+
+; ──────────────────────────────────────────────
+; Загрузка BC без поиска синхробайта
+; ВХОД:
+;	Нет
+; ВЫХОД:
+;	BC	- загруженные байта
+; ИЗМЕНЯЕТ:
+;	AF, BC
+; ──────────────────────────────────────────────
+
+TapeReadWordNoSync:
+	LD	A, 8
+
+; ──────────────────────────────────────────────
+; Загрузка слова в BC
+; ВХОД:
+;	A=008H	- без поиска синхробайта
+;	A=0FFH	- с поиском синхробайта
+; ВЫХОД:
+;	BC	- загруженные байта
+; ИЗМЕНЯЕТ:
+;	AF, BC
+; ──────────────────────────────────────────────
+
+TapeReadWord:
+	CALL	TapeReadByte
+	LD	B, A
+	CALL	TapeReadByteNoSync
+	LD	C, A
+	RET
+
+; ──────────────────────────────────────────────
+; Подача звукового сигнала
+; ВХОД:
+;	Нет
+; ВЫХОД:
+;	Нет
+; ИЗМЕНЯЕТ:
+;	AF, BC
+; ОПИСАНИЕ:
+; ──────────────────────────────────────────────
+
+	CHK	0FD27H, "* Standard subroutine Beep shifted ! *"
+
+	JP	BeepHandler
+
 ; ──────────────────────────────────────────────
 
 AFE2A:	DEC	H			; в рег.A=код клав, в рег.H- COUNT
@@ -1845,7 +1669,7 @@ InputSymbolHandler:			; 38 bytes
 	LD	A,(LAST_K)		; 3
 	RET				; 1
 
-VT52_CI1:				; 11 bytes
+VT52_CI1:				; 10 bytes
 	LD	(HL), '/'
 	DB	11H		; LD HL,...
 VT52_CI2:
@@ -1883,8 +1707,8 @@ VT52_CI3:
 ;		ESC V	- Print current string on printer
 ;		ESC Y	- Direct Cursor Addressing
 ;		ESC Z	- Ident terminal
-;		ESC a	- Disable cursor (M/80K extension)
-;		ESC b	- Enable cursor(M/80K extension)
+;		ESC a	- (not supported) Disable cursor (M/80K extension)
+;		ESC b	- (not supported) Enable cursor(M/80K extension)
 ;		ESC e	- Enable cursor (GEMDOS/TOS extension)
 ;		ESC f	- Disable cursor(GEMDOS/TOS extension)
 ;		ESC j	- Save cursor (GEMDOS/TOS extension)
@@ -1917,16 +1741,7 @@ EscapeHandler:
 	EX	(SP), HL
 	CP	'/'		; Игнорирование последовательности Esc / ответа идентификации
 	RET	Z
-	SUB	'_'		;CP	'_'
-	JP	NZ, skip_ESC__
-	LD	(Echo), A	; Тут уже 0
-skip_ESC__:
-	INC	A		;CP	'^'
-	JP	NZ, skip_ESC_
-	DEC	A	; LD A, 0FFh Тут 0 на входе
-	LD	(Echo), A
-skip_ESC_:
-	ADD	A,'^'-'w'		;CP	'w'
+	SUB	'w'		;CP	'w'
 	JP	NZ, skip_ESC_w
 
 ; ──────────────────────────────────────────────
@@ -2046,7 +1861,17 @@ skip_ESC_e:
 ;	INC	A		; CP	'a'
 ;	JP	Z, CursorDisable
 
-	ADD	A, 'e'-']'	;CP	']'
+	ADD	A, 'e'-'_'		;CP	'_'
+	JP	NZ, skip_ESC__
+	LD	(Echo), A	; Тут уже 0
+skip_ESC__:
+
+	INC	A		;CP	'^'
+	JP	NZ, skip_ESC_
+	DEC	A	; LD A, 0FFh Тут 0 на входе
+	LD	(Echo), A
+skip_ESC_:
+	INC	A		;CP	']'
 	JP	NZ, skip_ESC_PrSc
 	PUSH	HL
 	LD	H, D		;MARGIN_TOP
@@ -2120,6 +1945,7 @@ SETESC:	LD	(ESC_FL),A
 
 skip_ESC_Y:
 	ADD	A, 'Y'-'V'	;CP 'V'
+	JP	NZ, skip_ESC_V
 ListCurrentString:
 	PUSH	HL
 	LD	L, E;MARGIN_LEFT
@@ -2135,6 +1961,7 @@ PrintCSLoop:
 ;	LD	C, 0AH		; По идее - надо. Или надо CRLF?
 ;	CALL	ListCharFromC
 	POP	HL
+skip_ESC_V:
 	ADD	A, 'V'-'M'	;CP	'M'
 	JP	NZ, skip_ESC_M
 
@@ -2160,7 +1987,9 @@ RLUP:	PUSH	HL
 	ADD	HL, BC
 	POP	BC
 	LD	DE, SCBASE+26*SC_WIDTH
-	CALL	DirectiveTransfer
+	LD	A, DirectiveTransfer & 0FFH
+	LD	(DirectiveHandle+1), A	; Адрес вызова обработчика директивы
+	CALL	UniversalDirective
 	POP	HL
 	XOR	A	; Защита от дальнейшей ложной обработки
 
@@ -2401,27 +2230,7 @@ DefaultReadKeyCodeHandler:
 	DEC	A
 	RET
 
-; ──────────────────────────────────────────────
-; Возвращает в HL координаты курсора
-; ВХОД:
-;	Нет
-; ВЫХОД:
-;	H - Y
-;	L - X
-; ИЗМЕНЯЕТ:
-;	HL
-; ──────────────────────────────────────────────
 
-GetCursorPosHandler:
-	LD	HL,(POSX)		; 4 bytes
-	RET
-
-; ──────────────────────────────────────────────
-
-AFEF3:	LD	A,H			; 7 bytes
-	LD	HL,TABK1
-	JP	AFEFE
-	
 ; ──────────────────────────────────────────────
 ; Первичная инициализация МОНИТОРа
 ; ВХОД:
@@ -2435,9 +2244,13 @@ AFEF3:	LD	A,H			; 7 bytes
 ColdBootHandler:
 	LD	HL, POSADDR		; 7600H/3600H
 	LD	SP, HL
-	LD	DE, RAMTOP+2
+	LD	B, RAMTOP+2-POSADDR
 	LD	C,L			; LD C, 0
-	CALL	DirectiveFill
+FillLoop:
+	INC	HL
+	LD	(HL),C
+	DEC	B
+	JP	NZ, FillLoop
 	CALL	CursorEnable		;InitVideo; Запускаем ВГ75
 
 ; ──────────────────────────────────────────────
@@ -2474,8 +2287,206 @@ ColdBootHandler:
 	LD	BC, (0C3H<<8) | ((DefaultTapeInHandler & 0FF00H) >> 8)
 	PUSH	BC
 	LD	BC, ((DefaultTapeInHandler & 0FFH) << 8) | (0C3H)
+	PUSH	BC
+	LD	BC, DefaultReadKeyCodeHandler
 	JP	INIT2
 
+; ──────────────────────────────────────────────
+
+ProcessBackspace:
+	LD	A,E			; 15 bytes
+	CP	L			; начало буфера ввода ?
+	JP	Z,AF8F1;GotoCmdLineBegin	; GotoCmdLineBegin
+	DEC	HL
+	CALL	RST_18
+	DB	8,' ',8+80H
+	JP	AF8F3;InputNextSymbol
+
+; ──────────────────────────────────────────────
+
+AFF3B:	LD	A,L			; 23 bytes
+	AND	2FH
+	LD	L,A
+AFF3F:	LD	A,L
+	CP	40H
+	POP	HL
+	RET	P
+	PUSH	HL
+	LD	L,A
+	AND	00FH
+	CP	00CH
+	LD	A,L
+	JP	M,AFF50
+	XOR	10H
+AFF50:	POP	HL
+	RET
+
+; ──────────────────────────────────────────────
+
+AFBFF:	CP	19H		; ОБРАТНЫЙ С/БАЙТ
+	JP	NZ,AFBB7	; 28 bytes
+	LD	A,0FFH
+SETINV:	LD	(INV_MG),A 	; Tape inverse flag
+	LD	D,9
+AFC0B:	DEC	D
+	JP	NZ,AFBB7
+
+	LD	HL,(TMPSTK)
+	LD	SP,HL
+
+	LD	A,(INV_MG)
+	XOR	C			; with Tape Inverse flag
+	PUSH	AF	
+	JP	REINIT
+
+
+; ──────────────────────────────────────────────
+
+AFE97:	PUSH	HL			; 27 bytes
+	LD	HL,7 << 8 + 1
+AFE9C:	LD	A,L
+	RRCA
+	LD	L,A
+	CPL
+	LD	(PA),A
+	LD	A,(PB)
+	CPL
+	OR	A
+	JP	NZ,AFEB3
+	DEC	H
+	JP	P,AFE9C
+AFEAF:	LD	A,0FFH
+	POP	HL
+	RET
+
+
+; ──────────────────────────────────────────────
+
+NO_ESC:	LD	A,C
+	AND	7FH
+	LD	C,A
+	SUB	1FH		;CP	1FH
+	JP	Z,ClearScreen
+	ADD	A, 1FH-1BH	;CP	1BH
+	JP	Z,EscapeHandlerStart		; Это должно идти после управляющих кодов
+	INC	A		;CP	1AH
+	JP	Z,CursorDown
+	INC	A		;CP	19H
+	JP	Z,CursorUp
+	INC	A		;CP	18H
+	JP	Z,CursorRight
+	ADD	A, 18H-0DH	;CP	0DH
+	JP	Z,COD_0D
+	INC	A		;CP	0CH
+	JP	Z,CursorHome
+	ADD	A, 0CH-0AH	;CP	0AH
+	JP	Z,LF
+	INC	A		;CP	09H
+	JP	NZ,skip_TAB
+
+; ──────────────────────────────────────────────
+
+TAB:	LD	A, L
+	ADD	A, 8
+	AND	11111000b
+	LD	L, A
+	RET
+
+; ──────────────────────────────────────────────────────
+; Ввод в HL HEX-число из строки по (DE) до CR
+; ВХОД:
+;	DE	- адрес строки
+; ВЫХОД:
+;	Нет
+; ИЗМЕНЯЕТ:
+;	AF, BС, DE, HL
+; ──────────────────────────────────────────────
+
+GET_HL:	XOR	A		;LD	HL,0		; 47 bytes
+	LD	H, A
+AF95D:	LD	L, A
+	LD	A,(DE)		; Выход: CY=1 если разделитель <ВК>
+	INC	DE
+	CP	13
+	SCF
+	RET	Z
+	CP	','
+	RET	Z
+	CP	20H
+	JP	Z,AF95D
+
+	LD	BC,SyntaxError
+	PUSH	BC
+
+	SUB	'0'
+	RET	C		; JP C,SyntaxError
+
+	CP	9+1
+	JP	C,AF982
+
+	CP	'A'-'0'
+	RET	C		; JP C,SyntaxError
+
+	CP	'F'-'0'+1
+	RET	NC		; JP NC,SyntaxError
+
+	SUB	'A'-('9'+1)
+AF982:
+	ADD	HL,HL
+	ADD	HL,HL
+	ADD	HL,HL
+	ADD	HL,HL
+	RET	C		; JP C,SyntaxError
+
+	OR	L
+	
+	POP	BC
+	JP	AF95D
+
+
+
+; ──────────────────────────────────────────────
+
+; После 15H вызовов GetKeyboardStatus при нажатой клавише выставляется флаг KBDFLG
+
+GetKeyboardStatusHandler:	; 45 bytes
+	LD	A, (IDENT)	; Если есть что-то в буфере идентификации, то выходим
+	OR	A
+	LD	A, 0
+	RET	NZ
+	LD	A,(PC)		
+	RLA
+	JP	NC,AFE0E	; если нажат RUS/LAT
+	LD	A,(KBDFLG)
+	OR	A
+	RET	NZ		; если в SYMBUF уже есть символ
+AFE0E:	PUSH	HL
+	CALL	ReadKeyCode
+	LD	HL,(LAST_K)
+	CP	L
+	LD	L,A
+	JP	Z,AFE2A
+AFE1A:	LD	A,1
+	LD	(APVFLG),A
+	LD	H,15H		; число опросов, чтобы зафиксировать код
+AFE21:	XOR	A
+AFE22:	LD	(LAST_K),HL
+	POP	HL
+	LD	(KBDFLG),A
+	RET
+
+	NOP		; 15 bytes
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
 
 	CHK	10000H, "* Size not 2K ! *"
 
