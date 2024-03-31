@@ -23,6 +23,36 @@ CHK	MACRO	adr, msg
 		ENDIF
 	ENDM
 
+
+HANDLER	MACRO	char
+	ifdef curchar
+	if curchar='^'
+skip_ESC_PrAuOn	label $
+	elseif curchar=']'
+skip_ESC_PrSc	label $
+	else
+skip_ESC_{curchar}	label	$
+	endif
+	endif
+
+	ifndef curchar
+	SUB	'char'
+	ELSEIF curchar-'char'=1
+	INC	A
+	ELSE
+	ADD	A, curchar-'char'	;CP	'char'
+	ENDIF
+
+	if 'char'='^'
+	JP	NZ, skip_ESC_PrAuOn
+	elseif 'char'=']'
+	JP	NZ, skip_ESC_PrSc
+	else
+	JP	NZ, skip_ESC_char
+	endif
+curchar	SET	'char'
+	ENDM
+
 ; ──────────────────────────────────────────────
 
 	INCLUDE	"SYSVARS.INC"
@@ -155,7 +185,6 @@ INIT2:
 	LD	HL, ListHandler
 	LD	(HL), A
 
-	
 ; ──────────────────────────────────────────────
 ; "Теплый" старт МОНИТОРа
 ; ВХОД:
@@ -605,7 +634,7 @@ DIRTABLE:
 	DB	SyntaxError & 0FFH	;H
 	DB	DirectiveInputTape & 0FFH;I
 	DB	DirectiveGoto & 0FFH	;J
-	DB	SyntaxError & 0FFH	;K
+	DB	DirectiveChecksum & 0FFH ;K
 	DB	DirectiveDump & 0FFH	;L
 	DB	DirectiveModify & 0FFH	;M
 	DB	SyntaxError & 0FFH	;N
@@ -823,7 +852,7 @@ DirectiveTransferLoop:			; 4 bytes
 
 ; ──────────────────────────────────────────────
 
-	NOP				; 17 bytes
+	NOP				; 10 bytes
 	NOP
 	NOP
 	NOP
@@ -833,13 +862,13 @@ DirectiveTransferLoop:			; 4 bytes
 	NOP
 	NOP
 	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
+
+; ──────────────────────────────────────────────
+
+DirectiveChecksum:
+	POP	AF
+	CALL	CalcChecksum
+	JP	PrintCRAndHexWordBCAndSpace
 
 ; ──────────────────────────────────────────────
 
@@ -1446,7 +1475,6 @@ PrintCharFromCHandler:
 	LD	HL,TOBACK
 	PUSH	HL
 	LD	HL,(POSX)
-;	LD	DE,(WINXY)
 	LD	DE, (MARGIN_TOP << 8) | MARGIN_LEFT
 	LD	A,(ESC_FL)
 	DEC	A
@@ -1741,30 +1769,28 @@ EscapeHandler:
 	EX	(SP), HL
 	CP	'/'		; Игнорирование последовательности Esc / ответа идентификации
 	RET	Z
-	SUB	'w'		;CP	'w'
-	JP	NZ, skip_ESC_w
 
 ; ──────────────────────────────────────────────
 ; Включить автоперенос строки
+	HANDLER w
 ; ВХОД:
-;	E=POSX, D=POSY
-;	HL=экранный адрес
+;	E = POSX
+;	D = POSY
+;	HL = экранный адрес
+;	A = 0
 ; ВЫХОД:
-;	E=POSX, D=POSY
-;	HL=экранный адрес
+;	E = POSX
+;	D = POSY
+;	HL = экранный адрес
 ; ИЗМЕНЯЕТ:
 ;	HL, DE, AF, BC
 ; ОПИСАНИЕ:
 ; ──────────────────────────────────────────────
-WrapOn:	;XOR	A Тут уже 0
-	LD	(WRPFLG), A
-
-skip_ESC_w:
-	INC	A		;CP	'v'
-	JP	NZ, skip_ESC_v
+WrapOn:	LD	(WRPFLG), A
 
 ; ──────────────────────────────────────────────
 ; Выключить автоперенос строки
+	HANDLER v
 ; ВХОД:
 ;	E=POSX, D=POSY
 ;	HL=экранный адрес
@@ -1779,12 +1805,9 @@ WrapOff:
 	DEC	A	; LD A, 0FFh Тут 0 на входе
 	LD	(WRPFLG), A
 
-skip_ESC_v:
-	ADD	A, 'v'-'k'	;CP	'k'
-	JP	NZ, skip_ESC_k
-
 ; ──────────────────────────────────────────────
 ; Восстановить сохраненные координаты курсора
+	HANDLER k
 ; ВХОД:
 ;	L - X координата курсора
 ;	H - Y координата курсора
@@ -1797,12 +1820,9 @@ skip_ESC_v:
 CursorRestore:
 	LD	HL, (XYSTOR)
 
-skip_ESC_k:
-	INC	A		;CP	'j'
-	JP	NZ, skip_ESC_j
-
 ; ──────────────────────────────────────────────
 ; Сохранить текущие координаты курсора
+	HANDLER	j
 ; ВХОД:
 ;	L - X координата курсора
 ;	H - Y координата курсора
@@ -1815,12 +1835,9 @@ skip_ESC_k:
 CursorSave:
 	LD	(XYSTOR), HL
 
-skip_ESC_j:
-	ADD	A, 'j'-'f'	;CP	'f'
-	JP	NZ, skip_ESC_f
-
 ; ──────────────────────────────────────────────
 ; Скрыть курсор  (ESC+f)
+	HANDLER f
 ; ВХОД:
 ;	L - X координата курсора
 ;	H - Y координата курсора
@@ -1834,13 +1851,9 @@ CursorDisable:
 	LD	A, 0A9H
 	JP	SetCur
 
-skip_ESC_f:
-	INC	A		;CP	'e'
-	JP	NZ, skip_ESC_e
-
-CursorEnable:
 ; ──────────────────────────────────────────────
 ; Отобразить курсор (ESC+e)
+	HANDLER e
 ; ВХОД:
 ;	L - X координата курсора
 ;	H - Y координата курсора
@@ -1850,29 +1863,54 @@ CursorEnable:
 ; ИЗМЕНЯЕТ:
 ;	Нет
 ; ──────────────────────────────────────────────
+CursorEnable:
 	LD	A, 099H
 SetCur:	LD	(CURST), A
 	JP	InitVideo
 
-skip_ESC_e:
-;	ADD	A, 'e'-'b'	;CP	'b'
-;	JP	Z, CursorEnable
-
-;	INC	A		; CP	'a'
-;	JP	Z, CursorDisable
-
-	ADD	A, 'e'-'_'		;CP	'_'
-	JP	NZ, skip_ESC__
+; ──────────────────────────────────────────────
+; Выключить копирование на печать (ESC+_)
+	HANDLER _
+; ВХОД:
+;	L - X координата курсора
+;	H - Y координата курсора
+; ВЫХОД:
+;	L - X координата курсора
+;	H - Y координата курсора
+; ИЗМЕНЯЕТ:
+;	Нет
+; ──────────────────────────────────────────────
 	LD	(Echo), A	; Тут уже 0
-skip_ESC__:
 
-	INC	A		;CP	'^'
-	JP	NZ, skip_ESC_
+; ──────────────────────────────────────────────
+; Включить копирование на печать (ESC+^)
+	HANDLER ^
+; ВХОД:
+;	L - X координата курсора
+;	H - Y координата курсора
+; ВЫХОД:
+;	L - X координата курсора
+;	H - Y координата курсора
+; ИЗМЕНЯЕТ:
+;	Нет
+; ──────────────────────────────────────────────
+
 	DEC	A	; LD A, 0FFh Тут 0 на входе
 	LD	(Echo), A
-skip_ESC_:
-	INC	A		;CP	']'
-	JP	NZ, skip_ESC_PrSc
+
+; ──────────────────────────────────────────────
+; Печать копии экрана (ESC+])
+	HANDLER ]
+; ВХОД:
+;	L - X координата курсора
+;	H - Y координата курсора
+; ВЫХОД:
+;	L - X координата курсора
+;	H - Y координата курсора
+; ИЗМЕНЯЕТ:
+;	Нет
+; ──────────────────────────────────────────────
+
 	PUSH	HL
 	LD	H, D		;MARGIN_TOP
 	LD	L, E		;MARGIN_LEFT
@@ -1883,19 +1921,37 @@ ListScreenLoop:
 	CP	H
 	JP	NZ, ListScreenLoop
 	POP	HL
-skip_ESC_PrSc:
-	ADD	A, ']'-'Z'	;CP	'Z'
-	JP	NZ, skip_ESC_Z
+
+; ──────────────────────────────────────────────
+; Идентификация терминала (ESC+Z)
+	HANDLER Z
+; ВХОД:
+;	L - X координата курсора
+;	H - Y координата курсора
+; ВЫХОД:
+;	L - X координата курсора
+;	H - Y координата курсора
+; ИЗМЕНЯЕТ:
+;	Нет
+; ──────────────────────────────────────────────
 
 	LD	A, 1BH
 	LD	(IDENT), A
-	RET
+;	RET
 
-skip_ESC_Z:
-	INC	A	;CP	'Y'
-	JP	NZ, skip_ESC_Y
+; ──────────────────────────────────────────────
+; Абсолютное позиционирование курсора (ESC+Y)
+	HANDLER	Y
+; ВХОД:
+;	L - X координата курсора
+;	H - Y координата курсора
+; ВЫХОД:
+;	L - X координата курсора
+;	H - Y координата курсора
+; ИЗМЕНЯЕТ:
+;	Нет
+; ──────────────────────────────────────────────
 
-	;esc_Y
 	POP	BC		; Убираем из стека EscapeHandlerEnd, возвращаемся только на TOBACK
 	INC	A		;LD	A,2; ПРИНЯТО 2 БАЙТА ESC,'Y'
 
@@ -1943,9 +1999,11 @@ EscapeHandlerEnd:
 SETESC:	LD	(ESC_FL),A
 	RET
 
-skip_ESC_Y:
-	ADD	A, 'Y'-'V'	;CP 'V'
-	JP	NZ, skip_ESC_V
+;skip_ESC_Y:
+;	ADD	A, 'Y'-'V'	;CP 'V'
+;	JP	NZ, skip_ESC_V
+	HANDLER	V
+
 ListCurrentString:
 	PUSH	HL
 	LD	L, E;MARGIN_LEFT
@@ -1961,12 +2019,10 @@ PrintCSLoop:
 ;	LD	C, 0AH		; По идее - надо. Или надо CRLF?
 ;	CALL	ListCharFromC
 	POP	HL
-skip_ESC_V:
-	ADD	A, 'V'-'M'	;CP	'M'
-	JP	NZ, skip_ESC_M
 
 ; ──────────────────────────────────────────────
 ; Удалить строку
+	HANDLER	M
 ; ВХОД:
 ;	L=POSX, H=POSY
 ; ВЫХОД:
@@ -1995,8 +2051,7 @@ RLUP:	PUSH	HL
 
 skip_ESC_M:
 	INC	A		;CP	'L'
-;	JP	NZ, skip_ESC_L
-
+curchar	set	'L'
 ; ──────────────────────────────────────────────
 ; Вставить строку
 ; ВХОД:
@@ -2010,12 +2065,9 @@ skip_ESC_M:
 InsertLine:
 	JP	Z, RLDN
 
-skip_ESC_L:
-	INC	A		;CP	'K'
-	JP	NZ, skip_ESC_K
-
 ; ──────────────────────────────────────────────
 ; Очистка от курсора до конца строки
+	HANDLER	K
 ; ВХОД:
 ;	L=POSX, H=POSY
 ; ВЫХОД:
@@ -2033,12 +2085,9 @@ KLOOP:	CALL	PrintSpace
 	JP	NZ, KLOOP
 	POP	HL
 
-skip_ESC_K:
-	INC	A		;CP	'J'
-	JP	NZ, skip_ESC_J
-
 ; ──────────────────────────────────────────────
 ; Очистка до конца экрана
+	HANDLER	J
 ; ВХОД:
 ;	L=POSX, H=POSY
 ; ВЫХОД:
@@ -2057,12 +2106,9 @@ CLSLOO:	XOR	A		; Здесь не всегда ноль
 	JP	P,CLSLOO
 	POP	HL
 
-skip_ESC_J:
-	INC	A		;CP	'I'
-	JP	NZ, skip_ESC_I
-
 ; ──────────────────────────────────────────────
 ; Обратный перевод строки
+	HANDLER	I
 ; ВХОД:
 ;	L=POSX, H=POSY
 ; ВЫХОД:
@@ -2103,21 +2149,21 @@ RLFLOOP:
 skip_ESC_I:
 	INC	A		;CP	'H'
 	JP	Z, CursorHome
-skip_ESC_H:
-	INC	A		;CP     'G'
-	JP	NZ, skip_ESC_G
+curchar	SET	'H'
+
+	HANDLER	G
+
 	LD	(AltChars), A
-skip_ESC_G:
-	INC	A		;CP     'F'
-	JP	NZ, skip_ESC_F
+
+	HANDLER F
+
 	DEC	A
 	LD	(AltChars), A
 	INC	A
-skip_ESC_F:
-	INC	A		;CP	'E'
-	JP	NZ, skip_ESC_E
 
 ; ──────────────────────────────────────────────
+
+	HANDLER	E
 
 ClearScreen:
 	LD	H,A		; 17 bytes
@@ -2126,12 +2172,10 @@ ClearScreen:
 CursorHome:
 	LD	H, D;MARGIN_TOP
 	LD	L, E;MARGIN_LEFT
-skip_ESC_E:
-	INC	A		;CP	'D'
-	JP	NZ, skip_ESC_D
 
 ; ──────────────────────────────────────────────
 ; Перемещение курсора влево
+	HANDLER	D
 ; ВХОД:
 ;	L=POSX, H=POSY
 ; ВЫХОД:
@@ -2153,11 +2197,10 @@ skip_ESC_D:
 	INC	A		;CP	'C'
 	JP	Z, CursorRight
 
-	INC	A		;CP	'B'
-	JP	NZ, skip_ESC_B
-
+curchar	set	'C'
 ; ──────────────────────────────────────────────
 ; Перемещение курсора вниз
+	HANDLER	B
 ; ВХОД:
 ;	L=POSX, H=POSY
 ; ВЫХОД:
@@ -2247,8 +2290,8 @@ ColdBootHandler:
 	LD	B, RAMTOP+2-POSADDR
 	LD	C,L			; LD C, 0
 FillLoop:
-	INC	HL
 	LD	(HL),C
+	INC	HL
 	DEC	B
 	JP	NZ, FillLoop
 	CALL	CursorEnable		;InitVideo; Запускаем ВГ75
@@ -2475,7 +2518,8 @@ AFE22:	LD	(LAST_K),HL
 	LD	(KBDFLG),A
 	RET
 
-	NOP		; 15 bytes
+	NOP		; 13 bytes
+	NOP
 	NOP
 	NOP
 	NOP
